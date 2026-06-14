@@ -32,9 +32,9 @@ export function DashboardTable({
   onViewAll?: () => void;
 }) {
   return (
-    <article className="overflow-hidden rounded-lg border border-white/10 bg-panel">
-      <div className="flex flex-col items-start justify-between gap-3 border-b border-white/10 px-4 py-3 sm:flex-row sm:items-center">
-        <h2 className="text-base font-bold text-white">{title}</h2>
+    <article className="overflow-hidden rounded-lg border border-line bg-surface">
+      <div className="flex flex-col items-start justify-between gap-3 border-b border-line px-4 py-3 sm:flex-row sm:items-center">
+        <h2 className="text-base font-bold text-ink">{title}</h2>
         {onViewAll && (
           <button
             type="button"
@@ -45,22 +45,44 @@ export function DashboardTable({
           </button>
         )}
       </div>
-      <div className="overflow-x-auto">
+      <div className="space-y-3 p-4 md:hidden">
+        {rows.map((row) => (
+          <article key={row.join("-")} className="rounded-lg border border-line bg-surfaceSoft p-4">
+            <div className="flex items-start justify-between gap-3">
+              <p className="min-w-0 break-words text-sm font-semibold text-primary">{row[0]}</p>
+              {(row[row.length - 1] === "ใช้งานได้" || row[row.length - 1] === "รอตรวจสอบ" || row[row.length - 1] === "ชำรุด" || row[row.length - 1] === "รอซ่อม") ? (
+                <StatusBadge value={row[row.length - 1]} />
+              ) : (
+                <span className="shrink-0 text-sm text-ink">{row[row.length - 1]}</span>
+              )}
+            </div>
+            <dl className="mt-3 grid gap-2 text-sm">
+              {row.slice(1, row.length - 1).map((cell, index) => (
+                <div key={`${columns[index + 1]}-${cell}`}>
+                  <dt className="text-xs font-semibold text-muted">{columns[index + 1]}</dt>
+                  <dd className="mt-1 break-words text-ink">{cell}</dd>
+                </div>
+              ))}
+            </dl>
+          </article>
+        ))}
+      </div>
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[620px] border-collapse text-left text-[13px]">
-          <thead className="bg-panelSoft text-slate-300">
+          <thead className="bg-surfaceSoft text-ink">
             <tr>
               {columns.map((column) => (
-                <th key={column} className="border-b border-white/10 px-3 py-2.5 font-semibold">
+                <th key={column} className="border-b border-line px-3 py-2.5 font-semibold">
                   {column}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/10 bg-slate-950/20 text-slate-200">
+          <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
             {rows.map((row) => (
               <tr key={row.join("-")} className="hover:bg-white/[0.03]">
                 {row.map((cell, index) => (
-                  <td key={`${row[0]}-${cell}`} title={cell} className={`px-3 py-3 ${index === 0 ? "font-semibold text-gold" : ""}`}>
+                  <td key={`${row[0]}-${cell}`} title={cell} className={`px-3 py-3 ${index === 0 ? "font-semibold text-primary" : ""}`}>
                     {index === row.length - 1 && (cell === "ใช้งานได้" || cell === "รอตรวจสอบ" || cell === "ชำรุด" || cell === "รอซ่อม") ? (
                       <StatusBadge value={cell} />
                     ) : (
@@ -186,20 +208,20 @@ export function DashboardPage({
   }, []);
 
   const chartFallback = (
-    <div className="flex h-full items-center justify-center rounded-lg border border-white/10 bg-slate-950/30 text-sm text-slate-400">
+    <div className="flex h-full items-center justify-center rounded-lg border border-line bg-surfaceSoft text-sm text-muted">
       กำลังเตรียมกราฟ
     </div>
   );
   const organizationChartEmptyState = (
-    <div className="flex h-full flex-col items-center justify-center rounded-lg border border-dashed border-white/15 bg-slate-950/20 px-4 text-center">
-      <p className="text-sm font-bold text-white">ไม่มีข้อมูลสำหรับแสดงกราฟ</p>
-      <p className="mt-2 max-w-sm text-xs text-slate-400">ยังไม่มีข้อมูลครุภัณฑ์ที่สามารถนำมาสรุปตามฝ่าย/ชมรมได้</p>
+    <div className="flex h-full flex-col items-center justify-center rounded-lg border border-dashed border-line bg-surfaceSoft px-4 text-center">
+      <p className="text-sm font-bold text-ink">ไม่มีข้อมูลสำหรับแสดงกราฟ</p>
+      <p className="mt-2 max-w-sm text-xs text-muted">ยังไม่มีข้อมูลครุภัณฑ์ที่สามารถนำมาสรุปตามฝ่าย/ชมรมได้</p>
     </div>
   );
   const fiscalYearChartEmptyState = (
-    <div className="flex h-full flex-col items-center justify-center rounded-lg border border-dashed border-white/15 bg-slate-950/20 px-4 text-center">
-      <p className="text-sm font-bold text-white">ไม่มีข้อมูลสำหรับแสดงกราฟ</p>
-      <p className="mt-2 max-w-sm text-xs text-slate-400">ยังไม่มีข้อมูลครุภัณฑ์ที่สามารถสรุปตามปีงบประมาณได้</p>
+    <div className="flex h-full flex-col items-center justify-center rounded-lg border border-dashed border-line bg-surfaceSoft px-4 text-center">
+      <p className="text-sm font-bold text-ink">ไม่มีข้อมูลสำหรับแสดงกราฟ</p>
+      <p className="mt-2 max-w-sm text-xs text-muted">ยังไม่มีข้อมูลครุภัณฑ์ที่สามารถสรุปตามปีงบประมาณได้</p>
     </div>
   );
 
@@ -208,16 +230,16 @@ export function DashboardPage({
       <div className="grid auto-rows-fr grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {assetStatusSummary.map((item) => {
           return (
-            <article key={item.label} className={`flex min-h-[138px] flex-col rounded-lg border ${item.border} bg-panel bg-gradient-to-br ${item.glow} to-transparent p-4 shadow-glow`}>
-              <p className="text-xs font-semibold text-slate-200">{item.label}</p>
+            <article key={item.label} className={`flex min-h-[138px] flex-col rounded-lg border ${item.border} bg-surface bg-gradient-to-br ${item.glow} to-transparent p-4 shadow-glow`}>
+              <p className="text-xs font-semibold text-ink">{item.label}</p>
               <strong className={`mt-2 block text-4xl font-extrabold leading-none ${item.accent}`}>{item.value.toLocaleString("th-TH")}</strong>
-              <p className="mt-2 text-xs text-slate-300">{item.note}</p>
+              <p className="mt-2 text-xs text-ink">{item.note}</p>
             </article>
           );
         })}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2 [&>*]:min-w-0">
         <ChartCard title="จำนวนครุภัณฑ์แยกตามปีงบประมาณล่าสุด 6 ปี">
           {chartsReady ? (
             assetsByFiscalYear.length > 0 ? (
@@ -238,7 +260,7 @@ export function DashboardPage({
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-                <p className="mt-3 text-center text-xs leading-5 text-slate-500">แสดงเฉพาะปีงบประมาณที่มีข้อมูลล่าสุด</p>
+                <p className="mt-3 text-center text-xs leading-5 text-muted">แสดงเฉพาะปีงบประมาณที่มีข้อมูลล่าสุด</p>
               </div>
             ) : fiscalYearChartEmptyState
           ) : chartFallback}
@@ -292,11 +314,11 @@ export function DashboardPage({
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center" aria-hidden="true">
-                  <strong className="text-3xl font-extrabold leading-none text-slate-900">{assetStatusTotal.toLocaleString("th-TH")}</strong>
-                  <span className="mt-1 text-xs font-semibold text-slate-500">รายการ</span>
+                  <strong className="text-3xl font-extrabold leading-none text-ink">{assetStatusTotal.toLocaleString("th-TH")}</strong>
+                  <span className="mt-1 text-xs font-semibold text-muted">รายการ</span>
                 </div>
               </div>
-              <div className="flex flex-wrap justify-center gap-x-3 gap-y-2 text-xs text-slate-300">
+              <div className="flex flex-wrap justify-center gap-x-3 gap-y-2 text-xs text-ink">
                 {assetsByStatus.map((item) => (
                   <span key={item.name} className="inline-flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
@@ -304,7 +326,7 @@ export function DashboardPage({
                   </span>
                 ))}
               </div>
-              <p className="mt-4 text-center text-xs leading-5 text-slate-500">{assetStatusDescription}</p>
+              <p className="mt-4 text-center text-xs leading-5 text-muted">{assetStatusDescription}</p>
             </div>
           ) : chartFallback}
         </ChartCard>
