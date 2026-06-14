@@ -166,10 +166,10 @@ export function AssetEditPage({
         title="แก้ไขข้อมูลครุภัณฑ์"
         description="แก้ไขข้อมูลครุภัณฑ์ตามสิทธิ์ของผู้ใช้งาน"
         leading={<BackIconButton onClick={onCancel} label="ย้อนกลับ" />}
-        actions={<button onClick={handleSave} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amberSoft">บันทึกการแก้ไข</button>}
+        actions={<button onClick={handleSave} className="min-h-11 rounded-md bg-primary px-4 py-2 text-sm font-extrabold text-white hover:bg-primary-hover">บันทึกการแก้ไข</button>}
       />
-      <div className="rounded-lg border border-white/10 bg-panel p-5">
-        <p className="mb-5 break-words text-sm font-semibold text-slate-400">รายการที่แก้ไข: <span className="text-white">{asset.assetName}</span></p>
+      <div className="rounded-lg border border-line bg-surface p-5">
+        <p className="mb-5 break-words text-sm font-semibold text-muted">รายการที่แก้ไข: <span className="text-ink">{asset.assetName}</span></p>
         <div className="space-y-5">
         <RecordFormSection number={1} title="ข้อมูลระบุตัวตนครุภัณฑ์" description="ระบุหมายเลข ชื่อ ประเภท และรายละเอียดจำเพาะของครุภัณฑ์">
           <div className="grid gap-4 lg:grid-cols-2">
@@ -232,7 +232,7 @@ export function AssetEditPage({
             {permissions.canEditLimitedFields ? <DetailInfoItem label="ฝ่าย/ชมรมที่รับผิดชอบ" value={selectedOrganization?.name ?? ""} /> : <SearchableOrganizationSelect selected={selectedOrganization} onSelect={setSelectedOrganization} options={organizationOptions} />}
             <div>
               <SelectField label="สถานที่จัดเก็บ" value={location} onChange={setLocation} options={locationOptions.includes(location) ? locationOptions : [location, ...locationOptions]} placeholder="เลือกสถานที่จัดเก็บ" />
-              <p className="mt-2 text-xs leading-5 text-slate-400">หากเลือก “ห้องชมรม” ระบบจะอ้างอิงจากฝ่าย/ชมรมที่รับผิดชอบ</p>
+              <p className="mt-2 text-xs leading-5 text-muted">หากเลือก “ห้องชมรม” ระบบจะอ้างอิงจากฝ่าย/ชมรมที่รับผิดชอบ</p>
             </div>
           </div>
         </RecordFormSection>
@@ -260,9 +260,9 @@ export function AssetEditPage({
         <RecordFormSection number={5} title="ข้อมูลสถานะและหลักฐาน" description="บันทึกสภาพปัจจุบันของครุภัณฑ์ พร้อมแนบรูปภาพหรือหมายเหตุประกอบ">
           <div className="grid gap-4 lg:grid-cols-2">
             <SelectField label="สถานะครุภัณฑ์" value={status} onChange={setStatus} options={allowedAssetStatuses} />
-            <div className="rounded-lg border border-dashed border-white/10 bg-slate-950/30 px-4 py-3 text-sm text-slate-300">
-              <p className="font-semibold text-slate-200">รูปภาพครุภัณฑ์</p>
-              <p className="mt-2 text-xs text-slate-400">มีรูปภาพเดิม {asset.imageCount.toLocaleString("th-TH")} รูป</p>
+            <div className="rounded-lg border border-dashed border-line bg-surfaceSoft px-4 py-3 text-sm text-ink">
+              <p className="font-semibold text-ink">รูปภาพครุภัณฑ์</p>
+              <p className="mt-2 text-xs text-muted">มีรูปภาพเดิม {asset.imageCount.toLocaleString("th-TH")} รูป</p>
             </div>
             <div className="lg:col-span-2">
               <TextAreaField label="หมายเหตุ" value={note} onChange={(event) => setNote(event.target.value)} autoResize />

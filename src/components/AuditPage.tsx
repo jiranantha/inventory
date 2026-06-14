@@ -262,30 +262,30 @@ export function AuditPage({
   return (
     <section className="mx-auto w-full max-w-screen-2xl space-y-5">
       {toast && (
-        <div className="fixed right-4 top-24 z-50 rounded-lg border border-gold/30 bg-slate-950 px-5 py-3 text-sm font-semibold text-gold shadow-glow">
+        <div className="fixed right-4 top-24 z-50 rounded-lg border border-primary/30 bg-surfaceSoft px-5 py-3 text-sm font-semibold text-primary shadow-glow">
           {toast}
         </div>
       )}
 
-      <div className="rounded-lg border border-white/10 bg-panel p-4">
+      <div className="rounded-lg border border-line bg-surface p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
           <label className="block md:col-span-2 xl:col-span-1">
-            <span className="text-sm font-semibold text-slate-200">ค้นหา</span>
+            <span className="text-sm font-semibold text-ink">ค้นหา</span>
             <div className="relative mt-1.5">
-              <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="m14 14 3.5 3.5M8.5 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
               </svg>
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="ค้นหาชื่อครุภัณฑ์ หมายเลขครุภัณฑ์ หรือฝ่าย/ชมรม"
-                className="min-h-11 w-full rounded-lg border border-white/10 bg-slate-950/40 py-2 pl-9 pr-10 text-sm text-white outline-none placeholder:text-slate-500 focus:border-gold"
+                className="min-h-11 w-full rounded-lg border border-lineStrong bg-surface py-2 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
               />
               {search.trim() && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-sm font-bold text-slate-400 hover:bg-slate-100 hover:text-slate-900"
+                  className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-sm font-bold text-muted hover:bg-slate-100 hover:text-slate-900"
                   aria-label="ล้างคำค้นหา"
                 >
                   x
@@ -298,8 +298,8 @@ export function AuditPage({
           <SelectField label="สถานะ" value={assetStatus} onChange={setAssetStatus} options={statusOptions} />
           <SelectField label="ผลการตรวจสอบ" value={inspectionResult} onChange={setInspectionResult} options={inspectionStateOptions} />
         </div>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
-          <p className="text-sm font-semibold text-slate-400">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+          <p className="text-sm font-semibold text-muted">
             {auditResultText}
           </p>
           {hasActiveAuditFilters && (
@@ -325,10 +325,10 @@ export function AuditPage({
 
       <div className="grid gap-3 md:grid-cols-3">
         {summaryItems.map((item) => (
-          <article key={item.label} className={`relative overflow-hidden rounded-lg border bg-panel p-4 ${item.cardClass}`}>
+          <article key={item.label} className={`relative overflow-hidden rounded-lg border bg-surface p-4 ${item.cardClass}`}>
             <span className={`absolute left-0 top-0 h-full w-1 ${item.accentClass}`} aria-hidden="true" />
-            <p className="text-xs font-semibold text-white">{item.label}</p>
-            <strong className="mt-2 block text-2xl font-extrabold text-white">{item.value.toLocaleString("th-TH")}</strong>
+            <p className="text-xs font-semibold text-ink">{item.label}</p>
+            <strong className="mt-2 block text-2xl font-extrabold text-ink">{item.value.toLocaleString("th-TH")}</strong>
             <p className={`mt-1 text-xs ${item.subtitleClass}`}>{item.subtitle}</p>
           </article>
         ))}
@@ -336,30 +336,30 @@ export function AuditPage({
 
       <div className="space-y-3 md:hidden">
         {rows.map(({ asset, inspection }, index) => (
-          <article key={asset.assetCode} className="rounded-lg border border-white/10 bg-panel p-4">
+          <article key={asset.assetCode} className="rounded-lg border border-line bg-surface p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-400">ลำดับ {index + 1}</p>
-                <p className="mt-1 break-words text-sm font-bold text-gold">{asset.assetNumber}</p>
-                <h3 className="mt-1 break-words text-base font-extrabold text-white">{asset.assetName}</h3>
+                <p className="text-xs font-semibold text-muted">ลำดับ {index + 1}</p>
+                <p className="mt-1 break-words text-sm font-bold text-primary">{asset.assetNumber}</p>
+                <h3 className="mt-1 break-words text-base font-extrabold text-ink">{asset.assetName}</h3>
               </div>
               <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${inspection ? inspectionStatusColors.inspected.badge : inspectionStatusColors.pending.badge}`}>{inspection ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจ"}</span>
             </div>
             <dl className="mt-3 grid gap-2 text-sm">
-              <div><dt className="text-xs font-semibold text-slate-400">องค์กร/ฝ่าย/ชมรม</dt><dd className="mt-1 break-words text-slate-200">{asset.organization}</dd></div>
-              <div><dt className="text-xs font-semibold text-slate-400">สถานที่จัดเก็บ</dt><dd className="mt-1 text-slate-200">{asset.location}</dd></div>
-              <div><dt className="text-xs font-semibold text-slate-400">สถานะครุภัณฑ์</dt><dd className="mt-1"><StatusBadge value={asset.status} /></dd></div>
+              <div><dt className="text-xs font-semibold text-muted">องค์กร/ฝ่าย/ชมรม</dt><dd className="mt-1 break-words text-ink">{asset.organization}</dd></div>
+              <div><dt className="text-xs font-semibold text-muted">สถานที่จัดเก็บ</dt><dd className="mt-1 text-ink">{asset.location}</dd></div>
+              <div><dt className="text-xs font-semibold text-muted">สถานะครุภัณฑ์</dt><dd className="mt-1"><StatusBadge value={asset.status} /></dd></div>
             </dl>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <button onClick={() => openInspectionModal(asset)} className="min-h-12 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950">ตรวจสอบ</button>
+              <button onClick={() => openInspectionModal(asset)} className="min-h-12 rounded-md bg-primary px-4 py-2 text-sm font-extrabold text-white">ตรวจสอบ</button>
               <button type="button" disabled={!inspection} onClick={() => inspection && setCancelTarget({ asset, inspection })} className={`min-h-12 rounded-md border px-4 py-2 text-sm font-semibold ${inspection ? buttonColors.cancelEnabled : `cursor-not-allowed ${buttonColors.cancelDisabled}`}`}>ยกเลิก</button>
             </div>
           </article>
         ))}
-        {rows.length === 0 && <div className="rounded-lg border border-white/10 bg-panel px-4 py-10 text-center"><p className="font-bold text-white">ไม่พบข้อมูลครุภัณฑ์</p><p className="mt-2 text-sm text-slate-400">ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง</p></div>}
+        {rows.length === 0 && <div className="rounded-lg border border-line bg-surface px-4 py-10 text-center"><p className="font-bold text-ink">ไม่พบข้อมูลครุภัณฑ์</p><p className="mt-2 text-sm text-muted">ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง</p></div>}
       </div>
 
-      <div className="hidden overflow-hidden rounded-lg border border-white/10 bg-panel md:block">
+      <div className="hidden overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] table-fixed border-collapse text-left text-sm">
             <colgroup>
@@ -373,33 +373,33 @@ export function AuditPage({
               <col className="w-[135px]" />
               <col className="w-[125px]" />
             </colgroup>
-            <thead className="bg-panelSoft text-slate-300">
+            <thead className="bg-surfaceSoft text-ink">
               <tr>
                 {["ผล", "ลำดับ", "หมายเลขครุภัณฑ์", "ชื่อครุภัณฑ์", "ฝ่าย/ชมรม", "สถานที่จัดเก็บ", "สถานะ", "ผลตรวจ", "จัดการ"].map((heading) => (
-                  <th key={heading} className="border-b border-white/10 px-2 py-2.5 font-semibold">{heading}</th>
+                  <th key={heading} className="border-b border-line px-2 py-2.5 font-semibold">{heading}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/10 bg-slate-950/20 text-slate-200">
+            <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
               {rows.map(({ asset, inspection }, index) => (
                 <tr key={asset.assetCode} className="align-top hover:bg-white/[0.03]">
                   <td className="px-2 py-3 text-center align-middle">
                     <span
                       title={inspection ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจสอบ"}
-                      className={`mx-auto block h-3 w-3 rounded-full ring-2 ring-slate-950 ${inspection ? inspectionStatusColors.inspected.dot : inspectionStatusColors.pending.dot}`}
+                      className={`mx-auto block h-3 w-3 rounded-full ring-2 ring-surface ${inspection ? inspectionStatusColors.inspected.dot : inspectionStatusColors.pending.dot}`}
                     />
                   </td>
-                  <td className="px-2 py-3 text-slate-400">{index + 1}</td>
-                  <td className="px-2 py-3 font-semibold text-gold" title={asset.assetNumber}>
+                  <td className="px-2 py-3 text-muted">{index + 1}</td>
+                  <td className="px-2 py-3 font-semibold text-primary" title={asset.assetNumber}>
                     <div className="line-clamp-2 break-words">{asset.assetNumber}</div>
                   </td>
-                  <td className="px-2 py-3 font-semibold text-white" title={asset.assetName}>
+                  <td className="px-2 py-3 font-semibold text-ink" title={asset.assetName}>
                     <div className="truncate">{asset.assetName}</div>
                   </td>
-                  <td className="px-2 py-3 text-slate-300" title={asset.organization}>
+                  <td className="px-2 py-3 text-ink" title={asset.organization}>
                     <div className="truncate">{asset.organization}</div>
                   </td>
-                  <td className="px-2 py-3 text-slate-300" title={asset.location}>
+                  <td className="px-2 py-3 text-ink" title={asset.location}>
                     <div className="truncate">{asset.location}</div>
                   </td>
                   <td className="px-2 py-3"><StatusBadge value={asset.status} /></td>
@@ -416,7 +416,7 @@ export function AuditPage({
                   </td>
                   <td className="px-2 py-3">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openInspectionModal(asset)} className="whitespace-nowrap rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-amberSoft">
+                      <button onClick={() => openInspectionModal(asset)} className="whitespace-nowrap rounded-md bg-primary px-3 py-1.5 text-xs font-extrabold text-white hover:bg-primary-hover">
                         ตรวจสอบ
                       </button>
                       <button
@@ -440,13 +440,13 @@ export function AuditPage({
                 <tr>
                   <td colSpan={9} className="px-3 py-12 text-center">
                     <div className="mx-auto max-w-md">
-                      <p className="text-base font-bold text-white">ไม่พบข้อมูลครุภัณฑ์</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-400">ลองเปลี่ยนคำค้นหา หรือล้างตัวกรองที่เลือกอยู่</p>
+                      <p className="text-base font-bold text-ink">ไม่พบข้อมูลครุภัณฑ์</p>
+                      <p className="mt-2 text-sm leading-6 text-muted">ลองเปลี่ยนคำค้นหา หรือล้างตัวกรองที่เลือกอยู่</p>
                       {hasActiveAuditFilters && (
                         <button
                           type="button"
                           onClick={clearAuditFilters}
-                          className="mt-4 rounded-md bg-gold px-4 py-2 text-sm font-bold text-slate-950 hover:bg-amberSoft"
+                          className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-hover"
                         >
                           ล้างตัวกรองทั้งหมด
                         </button>
@@ -461,21 +461,21 @@ export function AuditPage({
       </div>
 
       {selectedAsset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-2 sm:p-4">
-          <div className="max-h-[96vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-white/10 bg-panel p-4 shadow-2xl sm:max-h-[90vh] sm:p-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-2 sm:p-4">
+          <div className="max-h-[96vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-line bg-surface p-4 shadow-2xl sm:max-h-[90vh] sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 className="text-xl font-bold text-white">บันทึกผลตรวจสอบ</h3>
-                <p className="mt-3 text-base font-extrabold text-white">{selectedAsset.assetName}</p>
-                <p className="mt-1 text-sm font-semibold text-gold">{selectedAsset.assetNumber}</p>
+                <h3 className="text-xl font-bold text-ink">บันทึกผลตรวจสอบ</h3>
+                <p className="mt-3 text-base font-extrabold text-ink">{selectedAsset.assetName}</p>
+                <p className="mt-1 text-sm font-semibold text-primary">{selectedAsset.assetNumber}</p>
               </div>
               <CloseIconButton onClick={() => setSelectedAsset(null)} />
             </div>
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <label className="block min-w-0">
-                <span className="text-sm font-semibold text-slate-200">ปีที่ตรวจสอบ</span>
-                <div className="mt-2 min-h-12 w-full rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3 text-sm font-semibold text-white">
+                <span className="text-sm font-semibold text-ink">ปีที่ตรวจสอบ</span>
+                <div className="mt-2 min-h-12 w-full rounded-lg border border-lineStrong bg-surface px-4 py-3 text-sm font-semibold text-ink">
                   {inspectionYear}
                 </div>
               </label>
@@ -484,10 +484,10 @@ export function AuditPage({
               <Field label="ผู้ตรวจสอบ" value={inspectorName} onChange={(event) => setInspectorName(event.target.value)} placeholder="ชื่อผู้ตรวจสอบ" />
               <SelectField label="สถานะครุภัณฑ์" value={modalResult} onChange={setModalResult} options={modalStatusOptions} />
               <label className="block">
-                <span className="text-sm font-semibold text-slate-200">
-                  อัปโหลดรูปหลักฐาน <span className="text-slate-400">(ถ่ายรูปหรือเลือกได้หลายภาพ)</span>
+                <span className="text-sm font-semibold text-ink">
+                  อัปโหลดรูปหลักฐาน <span className="text-muted">(ถ่ายรูปหรือเลือกได้หลายภาพ)</span>
                 </span>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-muted">
                   สามารถถ่ายรูปจากมือถือ หรือเลือกรูปจากเครื่อง เพื่อใช้เป็นหลักฐานการตรวจสอบครุภัณฑ์
                 </p>
                 <input
@@ -499,7 +499,7 @@ export function AuditPage({
                     void handleEvidenceImageChange(event.target.files);
                     event.target.value = "";
                   }}
-                  className="mt-2 w-full rounded-lg border border-dashed border-gold/40 bg-slate-950/40 px-4 py-4 text-sm text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-gold file:px-3 file:py-2 file:font-bold file:text-slate-950"
+                  className="mt-2 w-full rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-4 py-4 text-sm text-ink file:mr-4 file:rounded-md file:border-0 file:bg-gold file:px-3 file:py-2 file:font-bold file:text-slate-950"
                 />
                 {(evidenceError || evidenceImages.length === 0) && (
                   <p className="mt-2 text-xs font-semibold text-rose-200">
@@ -507,16 +507,16 @@ export function AuditPage({
                   </p>
                 )}
                 {evidenceImages.length > 0 && (
-                  <div className="mt-3 rounded-lg border border-white/10 bg-slate-950/25 p-3">
+                  <div className="mt-3 rounded-lg border border-line bg-slate-950/25 p-3">
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-slate-200">
+                      <p className="text-xs font-semibold text-ink">
                         เลือกรูปแล้ว {evidenceImages.length.toLocaleString("th-TH")} รูป
                       </p>
-                      <p className="text-[11px] text-slate-500">สูงสุด 5 รูป / ไม่เกิน 5MB ต่อรูป</p>
+                      <p className="text-[11px] text-muted">สูงสุด 5 รูป / ไม่เกิน 5MB ต่อรูป</p>
                     </div>
                     <div className="grid max-h-64 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
                       {evidenceImages.map((image) => (
-                        <figure key={image.url} className="overflow-hidden rounded-md border border-white/10 bg-slate-950/40">
+                        <figure key={image.url} className="overflow-hidden rounded-md border border-line bg-slate-950/40">
                           <div className="relative">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={image.url} alt={image.name} className="h-24 w-full object-cover" />
@@ -529,8 +529,8 @@ export function AuditPage({
                             </button>
                           </div>
                           <figcaption className="space-y-0.5 px-2 py-1">
-                            <p className="truncate text-[11px] text-slate-300">{image.name}</p>
-                            <p className="text-[10px] text-slate-500">{(image.size / 1024 / 1024).toFixed(2)} MB</p>
+                            <p className="truncate text-[11px] text-ink">{image.name}</p>
+                            <p className="text-[10px] text-muted">{(image.size / 1024 / 1024).toFixed(2)} MB</p>
                           </figcaption>
                         </figure>
                       ))}
@@ -544,12 +544,12 @@ export function AuditPage({
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:justify-end">
-              <button onClick={() => setSelectedAsset(null)} className="min-h-12 rounded-md border border-white/15 bg-panelSoft px-4 py-2 text-sm font-semibold text-slate-200 hover:border-gold hover:text-gold">ยกเลิก</button>
+              <button onClick={() => setSelectedAsset(null)} className="min-h-12 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">ยกเลิก</button>
               <button
                 onClick={saveInspection}
                 disabled={!canSaveInspection}
                 title={canSaveInspection ? "บันทึกผลตรวจสอบ" : "กรุณากรอกข้อมูลให้ครบและอัปโหลดรูปหลักฐานอย่างน้อย 1 รูป"}
-                className="min-h-12 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amberSoft disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-gold"
+                className="min-h-12 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-gold"
               >
                 บันทึกผลตรวจสอบ
               </button>
@@ -560,20 +560,20 @@ export function AuditPage({
 
       {cancelTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4">
-          <div className="w-full max-w-lg rounded-lg border border-rose-300/20 bg-panel p-5 shadow-2xl">
+          <div className="w-full max-w-lg rounded-lg border border-rose-300/20 bg-surface p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
               <h3 className="text-xl font-bold text-white">ยกเลิกผลตรวจสอบประจำปี</h3>
               <CloseIconButton onClick={() => setCancelTarget(null)} />
             </div>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
+            <p className="mt-3 text-sm leading-6 text-ink">
               ต้องการยกเลิกผลตรวจสอบของครุภัณฑ์รายการนี้ในปี {inspectionYear} ใช่หรือไม่?
             </p>
-            <div className="mt-4 rounded-lg border border-white/10 bg-slate-950/30 p-4 text-sm">
-              <p className="text-slate-400">หมายเลขครุภัณฑ์</p>
-              <p className="mt-1 font-semibold text-gold">{cancelTarget.asset.assetNumber}</p>
-              <p className="mt-3 text-slate-400">ชื่อครุภัณฑ์</p>
+            <div className="mt-4 rounded-lg border border-line bg-slate-950/30 p-4 text-sm">
+              <p className="text-muted">หมายเลขครุภัณฑ์</p>
+              <p className="mt-1 font-semibold text-primary">{cancelTarget.asset.assetNumber}</p>
+              <p className="mt-3 text-muted">ชื่อครุภัณฑ์</p>
               <p className="mt-1 font-semibold text-white">{cancelTarget.asset.assetName}</p>
-              <p className="mt-3 text-slate-400">ปีที่ตรวจสอบ</p>
+              <p className="mt-3 text-muted">ปีที่ตรวจสอบ</p>
               <p className="mt-1 font-semibold text-white">{inspectionYear}</p>
             </div>
             <p className="mt-4 rounded-lg border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">

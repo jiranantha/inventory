@@ -33,8 +33,8 @@ export function AssetDetailPage({
   );
   const hasStoredImages = false;
   const getActionBadgeClass = (actionType: ActivityLog["actionType"]) => {
-    if (actionType === "ลบ") return "border-red-300/30 bg-red-500/10 text-red-200";
-    if (actionType === "กู้คืน") return "border-emerald-300/30 bg-emerald-500/10 text-emerald-200";
+    if (actionType === "ลบ") return "border-danger/30 bg-danger/10 text-danger";
+    if (actionType === "กู้คืน") return "border-success/30 bg-success/10 text-success";
     return "border-[#BFDBFE] bg-[#EFF6FF] text-[#1E40AF]";
   };
   const getActionLabel = (actionType: ActivityLog["actionType"]) => {
@@ -79,12 +79,12 @@ export function AssetDetailPage({
       {rows.length > 0 ? rows.map((row) => (
         <div
           key={row.label}
-          className={`rounded-md px-2 py-1 text-sm leading-6 ${row.changed ? "border-l-2 border-amber-400 bg-amber-500/10" : ""}`}
+          className={`rounded-md px-2 py-1 text-sm leading-6 ${row.changed ? "border-l-2 border-warning bg-warning/10" : ""}`}
         >
-          <span className={row.changed ? "font-bold text-amber-300" : "font-semibold text-slate-400"}>{row.label} : </span>
-          <span className={row.changed ? "font-bold text-amber-100" : "text-slate-100"}>{row.value || "-"}</span>
+          <span className={row.changed ? "font-bold text-warning" : "font-semibold text-muted"}>{row.label} : </span>
+          <span className={row.changed ? "font-bold text-warning" : "text-ink"}>{row.value || "-"}</span>
         </div>
-      )) : <p className="text-sm text-slate-400">-</p>}
+      )) : <p className="text-sm text-muted">-</p>}
     </div>
   );
 
@@ -96,52 +96,54 @@ export function AssetDetailPage({
         leading={<BackIconButton onClick={onBack} label="กลับไปหน้ารายการ" />}
         actions={(
           <>
-          {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEdit(asset)} className="rounded-md bg-orange px-4 py-2 text-sm font-bold text-white hover:bg-orange/90">แก้ไขข้อมูล</button>}
-          {permissions.canDelete && <button onClick={() => onDelete(asset)} className="rounded-md border border-red-300/30 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/10">ลบ</button>}
-          <button type="button" onClick={() => setHistoryOpen(true)} className="rounded-md border border-white/15 bg-panelSoft px-4 py-2 text-sm font-semibold text-slate-200 hover:border-gold hover:text-gold">
+          {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEdit(asset)} className="min-h-11 rounded-md bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-hover">แก้ไขข้อมูล</button>}
+          {permissions.canDelete && <button onClick={() => onDelete(asset)} className="min-h-11 rounded-md border border-danger/30 px-4 py-2 text-sm font-semibold text-danger hover:bg-danger/10">ลบ</button>}
+          <button type="button" onClick={() => setHistoryOpen(true)} className="min-h-11 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">
             ประวัติ
           </button>
           </>
         )}
       />
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-panel px-4 py-3">
-        <h3 className="mr-auto break-words text-lg font-extrabold text-white">{asset.assetName}</h3>
-        <span className="text-sm text-slate-400">{asset.assetNumber}</span>
-        <span className="text-slate-400">·</span>
-        <span className="text-sm text-slate-400">{asset.organization}</span>
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface px-4 py-3">
+        <h3 className="mr-auto min-w-0 break-words text-lg font-extrabold text-ink">{asset.assetName}</h3>
+        <span className="text-sm text-muted">{asset.assetNumber}</span>
+        <span className="text-muted">·</span>
+        <span className="text-sm text-muted">{asset.organization}</span>
         <StatusBadge value={asset.status} />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[0.82fr_1.45fr]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[0.82fr_1.45fr]">
+        <div className="min-w-0">
         <DetailSection title="สถานะและหลักฐาน">
           <div className="space-y-4">
-            <div className="border-b border-white/10 pb-3">
-              <p className="text-xs font-semibold text-slate-400">สถานะครุภัณฑ์</p>
+            <div className="border-b border-line pb-3">
+              <p className="text-xs font-semibold text-muted">สถานะครุภัณฑ์</p>
               <div className="mt-2"><StatusBadge value={asset.status} /></div>
             </div>
             <div>
-              <p className="text-sm font-bold text-white">รูปภาพครุภัณฑ์</p>
+              <p className="text-sm font-bold text-ink">รูปภาพครุภัณฑ์</p>
               {asset.assetImages?.length ? (
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   {asset.assetImages.map((image) => (
-                    <figure key={image.url} className="overflow-hidden rounded-md border border-white/10 bg-panelSoft">
+                    <figure key={image.url} className="overflow-hidden rounded-md border border-line bg-surfaceSoft">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={image.url} alt={image.name} className="aspect-square w-full object-cover" />
-                      <figcaption className="truncate px-2 py-1.5 text-xs text-slate-400" title={image.name}>{image.name}</figcaption>
+                      <figcaption className="truncate px-2 py-1.5 text-xs text-muted" title={image.name}>{image.name}</figcaption>
                     </figure>
                   ))}
                 </div>
               ) : hasStoredImages ? (
-                <p className="mt-3 rounded-md border border-white/10 bg-panelSoft px-3 py-4 text-center text-sm text-slate-400">มีข้อมูลรูปภาพเดิม {asset.imageCount.toLocaleString("th-TH")} รูป</p>
+                <p className="mt-3 rounded-md border border-line bg-surfaceSoft px-3 py-4 text-center text-sm text-muted">มีข้อมูลรูปภาพเดิม {asset.imageCount.toLocaleString("th-TH")} รูป</p>
               ) : (
-                <p className="mt-3 rounded-md border border-dashed border-white/15 bg-slate-950/25 px-3 py-8 text-center text-sm text-slate-400">ยังไม่มีรูปภาพครุภัณฑ์</p>
+                <p className="mt-3 rounded-md border border-dashed border-line bg-surfaceSoft px-3 py-8 text-center text-sm text-muted">ยังไม่มีรูปภาพครุภัณฑ์</p>
               )}
             </div>
             <DetailInfoItem label="หมายเหตุ" value={safeText(asset.note)} />
           </div>
         </DetailSection>
+        </div>
 
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <DetailSection title="ข้อมูลทั่วไป">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <DetailInfoItem label="ชื่อรายการครุภัณฑ์" value={safeText(asset.assetName)} />
@@ -155,37 +157,54 @@ export function AssetDetailPage({
               <DetailInfoItem label="แหล่งงบประมาณ" value={safeText(asset.budgetSource)} />
               <DetailInfoItem label="วันที่บันทึกข้อมูล" value={safeText(asset.recordDate)} />
               <DetailInfoItem label="วันที่ได้รับครุภัณฑ์" value={safeText(asset.purchaseMonth)} />
-              <div className="min-w-0 border-b border-white/10 py-2">
-                <p className="text-xs font-semibold text-slate-400">ลักษณะครุภัณฑ์</p>
+              <div className="min-w-0 border-b border-line py-2">
+                <p className="text-xs font-semibold text-muted">ลักษณะครุภัณฑ์</p>
                 <div className="mt-2"><AssetStructureBadge asset={asset} /></div>
               </div>
             </div>
             {asset.assetStructureType === "set" && (
-              <div className="mt-4 overflow-x-auto rounded-lg border border-white/10">
-                <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-                  <thead className="bg-panelSoft text-slate-300">
-                    <tr>
-                      {["ลำดับ", "ชื่อรายการย่อย", "รายละเอียด/หมายเหตุ"].map((heading) => (
-                        <th key={heading} className="border-b border-white/10 px-3 py-2.5 font-semibold">{heading}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/10 bg-slate-950/20 text-slate-200">
-                    {asset.assetSetItems.map((item, index) => (
-                      <tr key={item.id}>
-                        <td className="px-3 py-3 text-slate-400">{index + 1}</td>
-                        <td className="px-3 py-3 font-semibold text-white">{item.itemName}</td>
-                        <td className="px-3 py-3 text-slate-300">{item.description || "-"}</td>
-                      </tr>
-                    ))}
-                    {asset.assetSetItems.length === 0 && (
+              <>
+                <div className="mt-4 space-y-3 md:hidden">
+                  {asset.assetSetItems.map((item, index) => (
+                    <article key={item.id} className="rounded-lg border border-line bg-surfaceSoft p-4">
+                      <p className="text-xs font-semibold text-muted">ลำดับ {index + 1}</p>
+                      <h4 className="mt-1 break-words text-sm font-semibold text-ink">{item.itemName}</h4>
+                      <dl className="mt-3 text-sm">
+                        <dt className="text-xs font-semibold text-muted">รายละเอียด/หมายเหตุ</dt>
+                        <dd className="mt-1 break-words text-ink">{item.description || "-"}</dd>
+                      </dl>
+                    </article>
+                  ))}
+                  {asset.assetSetItems.length === 0 && (
+                    <div className="rounded-lg border border-line bg-surfaceSoft px-4 py-8 text-center text-sm text-muted">ยังไม่มีรายการย่อยในชุดครุภัณฑ์</div>
+                  )}
+                </div>
+                <div className="mt-4 hidden overflow-x-auto rounded-lg border border-line md:block">
+                  <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                    <thead className="bg-surfaceSoft text-ink">
                       <tr>
-                        <td colSpan={3} className="px-3 py-8 text-center text-slate-400">ยังไม่มีรายการย่อยในชุดครุภัณฑ์</td>
+                        {["ลำดับ", "ชื่อรายการย่อย", "รายละเอียด/หมายเหตุ"].map((heading) => (
+                          <th key={heading} className="border-b border-line px-3 py-2.5 font-semibold">{heading}</th>
+                        ))}
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
+                      {asset.assetSetItems.map((item, index) => (
+                        <tr key={item.id}>
+                          <td className="px-3 py-3 text-muted">{index + 1}</td>
+                          <td className="px-3 py-3 font-semibold text-ink">{item.itemName}</td>
+                          <td className="px-3 py-3 text-ink">{item.description || "-"}</td>
+                        </tr>
+                      ))}
+                      {asset.assetSetItems.length === 0 && (
+                        <tr>
+                          <td colSpan={3} className="px-3 py-8 text-center text-muted">ยังไม่มีรายการย่อยในชุดครุภัณฑ์</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </DetailSection>
 
@@ -215,13 +234,13 @@ export function AssetDetailPage({
       </div>
 
       {historyOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4">
-          <div className="max-h-[88vh] w-full max-w-3xl overflow-hidden rounded-lg border border-white/10 bg-panel shadow-2xl">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 p-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="max-h-[88vh] w-full max-w-3xl overflow-hidden rounded-lg border border-line bg-surface shadow-2xl">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line p-5">
               <div>
-                <h3 className="text-xl font-extrabold text-white">ประวัติการแก้ไขและลบข้อมูล</h3>
-                <p className="mt-2 text-sm font-bold text-white">{asset.assetName}</p>
-                <p className="mt-1 text-sm text-gold">{asset.assetNumber}</p>
+                <h3 className="text-xl font-extrabold text-ink">ประวัติการแก้ไขและลบข้อมูล</h3>
+                <p className="mt-2 text-sm font-bold text-ink">{asset.assetName}</p>
+                <p className="mt-1 text-sm text-primary">{asset.assetNumber}</p>
               </div>
               <CloseIconButton onClick={() => setHistoryOpen(false)} />
             </div>
@@ -232,32 +251,32 @@ export function AssetDetailPage({
                   {assetLogs.map((log) => {
                     const { oldRows, newRows } = buildHistoryRows(log.oldValue, log.newValue);
                     return (
-                      <article key={log.id} className="rounded-lg border border-white/10 bg-slate-950/25 p-4">
+                      <article key={log.id} className="rounded-lg border border-line bg-surfaceSoft p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-slate-400">{formatThaiDateTime(log.createdAt)}</p>
+                            <p className="text-xs font-semibold text-muted">{formatThaiDateTime(log.createdAt)}</p>
                             <div className="mt-2 flex flex-wrap items-center gap-2">
                               <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${getActionBadgeClass(log.actionType)}`}>
                                 {getActionLabel(log.actionType)}
                               </span>
-                              <span className="text-sm text-slate-300">โดย <b className="text-white">{log.userName}</b></span>
+                              <span className="text-sm text-ink">โดย <b className="text-ink">{log.userName}</b></span>
                             </div>
                           </div>
                         </div>
-                        <p className="mt-3 text-sm leading-6 text-slate-100">{log.detail}</p>
+                        <p className="mt-3 text-sm leading-6 text-ink">{log.detail}</p>
                         <div className="mt-3 grid gap-3 md:grid-cols-2">
-                          <div className="rounded-md border border-white/10 bg-slate-950/35 p-3">
-                            <p className="text-xs font-bold text-slate-400">ข้อมูลเดิม</p>
+                          <div className="rounded-md border border-line bg-surfaceSoft p-3">
+                            <p className="text-xs font-bold text-muted">ข้อมูลเดิม</p>
                             {renderHistoryRows(oldRows)}
                           </div>
-                          <div className="rounded-md border border-white/10 bg-slate-950/35 p-3">
-                            <p className="text-xs font-bold text-slate-400">ข้อมูลใหม่</p>
+                          <div className="rounded-md border border-line bg-surfaceSoft p-3">
+                            <p className="text-xs font-bold text-muted">ข้อมูลใหม่</p>
                             {renderHistoryRows(newRows)}
                           </div>
                         </div>
                         {log.note && (
-                          <p className="mt-3 rounded-md border border-white/10 bg-panelSoft px-3 py-2 text-sm text-slate-300">
-                            <span className="font-bold text-slate-100">หมายเหตุ: </span>{log.note}
+                          <p className="mt-3 rounded-md border border-line bg-surfaceSoft px-3 py-2 text-sm text-ink">
+                            <span className="font-bold text-ink">หมายเหตุ: </span>{log.note}
                           </p>
                         )}
                       </article>
@@ -265,7 +284,7 @@ export function AssetDetailPage({
                   })}
                 </div>
               ) : (
-                <p className="rounded-lg border border-white/10 bg-slate-950/25 p-6 text-center text-sm text-slate-400">
+                <p className="rounded-lg border border-line bg-surfaceSoft p-6 text-center text-sm text-muted">
                   ยังไม่มีประวัติการแก้ไขหรือลบข้อมูลสำหรับครุภัณฑ์รายการนี้
                 </p>
               )}
