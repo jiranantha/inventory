@@ -1,0 +1,597 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { buttonColors, inspectionStatusColors } from "@/constants/colors";
+import { CloseIconButton, Field, FilterChip, SelectField, StatusBadge, TextAreaField, ThaiDateField } from "@/components/ui";
+import { formatThaiDate, getCurrentInspectionYear } from "@/lib/dates";
+import { uniqueSorted } from "@/lib/utils";
+import { AnnualInspection, AssetListRow, EvidenceImage } from "@/types";
+import { allowedAssetStatuses, ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
+
+export function AuditPage({
+  assets,
+  annualInspections,
+  onSaveAnnualInspection,
+  onCancelAnnualInspection,
+  onSaveInspectionStatus,
+}: {
+  assets: AssetListRow[];
+  annualInspections: AnnualInspection[];
+  onSaveAnnualInspection: (inspection: AnnualInspection) => void;
+  onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => void;
+  onSaveInspectionStatus: (asset: AssetListRow, status: string, inspectionDate: string, note: string) => void;
+}) {
+  const currentInspectionYear = getCurrentInspectionYear();
+  const today = new Date().toISOString().slice(0, 10);
+  const assetFiscalYearOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((row) => row.fiscalYear)).sort((a, b) => Number(a) - Number(b))];
+  const organizationOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((item) => item.organization))];
+  const statusOptions = ASSET_STATUS_FILTER_OPTIONS;
+  const inspectionStateOptions = ["ทั้งหมด", "ตรวจสอบแล้ว", "ยังไม่ได้ตรวจสอบ"];
+  const modalStatusOptions = allowedAssetStatuses.filter((value) => value !== "รอตรวจสอบ");
+
+  const [inspectionYear, setInspectionYear] = useState(String(currentInspectionYear));
+  const [search, setSearch] = useState("");
+  const [assetFiscalYear, setAssetFiscalYear] = useState("ทั้งหมด");
+  const [organization, setOrganization] = useState("ทั้งหมด");
+  const [assetStatus, setAssetStatus] = useState("ทั้งหมด");
+  const [inspectionResult, setInspectionResult] = useState("ทั้งหมด");
+  const [selectedAsset, setSelectedAsset] = useState<AssetListRow | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<{ asset: AssetListRow; inspection: AnnualInspection } | null>(null);
+  const [inspectionDate, setInspectionDate] = useState(today);
+  const [foundLocation, setFoundLocation] = useState("");
+  const [inspectorName, setInspectorName] = useState("คณะกรรมการตรวจสอบครุภัณฑ์");
+  const [modalResult, setModalResult] = useState("ใช้งานได้");
+  const [evidenceImages, setEvidenceImages] = useState<EvidenceImage[]>([]);
+  const [evidenceError, setEvidenceError] = useState("");
+  const [inspectionNote, setInspectionNote] = useState("");
+  const [toast, setToast] = useState("");
+
+  const rows = useMemo(() => {
+    const cleanSearch = search.trim().toLowerCase();
+    const inspectionByAsset = new Map(
+      annualInspections
+        .filter((item) => item.inspectionYear === inspectionYear)
+        .map((item) => [item.assetId, item]),
+    );
+    return assets.map((asset) => {
+      const inspection = inspectionByAsset.get(asset.id);
+      return { asset, inspection };
+    }).filter(({ asset, inspection }) => {
+      const inspectionText = inspection ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจสอบ";
+      const searchText = `${asset.assetNumber} ${asset.assetName} ${asset.organization} ${asset.location} ${asset.status} ${inspectionText}`.toLowerCase();
+      const matchSearch = !cleanSearch || searchText.includes(cleanSearch);
+      const matchAssetYear = assetFiscalYear === "ทั้งหมด" || asset.fiscalYear === assetFiscalYear;
+      const matchOrganization = organization === "ทั้งหมด" || asset.organization === organization;
+      const matchStatus = assetStatus === "ทั้งหมด" || asset.status === assetStatus;
+      const matchInspection =
+        inspectionResult === "ทั้งหมด" ||
+        (inspectionResult === "ตรวจสอบแล้ว" && Boolean(inspection)) ||
+        (inspectionResult === "ยังไม่ได้ตรวจสอบ" && !inspection);
+      return matchSearch && matchAssetYear && matchOrganization && matchStatus && matchInspection;
+    });
+  }, [annualInspections, assetFiscalYear, assetStatus, assets, inspectionResult, inspectionYear, organization, search]);
+
+  const totalCount = rows.length;
+  const inspectedCount = rows.filter((row) => row.inspection).length;
+  const pendingCount = totalCount - inspectedCount;
+  const hasActiveAuditFilters = Boolean(search.trim()) || assetFiscalYear !== "ทั้งหมด" || organization !== "ทั้งหมด" || assetStatus !== "ทั้งหมด" || inspectionResult !== "ทั้งหมด";
+  const clearAuditFilters = () => {
+    setSearch("");
+    setAssetFiscalYear("ทั้งหมด");
+    setOrganization("ทั้งหมด");
+    setAssetStatus("ทั้งหมด");
+    setInspectionResult("ทั้งหมด");
+  };
+  const auditResultText = (() => {
+    const countText = rows.length.toLocaleString("th-TH");
+    const hasSearch = Boolean(search.trim());
+    const hasFilters = assetFiscalYear !== "ทั้งหมด" || organization !== "ทั้งหมด" || assetStatus !== "ทั้งหมด" || inspectionResult !== "ทั้งหมด";
+    if (hasSearch && hasFilters) return `แสดง ${countText} รายการตามคำค้นหาและตัวกรองที่เลือก`;
+    if (hasSearch) return `แสดง ${countText} รายการตามคำค้นหา`;
+    if (hasFilters) return `แสดง ${countText} รายการตามตัวกรองที่เลือก`;
+    return `แสดง ${countText} รายการ`;
+  })();
+
+  const openInspectionModal = (asset: AssetListRow) => {
+    const activeInspectionYear = String(getCurrentInspectionYear());
+    const existing = annualInspections.find((item) => item.assetId === asset.id && item.inspectionYear === activeInspectionYear);
+    setInspectionYear(activeInspectionYear);
+    setSelectedAsset(asset);
+    setInspectionDate(new Date().toISOString().slice(0, 10));
+    setFoundLocation(existing?.foundLocation ?? asset.location);
+    setInspectorName(existing?.inspectorName ?? "คณะกรรมการตรวจสอบครุภัณฑ์");
+    setModalResult(existing?.result && modalStatusOptions.includes(existing.result)
+      ? existing.result
+      : modalStatusOptions.includes(asset.status)
+        ? asset.status
+        : "ใช้งานได้");
+    setEvidenceImages(existing?.evidenceImages ?? []);
+    setEvidenceError(existing?.evidenceImages?.length ? "" : "กรุณาอัปโหลดรูปหลักฐานอย่างน้อย 1 รูปก่อนบันทึกผลตรวจสอบ");
+    setInspectionNote(existing?.note ?? "");
+  };
+
+  const readEvidenceFile = (file: File) => new Promise<EvidenceImage>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({ name: file.name, url: String(reader.result), size: file.size });
+    reader.onerror = () => reject(new Error(`ไม่สามารถอ่านไฟล์ ${file.name} ได้`));
+    reader.readAsDataURL(file);
+  });
+
+  const handleEvidenceImageChange = async (files: FileList | null) => {
+    const selectedFiles = Array.from(files ?? []);
+    if (selectedFiles.length === 0) return;
+
+    const acceptedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const maxImages = 5;
+    const maxSize = 5 * 1024 * 1024;
+    const errors: string[] = [];
+
+    if (selectedFiles.length > maxImages) errors.push("อัปโหลดได้สูงสุด 5 รูป");
+    const limitedFiles = selectedFiles.slice(0, maxImages);
+    const validFiles = limitedFiles.filter((file) => {
+      const extension = file.name.split(".").pop()?.toLowerCase();
+      const isAcceptedImage = acceptedTypes.includes(file.type) || ["jpg", "jpeg", "png", "webp"].includes(extension ?? "");
+      if (!isAcceptedImage) {
+        errors.push("รองรับเฉพาะไฟล์รูปภาพเท่านั้น");
+        return false;
+      }
+      if (file.size > maxSize) {
+        errors.push("ขนาดไฟล์ต้องไม่เกิน 5MB ต่อรูป");
+        return false;
+      }
+      return true;
+    });
+
+    if (errors.length > 0) {
+      setEvidenceError(errors[0]);
+      setToast(errors[0]);
+      window.setTimeout(() => setToast(""), 3500);
+    }
+
+    if (validFiles.length === 0) {
+      setEvidenceImages([]);
+      if (errors.length === 0) setEvidenceError("กรุณาอัปโหลดรูปหลักฐานอย่างน้อย 1 รูปก่อนบันทึกผลตรวจสอบ");
+      return;
+    }
+
+    try {
+      setEvidenceImages(await Promise.all(validFiles.map(readEvidenceFile)));
+      if (errors.length === 0) setEvidenceError("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "ไม่สามารถอ่านรูปหลักฐานได้";
+      setEvidenceError(message);
+      setToast(message);
+      window.setTimeout(() => setToast(""), 3500);
+    }
+  };
+
+  const removeEvidenceImage = (imageUrl: string) => {
+    setEvidenceImages((items) => {
+      const nextItems = items.filter((image) => image.url !== imageUrl);
+      if (nextItems.length === 0) {
+        setEvidenceError("กรุณาอัปโหลดรูปหลักฐานอย่างน้อย 1 รูปก่อนบันทึกผลตรวจสอบ");
+      } else {
+        setEvidenceError("");
+      }
+      return nextItems;
+    });
+  };
+
+  const confirmCancelInspection = () => {
+    if (!cancelTarget) return;
+    // Cancel the year of the inspection actually targeted, not whatever the audit-year
+    // selector happens to show now (they can differ if the selector changed meanwhile).
+    const targetYear = cancelTarget.inspection.inspectionYear;
+    onCancelAnnualInspection(cancelTarget.asset, targetYear, cancelTarget.inspection);
+    setCancelTarget(null);
+    setToast(`ยกเลิกผลตรวจสอบปี ${targetYear} เรียบร้อยแล้ว`);
+    window.setTimeout(() => setToast(""), 3000);
+  };
+
+  const saveInspection = () => {
+    if (!selectedAsset) return;
+    if (!inspectionYear || !inspectionDate || !foundLocation.trim() || !inspectorName.trim() || !modalResult || evidenceImages.length === 0) {
+      const message = evidenceImages.length === 0
+        ? "กรุณาอัปโหลดรูปหลักฐานอย่างน้อย 1 รูปก่อนบันทึกผลตรวจสอบ"
+        : "กรุณากรอกข้อมูลการตรวจสอบให้ครบก่อนบันทึก";
+      setEvidenceError(message);
+      setToast(message);
+      window.setTimeout(() => setToast(""), 3500);
+      return;
+    }
+    const displayDate = formatThaiDate(inspectionDate);
+    const existing = annualInspections.find((item) => item.assetId === selectedAsset.id && item.inspectionYear === inspectionYear);
+    const savedAt = new Date().toISOString();
+    const nextInspection: AnnualInspection = {
+      id: existing?.id ?? `inspection-${selectedAsset.id}-${inspectionYear}`,
+      assetId: selectedAsset.id,
+      assetCode: selectedAsset.assetCode,
+      inspectionYear,
+      inspectionDate: displayDate,
+      foundLocation,
+      inspectorName,
+      result: modalResult,
+      evidenceFileNames: evidenceImages.map((image) => image.name),
+      evidenceImages,
+      note: inspectionNote,
+      createdAt: existing?.createdAt ?? savedAt,
+      updatedAt: savedAt,
+    };
+    onSaveAnnualInspection(nextInspection);
+    onSaveInspectionStatus(selectedAsset, modalResult, displayDate, inspectionNote);
+    setSelectedAsset(null);
+    setToast(`บันทึกผลตรวจสอบปี ${inspectionYear} เรียบร้อยแล้ว`);
+    window.setTimeout(() => setToast(""), 3000);
+  };
+
+  const summaryItems = [
+    {
+      label: "ครุภัณฑ์ทั้งหมด",
+      value: totalCount,
+      subtitle: "ตามเงื่อนไขที่เลือก",
+      cardClass: "border-[#BFDBFE] bg-[#EFF6FF] shadow-glow",
+      accentClass: "bg-[#2563EB]",
+      subtitleClass: "text-[#64748B]",
+    },
+    {
+      label: "ตรวจสอบแล้ว",
+      value: inspectedCount,
+      subtitle: `มีผลตรวจของปี ${inspectionYear}`,
+      cardClass: "border-[#A7F3D0] bg-[#ECFDF5] shadow-glow",
+      accentClass: "bg-[#059669]",
+      subtitleClass: "text-[#64748B]",
+    },
+    {
+      label: "ยังไม่ได้ตรวจสอบ",
+      value: pendingCount,
+      subtitle: `ยังไม่มีผลตรวจของปี ${inspectionYear}`,
+      cardClass: "border-[#FEF08A] bg-[#FEFCE8] shadow-glow",
+      accentClass: "bg-[#CA8A04]",
+      subtitleClass: "text-[#64748B]",
+    },
+  ];
+  const canSaveInspection = Boolean(
+    inspectionYear &&
+    inspectionDate &&
+    foundLocation.trim() &&
+    inspectorName.trim() &&
+    modalResult &&
+    evidenceImages.length > 0,
+  );
+
+  return (
+    <section className="mx-auto w-full max-w-screen-2xl space-y-5">
+      {toast && (
+        <div className="fixed right-4 top-24 z-50 rounded-lg border border-gold/30 bg-slate-950 px-5 py-3 text-sm font-semibold text-gold shadow-glow">
+          {toast}
+        </div>
+      )}
+
+      <div className="rounded-lg border border-white/10 bg-panel p-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
+          <label className="block md:col-span-2 xl:col-span-1">
+            <span className="text-sm font-semibold text-slate-200">ค้นหา</span>
+            <div className="relative mt-1.5">
+              <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="m14 14 3.5 3.5M8.5 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="ค้นหาชื่อครุภัณฑ์ หมายเลขครุภัณฑ์ หรือฝ่าย/ชมรม"
+                className="min-h-11 w-full rounded-lg border border-white/10 bg-slate-950/40 py-2 pl-9 pr-10 text-sm text-white outline-none placeholder:text-slate-500 focus:border-gold"
+              />
+              {search.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-sm font-bold text-slate-400 hover:bg-slate-100 hover:text-slate-900"
+                  aria-label="ล้างคำค้นหา"
+                >
+                  x
+                </button>
+              )}
+            </div>
+          </label>
+          <SelectField label="ปีงบประมาณ" value={assetFiscalYear} onChange={setAssetFiscalYear} options={assetFiscalYearOptions} />
+          <SelectField label="ฝ่าย/ชมรม" value={organization} onChange={setOrganization} options={organizationOptions} />
+          <SelectField label="สถานะ" value={assetStatus} onChange={setAssetStatus} options={statusOptions} />
+          <SelectField label="ผลการตรวจสอบ" value={inspectionResult} onChange={setInspectionResult} options={inspectionStateOptions} />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
+          <p className="text-sm font-semibold text-slate-400">
+            {auditResultText}
+          </p>
+          {hasActiveAuditFilters && (
+            <button
+              type="button"
+              onClick={clearAuditFilters}
+              className="rounded-md border border-[#CBD5E1] bg-white px-3 py-1.5 text-xs font-semibold text-[#0F172A] hover:bg-[#F8FAFC]"
+            >
+              ล้างตัวกรองทั้งหมด
+            </button>
+          )}
+        </div>
+        {hasActiveAuditFilters && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {search.trim() && <FilterChip label="คำค้นหา" value={search.trim()} onClear={() => setSearch("")} />}
+            {assetFiscalYear !== "ทั้งหมด" && <FilterChip label="ปีงบประมาณ" value={assetFiscalYear} onClear={() => setAssetFiscalYear("ทั้งหมด")} />}
+            {organization !== "ทั้งหมด" && <FilterChip label="ฝ่าย/ชมรม" value={organization} onClear={() => setOrganization("ทั้งหมด")} />}
+            {assetStatus !== "ทั้งหมด" && <FilterChip label="สถานะ" value={assetStatus} onClear={() => setAssetStatus("ทั้งหมด")} />}
+            {inspectionResult !== "ทั้งหมด" && <FilterChip label="ผลตรวจ" value={inspectionResult} onClear={() => setInspectionResult("ทั้งหมด")} />}
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        {summaryItems.map((item) => (
+          <article key={item.label} className={`relative overflow-hidden rounded-lg border bg-panel p-4 ${item.cardClass}`}>
+            <span className={`absolute left-0 top-0 h-full w-1 ${item.accentClass}`} aria-hidden="true" />
+            <p className="text-xs font-semibold text-white">{item.label}</p>
+            <strong className="mt-2 block text-2xl font-extrabold text-white">{item.value.toLocaleString("th-TH")}</strong>
+            <p className={`mt-1 text-xs ${item.subtitleClass}`}>{item.subtitle}</p>
+          </article>
+        ))}
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {rows.map(({ asset, inspection }, index) => (
+          <article key={asset.assetCode} className="rounded-lg border border-white/10 bg-panel p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-slate-400">ลำดับ {index + 1}</p>
+                <p className="mt-1 break-words text-sm font-bold text-gold">{asset.assetNumber}</p>
+                <h3 className="mt-1 break-words text-base font-extrabold text-white">{asset.assetName}</h3>
+              </div>
+              <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${inspection ? inspectionStatusColors.inspected.badge : inspectionStatusColors.pending.badge}`}>{inspection ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจ"}</span>
+            </div>
+            <dl className="mt-3 grid gap-2 text-sm">
+              <div><dt className="text-xs font-semibold text-slate-400">องค์กร/ฝ่าย/ชมรม</dt><dd className="mt-1 break-words text-slate-200">{asset.organization}</dd></div>
+              <div><dt className="text-xs font-semibold text-slate-400">สถานที่จัดเก็บ</dt><dd className="mt-1 text-slate-200">{asset.location}</dd></div>
+              <div><dt className="text-xs font-semibold text-slate-400">สถานะครุภัณฑ์</dt><dd className="mt-1"><StatusBadge value={asset.status} /></dd></div>
+            </dl>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button onClick={() => openInspectionModal(asset)} className="min-h-12 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950">ตรวจสอบ</button>
+              <button type="button" disabled={!inspection} onClick={() => inspection && setCancelTarget({ asset, inspection })} className={`min-h-12 rounded-md border px-4 py-2 text-sm font-semibold ${inspection ? buttonColors.cancelEnabled : `cursor-not-allowed ${buttonColors.cancelDisabled}`}`}>ยกเลิก</button>
+            </div>
+          </article>
+        ))}
+        {rows.length === 0 && <div className="rounded-lg border border-white/10 bg-panel px-4 py-10 text-center"><p className="font-bold text-white">ไม่พบข้อมูลครุภัณฑ์</p><p className="mt-2 text-sm text-slate-400">ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง</p></div>}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-lg border border-white/10 bg-panel md:block">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px] table-fixed border-collapse text-left text-sm">
+            <colgroup>
+              <col className="w-[40px]" />
+              <col className="w-[50px]" />
+              <col className="w-[150px]" />
+              <col className="w-[210px]" />
+              <col className="w-[145px]" />
+              <col className="w-[130px]" />
+              <col className="w-[100px]" />
+              <col className="w-[135px]" />
+              <col className="w-[125px]" />
+            </colgroup>
+            <thead className="bg-panelSoft text-slate-300">
+              <tr>
+                {["ผล", "ลำดับ", "หมายเลขครุภัณฑ์", "ชื่อครุภัณฑ์", "ฝ่าย/ชมรม", "สถานที่จัดเก็บ", "สถานะ", "ผลตรวจ", "จัดการ"].map((heading) => (
+                  <th key={heading} className="border-b border-white/10 px-2 py-2.5 font-semibold">{heading}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/10 bg-slate-950/20 text-slate-200">
+              {rows.map(({ asset, inspection }, index) => (
+                <tr key={asset.assetCode} className="align-top hover:bg-white/[0.03]">
+                  <td className="px-2 py-3 text-center align-middle">
+                    <span
+                      title={inspection ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจสอบ"}
+                      className={`mx-auto block h-3 w-3 rounded-full ring-2 ring-slate-950 ${inspection ? inspectionStatusColors.inspected.dot : inspectionStatusColors.pending.dot}`}
+                    />
+                  </td>
+                  <td className="px-2 py-3 text-slate-400">{index + 1}</td>
+                  <td className="px-2 py-3 font-semibold text-gold" title={asset.assetNumber}>
+                    <div className="line-clamp-2 break-words">{asset.assetNumber}</div>
+                  </td>
+                  <td className="px-2 py-3 font-semibold text-white" title={asset.assetName}>
+                    <div className="truncate">{asset.assetName}</div>
+                  </td>
+                  <td className="px-2 py-3 text-slate-300" title={asset.organization}>
+                    <div className="truncate">{asset.organization}</div>
+                  </td>
+                  <td className="px-2 py-3 text-slate-300" title={asset.location}>
+                    <div className="truncate">{asset.location}</div>
+                  </td>
+                  <td className="px-2 py-3"><StatusBadge value={asset.status} /></td>
+                  <td className="px-2 py-3">
+                    {inspection ? (
+                      <span title={`ตรวจสอบแล้ว (ปี ${inspectionYear})`} className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-semibold ${inspectionStatusColors.inspected.badge}`}>
+                        ตรวจสอบแล้ว ({inspectionYear})
+                      </span>
+                    ) : (
+                      <span title={`ยังไม่ได้ตรวจสอบ (ปี ${inspectionYear})`} className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-semibold ${inspectionStatusColors.pending.badge}`}>
+                        ยังไม่ได้ตรวจ ({inspectionYear})
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-2 py-3">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openInspectionModal(asset)} className="whitespace-nowrap rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-amberSoft">
+                        ตรวจสอบ
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!inspection}
+                        title={inspection ? "ยกเลิกผลตรวจสอบประจำปี" : "ยังไม่มีผลตรวจสอบของปีนี้ให้ยกเลิก"}
+                        onClick={() => inspection && setCancelTarget({ asset, inspection })}
+                        className={`whitespace-nowrap rounded-md border px-3 py-1.5 text-xs font-semibold ${
+                          inspection
+                            ? `cursor-pointer ${buttonColors.cancelEnabled}`
+                            : `cursor-not-allowed ${buttonColors.cancelDisabled}`
+                        }`}
+                      >
+                        ยกเลิก
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="px-3 py-12 text-center">
+                    <div className="mx-auto max-w-md">
+                      <p className="text-base font-bold text-white">ไม่พบข้อมูลครุภัณฑ์</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-400">ลองเปลี่ยนคำค้นหา หรือล้างตัวกรองที่เลือกอยู่</p>
+                      {hasActiveAuditFilters && (
+                        <button
+                          type="button"
+                          onClick={clearAuditFilters}
+                          className="mt-4 rounded-md bg-gold px-4 py-2 text-sm font-bold text-slate-950 hover:bg-amberSoft"
+                        >
+                          ล้างตัวกรองทั้งหมด
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {selectedAsset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-2 sm:p-4">
+          <div className="max-h-[96vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-white/10 bg-panel p-4 shadow-2xl sm:max-h-[90vh] sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-bold text-white">บันทึกผลตรวจสอบ</h3>
+                <p className="mt-3 text-base font-extrabold text-white">{selectedAsset.assetName}</p>
+                <p className="mt-1 text-sm font-semibold text-gold">{selectedAsset.assetNumber}</p>
+              </div>
+              <CloseIconButton onClick={() => setSelectedAsset(null)} />
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <label className="block min-w-0">
+                <span className="text-sm font-semibold text-slate-200">ปีที่ตรวจสอบ</span>
+                <div className="mt-2 min-h-12 w-full rounded-lg border border-white/10 bg-slate-950/40 px-4 py-3 text-sm font-semibold text-white">
+                  {inspectionYear}
+                </div>
+              </label>
+              <ThaiDateField label="วันที่ตรวจสอบ" value={inspectionDate} onChange={setInspectionDate} />
+              <Field label="สถานที่ที่พบครุภัณฑ์" value={foundLocation} onChange={(event) => setFoundLocation(event.target.value)} placeholder="ระบุสถานที่ที่พบครุภัณฑ์" />
+              <Field label="ผู้ตรวจสอบ" value={inspectorName} onChange={(event) => setInspectorName(event.target.value)} placeholder="ชื่อผู้ตรวจสอบ" />
+              <SelectField label="สถานะครุภัณฑ์" value={modalResult} onChange={setModalResult} options={modalStatusOptions} />
+              <label className="block">
+                <span className="text-sm font-semibold text-slate-200">
+                  อัปโหลดรูปหลักฐาน <span className="text-slate-400">(ถ่ายรูปหรือเลือกได้หลายภาพ)</span>
+                </span>
+                <p className="mt-1 text-xs text-slate-400">
+                  สามารถถ่ายรูปจากมือถือ หรือเลือกรูปจากเครื่อง เพื่อใช้เป็นหลักฐานการตรวจสอบครุภัณฑ์
+                </p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                  onChange={(event) => {
+                    void handleEvidenceImageChange(event.target.files);
+                    event.target.value = "";
+                  }}
+                  className="mt-2 w-full rounded-lg border border-dashed border-gold/40 bg-slate-950/40 px-4 py-4 text-sm text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-gold file:px-3 file:py-2 file:font-bold file:text-slate-950"
+                />
+                {(evidenceError || evidenceImages.length === 0) && (
+                  <p className="mt-2 text-xs font-semibold text-rose-200">
+                    {evidenceError || "กรุณาอัปโหลดรูปหลักฐานอย่างน้อย 1 รูปก่อนบันทึกผลตรวจสอบ"}
+                  </p>
+                )}
+                {evidenceImages.length > 0 && (
+                  <div className="mt-3 rounded-lg border border-white/10 bg-slate-950/25 p-3">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-slate-200">
+                        เลือกรูปแล้ว {evidenceImages.length.toLocaleString("th-TH")} รูป
+                      </p>
+                      <p className="text-[11px] text-slate-500">สูงสุด 5 รูป / ไม่เกิน 5MB ต่อรูป</p>
+                    </div>
+                    <div className="grid max-h-64 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
+                      {evidenceImages.map((image) => (
+                        <figure key={image.url} className="overflow-hidden rounded-md border border-white/10 bg-slate-950/40">
+                          <div className="relative">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={image.url} alt={image.name} className="h-24 w-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => removeEvidenceImage(image.url)}
+                              className="absolute right-1 top-1 rounded-md bg-red-500/90 px-2 py-1 text-[11px] font-bold text-white hover:bg-red-400"
+                            >
+                              ลบ
+                            </button>
+                          </div>
+                          <figcaption className="space-y-0.5 px-2 py-1">
+                            <p className="truncate text-[11px] text-slate-300">{image.name}</p>
+                            <p className="text-[10px] text-slate-500">{(image.size / 1024 / 1024).toFixed(2)} MB</p>
+                          </figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </label>
+              <div className="md:col-span-2">
+                <TextAreaField label="หมายเหตุ" value={inspectionNote} onChange={(event) => setInspectionNote(event.target.value)} placeholder="หมายเหตุการตรวจสอบ" />
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:justify-end">
+              <button onClick={() => setSelectedAsset(null)} className="min-h-12 rounded-md border border-white/15 bg-panelSoft px-4 py-2 text-sm font-semibold text-slate-200 hover:border-gold hover:text-gold">ยกเลิก</button>
+              <button
+                onClick={saveInspection}
+                disabled={!canSaveInspection}
+                title={canSaveInspection ? "บันทึกผลตรวจสอบ" : "กรุณากรอกข้อมูลให้ครบและอัปโหลดรูปหลักฐานอย่างน้อย 1 รูป"}
+                className="min-h-12 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-amberSoft disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-gold"
+              >
+                บันทึกผลตรวจสอบ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cancelTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4">
+          <div className="w-full max-w-lg rounded-lg border border-rose-300/20 bg-panel p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="text-xl font-bold text-white">ยกเลิกผลตรวจสอบประจำปี</h3>
+              <CloseIconButton onClick={() => setCancelTarget(null)} />
+            </div>
+            <p className="mt-3 text-sm leading-6 text-slate-300">
+              ต้องการยกเลิกผลตรวจสอบของครุภัณฑ์รายการนี้ในปี {inspectionYear} ใช่หรือไม่?
+            </p>
+            <div className="mt-4 rounded-lg border border-white/10 bg-slate-950/30 p-4 text-sm">
+              <p className="text-slate-400">หมายเลขครุภัณฑ์</p>
+              <p className="mt-1 font-semibold text-gold">{cancelTarget.asset.assetNumber}</p>
+              <p className="mt-3 text-slate-400">ชื่อครุภัณฑ์</p>
+              <p className="mt-1 font-semibold text-white">{cancelTarget.asset.assetName}</p>
+              <p className="mt-3 text-slate-400">ปีที่ตรวจสอบ</p>
+              <p className="mt-1 font-semibold text-white">{inspectionYear}</p>
+            </div>
+            <p className="mt-4 rounded-lg border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">
+              การยกเลิกนี้จะลบเฉพาะผลตรวจสอบประจำปี ไม่ได้ลบข้อมูลครุภัณฑ์หลัก
+            </p>
+            <div className="mt-5 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={confirmCancelInspection}
+                className="rounded-md bg-rose-500 px-4 py-2 text-sm font-extrabold text-white hover:bg-rose-400"
+              >
+                ยืนยันยกเลิก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+

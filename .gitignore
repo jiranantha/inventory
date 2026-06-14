@@ -1,3 +1,14 @@
-\.next
-\.next-form-test
+.next
+.next-form-test
 /node_modules
+
+# env files (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# drizzle migration journal output is committed; ignore only local artifacts
+/drizzle/.cache
+
+# typescript incremental build cache
+tsconfig.tsbuildinfo

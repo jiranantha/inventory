@@ -1,74 +1,79 @@
-import { NextRequest, NextResponse } from "next/server";
-import { hasPermission, type ApiUser, type PermissionAction, type UserRole } from "@/lib/permissions";
+import { desc, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
+import { db } from "@/db";
+import { assetToColumns, rowToActivityLog, rowToAsset } from "@/db/mappers";
+import { activityLogs, assets } from "@/db/schema";
+import { jsonError, requirePermission } from "@/lib/auth-helpers";
+import { getPermissions } from "@/lib/permissions";
+import type { ActivityLog, AssetListRow } from "@/types";
 
-const roles: UserRole[] = ["Admin", "Staff", "Club Officer", "Viewer"];
+type ActivityLogInput = Omit<ActivityLog, "id" | "createdAt">;
 
-function readApiUser(request: NextRequest): ApiUser | null {
-  const role = request.headers.get("x-user-role") as UserRole | null;
-  if (!role || !roles.includes(role)) return null;
+// GET /api/assets — list assets, scoped to the caller's organization unless their
+// role can view all organizations. Includes soft-deleted rows; the client hides
+// them but needs the full set for things like next-asset-number generation.
+export async function GET() {
+  try {
+    const { user, roles } = await requirePermission("view");
+    const permissions = getPermissions(
+      { role: user.role as string, viewerCanExport: user.viewerCanExport },
+      roles,
+    );
 
-  return {
-    role,
-    organization: request.headers.get("x-user-organization") ?? undefined,
-    viewerCanExport: request.headers.get("x-viewer-can-export") === "true",
-  };
-}
+    const rows = permissions.canViewAllOrganizations
+      ? await db.select().from(assets).orderBy(desc(assets.id))
+      : await db
+          .select()
+          .from(assets)
+          .where(eq(assets.organization, user.organization))
+          .orderBy(desc(assets.id));
 
-function forbidden() {
-  return NextResponse.json({ message: "ไม่มีสิทธิ์ใช้งาน API นี้" }, { status: 403 });
-}
-
-type PermissionCheck =
-  | { allowed: true; user: ApiUser }
-  | { allowed: false; response: NextResponse };
-
-function requirePermission(request: NextRequest, action: PermissionAction): PermissionCheck {
-  const user = readApiUser(request);
-  if (!user) {
-    return {
-      allowed: false,
-      response: NextResponse.json({ message: "กรุณาเข้าสู่ระบบ" }, { status: 401 }),
-    };
+    return NextResponse.json({ assets: rows.map(rowToAsset) });
+  } catch (error) {
+    return jsonError(error);
   }
+}
 
-  const assetOrganization = request.headers.get("x-asset-organization") ?? undefined;
-  if (!hasPermission(user, action, { organization: assetOrganization })) {
-    return { allowed: false, response: forbidden() };
+// POST /api/assets — create an asset (+ optional activity log) in one transaction.
+export async function POST(request: Request) {
+  try {
+    const { user } = await requirePermission("create");
+    const body = (await request.json()) as { asset: AssetListRow; log?: ActivityLogInput };
+    const columns = assetToColumns(body.asset);
+
+    const assetCode = columns.assetCode?.trim() || `CMU-ASSET-${Date.now()}`;
+
+    const result = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(assets)
+        .values({ ...columns, assetCode })
+        .returning();
+
+      let log = null;
+      if (body.log) {
+        const [insertedLog] = await tx
+          .insert(activityLogs)
+          .values({
+            userName: body.log.userName || user.name,
+            actionType: body.log.actionType,
+            targetId: inserted.id,
+            targetTable: "assets",
+            detail: body.log.detail,
+            oldValue: body.log.oldValue,
+            newValue: body.log.newValue,
+            note: body.log.note ?? null,
+          })
+          .returning();
+        log = insertedLog;
+      }
+      return { inserted, log };
+    });
+
+    return NextResponse.json({
+      asset: rowToAsset(result.inserted),
+      log: result.log ? rowToActivityLog(result.log) : null,
+    });
+  } catch (error) {
+    return jsonError(error);
   }
-
-  return { allowed: true, user };
-}
-
-export async function GET(request: NextRequest) {
-  const action = request.nextUrl.searchParams.get("action") === "export" ? "export" : "view";
-  const result = requirePermission(request, action);
-  if (!result.allowed) return result.response;
-
-  return NextResponse.json({
-    message: "ผ่านการตรวจสิทธิ์ API",
-    action,
-    role: result.user.role,
-  });
-}
-
-export async function POST(request: NextRequest) {
-  const action = request.nextUrl.searchParams.get("action") === "inspect" ? "inspect" : "create";
-  const result = requirePermission(request, action);
-  if (!result.allowed) return result.response;
-
-  return NextResponse.json({ message: "บันทึกข้อมูลผ่าน API ได้", action, role: result.user.role });
-}
-
-export async function PATCH(request: NextRequest) {
-  const result = requirePermission(request, "edit");
-  if (!result.allowed) return result.response;
-
-  return NextResponse.json({ message: "แก้ไขข้อมูลผ่าน API ได้", role: result.user.role });
-}
-
-export async function DELETE(request: NextRequest) {
-  const result = requirePermission(request, "delete");
-  if (!result.allowed) return result.response;
-
-  return NextResponse.json({ message: "ลบข้อมูลผ่าน API ได้", role: result.user.role });
 }
