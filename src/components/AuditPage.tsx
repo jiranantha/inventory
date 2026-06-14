@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { buttonColors, inspectionStatusColors } from "@/constants/colors";
 import { CloseIconButton, Field, FilterChip, SelectField, StatusBadge, TextAreaField, ThaiDateField } from "@/components/ui";
 import { formatThaiDate, getCurrentInspectionYear } from "@/lib/dates";
+import { uploadImage } from "@/lib/image-upload";
 import { uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow, EvidenceImage } from "@/types";
 import { allowedAssetStatuses, ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
@@ -110,12 +111,7 @@ export function AuditPage({
     setInspectionNote(existing?.note ?? "");
   };
 
-  const readEvidenceFile = (file: File) => new Promise<EvidenceImage>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve({ name: file.name, url: String(reader.result), size: file.size });
-    reader.onerror = () => reject(new Error(`ไม่สามารถอ่านไฟล์ ${file.name} ได้`));
-    reader.readAsDataURL(file);
-  });
+  const readEvidenceFile = (file: File) => uploadImage(file, "evidence");
 
   const handleEvidenceImageChange = async (files: FileList | null) => {
     const selectedFiles = Array.from(files ?? []);

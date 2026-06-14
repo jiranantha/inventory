@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { AssetSetItemsEditor, CloseIconButton, Field, FieldError, FiscalYearField, PhoneField, RecordFormSection, SearchableOrganizationSelect, SelectField, TextAreaField, ThaiDateField, isValidDateInput } from "@/components/ui";
 import { budgetSourceOptions } from "@/constants/options";
 import { createAssetFromImportRow, getNextAssetNumber, validateAssetImportRows } from "@/lib/assets";
+import { uploadImage } from "@/lib/image-upload";
 import { formatThaiDate } from "@/lib/dates";
 import { readAssetRowsFromFile } from "@/lib/import-export";
 import { AssetImportPreviewRow, AssetListRow, AssetSetItem, EvidenceImage, Organization } from "@/types";
@@ -236,14 +237,15 @@ export function RecordPage({
 
   const handleImageChange = async (files: FileList | null) => {
     const selectedFiles = Array.from(files ?? []);
-    const nextImages = await Promise.all(selectedFiles.map((file) => new Promise<EvidenceImage>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve({ name: file.name, url: String(reader.result ?? ""), size: file.size });
-      reader.onerror = () => reject(new Error("ไม่สามารถอ่านรูปถ่ายครุภัณฑ์ได้"));
-      reader.readAsDataURL(file);
-    })));
-    setImagePreviews(nextImages);
-    if (nextImages.length > 0) setIssueFormErrors((errors) => ({ ...errors, images: "" }));
+    if (selectedFiles.length === 0) return;
+    try {
+      const nextImages = await Promise.all(selectedFiles.map((file) => uploadImage(file, "assets")));
+      setImagePreviews(nextImages);
+      if (nextImages.length > 0) setIssueFormErrors((errors) => ({ ...errors, images: "" }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "อัปโหลดรูปภาพไม่สำเร็จ";
+      setIssueFormErrors((errors) => ({ ...errors, images: message }));
+    }
   };
 
   const resetImportModal = () => {
