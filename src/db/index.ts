@@ -32,6 +32,17 @@ const client =
     // Fail fast if a connection can't be established, instead of letting the
     // serverless function hang up to its 300s max duration.
     connect_timeout: Number(process.env.DB_CONNECT_TIMEOUT ?? 10),
+    // connect_timeout only bounds establishing the socket. Once a connection is
+    // open (or reused from the pool), an individual query has NO timeout — so if
+    // the Supabase pooler accepts the handshake but the database can't service
+    // the query (paused free-tier project, asleep, or overloaded), the query
+    // blocks until Vercel kills the function at 300s. statement_timeout aborts
+    // any single query server-side so it *rejects* in seconds — which also lets
+    // the try/catch fallbacks (e.g. loadRoleDefinitions) actually fire, since a
+    // hanging promise never rejects.
+    connection: {
+      statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS ?? 15_000),
+    },
     // On serverless the postgres.js client is reused across invocations, but
     // Supabase's pooler silently reaps idle server-side connections. Reusing a
     // reaped connection makes the next query block on a dead socket until the

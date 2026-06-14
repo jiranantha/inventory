@@ -6,6 +6,10 @@ import { users } from "@/db/schema";
 import { jsonError, requirePermission } from "@/lib/auth-helpers";
 import type { AppUser } from "@/lib/permissions";
 
+// Backstop: surface an error within 30s instead of burning Vercel's 300s max
+// when a DB query stalls (statement_timeout in src/db bounds the query itself).
+export const maxDuration = 30;
+
 // GET /api/users — all users (Admin only).
 export async function GET() {
   try {

@@ -8,6 +8,10 @@ import type { ActivityLog, AnnualInspection } from "@/types";
 
 type ActivityLogInput = Omit<ActivityLog, "id" | "createdAt">;
 
+// Backstop: surface an error within 30s instead of burning Vercel's 300s max
+// when a DB query stalls (statement_timeout in src/db bounds the query itself).
+export const maxDuration = 30;
+
 // GET /api/inspections — all annual inspections (asset visibility is already
 // scoped by /api/assets; the audit view joins them client-side).
 export async function GET() {

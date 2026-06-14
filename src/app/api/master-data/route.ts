@@ -21,6 +21,10 @@ async function readAll() {
   };
 }
 
+// Backstop: surface an error within 30s instead of burning Vercel's 300s max
+// when a DB query stalls (statement_timeout in src/db bounds the query itself).
+export const maxDuration = 30;
+
 // GET /api/master-data — organizations + locations + equipment types.
 export async function GET() {
   try {

@@ -9,6 +9,10 @@ import type { ActivityLog, AssetListRow } from "@/types";
 
 type ActivityLogInput = Omit<ActivityLog, "id" | "createdAt">;
 
+// Backstop: surface an error within 30s instead of burning Vercel's 300s max
+// when a DB query stalls (statement_timeout in src/db bounds the query itself).
+export const maxDuration = 30;
+
 // Enforces the same organization scope the UI applies via canAccessAsset.
 function assertOrgAccess(user: SessionUser, roles: RoleDefinition[], asset: AssetRow) {
   const permissions = getPermissions(

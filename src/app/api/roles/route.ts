@@ -5,6 +5,10 @@ import { roles } from "@/db/schema";
 import { jsonError, loadRoleDefinitions, requirePermission, requireUser } from "@/lib/auth-helpers";
 import type { RoleDefinition } from "@/lib/permissions";
 
+// Backstop: surface an error within 30s instead of burning Vercel's 300s max
+// when a DB query stalls (statement_timeout in src/db bounds the query itself).
+export const maxDuration = 30;
+
 // GET /api/roles — role definitions (every signed-in user needs these to compute
 // their own permissions client-side).
 export async function GET() {

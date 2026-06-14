@@ -8,6 +8,10 @@ import type { ActivityLog } from "@/types";
 
 type ActivityLogInput = Omit<ActivityLog, "id" | "createdAt">;
 
+// Backstop: surface an error within 30s instead of burning Vercel's 300s max
+// when a DB query stalls (statement_timeout in src/db bounds the query itself).
+export const maxDuration = 30;
+
 // GET /api/activity-logs — recent audit entries (newest first).
 export async function GET() {
   try {
