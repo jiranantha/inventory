@@ -1,0 +1,286 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { AssetStructureBadge, FilterChip, InspectionResultBadge, PageHeader, SelectField, StatusBadge, getAssetStructureFilterLabel } from "@/components/ui";
+import { assetReportExportColumns, assetToReportRow } from "@/lib/assets";
+import { exportAssetReport } from "@/lib/import-export";
+import { Permissions } from "@/lib/permissions";
+import { uniqueSorted } from "@/lib/utils";
+import { AnnualInspection, AssetListRow } from "@/types";
+
+export function ListPage({
+  assets,
+  annualInspections,
+  permissions,
+  onAddAsset,
+  onViewDetails,
+  onEditAsset,
+  onDeleteAsset,
+}: {
+  assets: AssetListRow[];
+  annualInspections: AnnualInspection[];
+  permissions: Permissions;
+  onAddAsset: () => void;
+  onViewDetails: (asset: AssetListRow) => void;
+  onEditAsset: (asset: AssetListRow) => void;
+  onDeleteAsset: (asset: AssetListRow) => void;
+}) {
+  const inspectedAssetIds = useMemo(
+    () => new Set(annualInspections.map((inspection) => inspection.assetId)),
+    [annualInspections],
+  );
+  const fiscalYearOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((item) => item.fiscalYear)).sort((a, b) => Number(b) - Number(a))];
+  const organizationOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((item) => item.organization))];
+  const assetTypeOptions = ["ทั้งหมด", "ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"];
+  const statusOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((item) => item.status))];
+
+  const [search, setSearch] = useState("");
+  const [fiscalYear, setFiscalYear] = useState("ทั้งหมด");
+  const [organization, setOrganization] = useState("ทั้งหมด");
+  const [assetType, setAssetType] = useState("ทั้งหมด");
+  const [status, setStatus] = useState("ทั้งหมด");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  const filteredRows = useMemo(() => {
+    const cleanSearch = search.trim().toLowerCase();
+    return assets.filter((row) => {
+      const searchText = `${row.assetName} ${row.assetNumber} ${row.organization}`.toLowerCase();
+      const matchSearch = !cleanSearch || searchText.includes(cleanSearch);
+      const matchFiscalYear = fiscalYear === "ทั้งหมด" || row.fiscalYear === fiscalYear;
+      const matchOrganization = organization === "ทั้งหมด" || row.organization === organization;
+      const matchAssetType = assetType === "ทั้งหมด" || getAssetStructureFilterLabel(row) === assetType;
+      const matchStatus = status === "ทั้งหมด" || row.status === status;
+      return matchSearch && matchFiscalYear && matchOrganization && matchAssetType && matchStatus;
+    });
+  }, [assetType, assets, fiscalYear, organization, search, status]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const visibleRows = filteredRows.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const hasActiveFilters = Boolean(search.trim()) || fiscalYear !== "ทั้งหมด" || organization !== "ทั้งหมด" || assetType !== "ทั้งหมด" || status !== "ทั้งหมด";
+  const clearAllFilters = () => {
+    setSearch("");
+    setFiscalYear("ทั้งหมด");
+    setOrganization("ทั้งหมด");
+    setAssetType("ทั้งหมด");
+    setStatus("ทั้งหมด");
+    setPage(1);
+  };
+
+  return (
+    <section className="mx-auto w-full max-w-screen-2xl space-y-4">
+      <PageHeader
+        title="แสดงรายการครุภัณฑ์ทั้งหมด"
+        description="ค้นหาและกรองข้อมูลจากหมายเลขครุภัณฑ์ ชื่อรายการ หรือฝ่าย/ชมรม"
+        actions={(
+          <>
+            {permissions.canExport && (
+              <>
+                <button onClick={() => exportAssetReport("pdf", "รายงานครุภัณฑ์ทั้งหมด", assetReportExportColumns, filteredRows.map(assetToReportRow), "ข้อมูลตามเงื่อนไขตัวกรองปัจจุบัน")} className="min-h-11 rounded-md border border-white/15 bg-panelSoft px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-gold hover:text-gold">ส่งออก PDF</button>
+                <button onClick={() => exportAssetReport("word", "รายงานครุภัณฑ์ทั้งหมด", assetReportExportColumns, filteredRows.map(assetToReportRow), "ข้อมูลตามเงื่อนไขตัวกรองปัจจุบัน")} className="min-h-11 rounded-md border border-white/15 bg-panelSoft px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-gold hover:text-gold">ส่งออก Word</button>
+                <button onClick={() => exportAssetReport("excel", "รายงานครุภัณฑ์ทั้งหมด", assetReportExportColumns, filteredRows.map(assetToReportRow), "ข้อมูลตามเงื่อนไขตัวกรองปัจจุบัน")} className="min-h-11 rounded-md border border-white/15 bg-panelSoft px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-gold hover:text-gold">ส่งออก Excel</button>
+              </>
+            )}
+            {permissions.canCreate && <button onClick={onAddAsset} className="min-h-11 rounded-md bg-gold px-3 py-2 text-xs font-extrabold text-slate-950 transition hover:bg-amberSoft">บันทึกใหม่</button>}
+          </>
+        )}
+      />
+      <div className="rounded-lg border border-white/10 bg-panel p-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
+          <label className="block md:col-span-2 xl:col-span-1">
+            <span className="text-sm font-semibold text-slate-200">ค้นหา</span>
+            <div className="relative mt-1.5">
+              <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="m14 14 3.5 3.5M8.5 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+              <input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="ค้นหาชื่อครุภัณฑ์ หมายเลขครุภัณฑ์ หรือฝ่าย/ชมรม"
+                className="min-h-11 w-full rounded-lg border border-white/10 bg-slate-950/40 py-2 pl-9 pr-10 text-sm text-white outline-none placeholder:text-slate-500 focus:border-gold"
+              />
+              {search.trim() && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setPage(1);
+                  }}
+                  className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-sm font-bold text-slate-400 hover:bg-slate-100 hover:text-slate-900"
+                  aria-label="ล้างคำค้นหา"
+                >
+                  x
+                </button>
+              )}
+            </div>
+          </label>
+          <SelectField label="ปีงบประมาณ" value={fiscalYear} onChange={(value) => { setFiscalYear(value); setPage(1); }} options={fiscalYearOptions} />
+          <SelectField label="ฝ่าย/ชมรม" value={organization} onChange={(value) => { setOrganization(value); setPage(1); }} options={organizationOptions} />
+          <SelectField label="ลักษณะครุภัณฑ์" value={assetType} onChange={(value) => { setAssetType(value); setPage(1); }} options={assetTypeOptions} />
+          <SelectField label="สถานะครุภัณฑ์" value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={statusOptions} />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
+          <p className="text-sm font-semibold text-slate-400">
+            พบข้อมูล {filteredRows.length.toLocaleString("th-TH")} รายการจากทั้งหมด {assets.length.toLocaleString("th-TH")} รายการ
+          </p>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="rounded-md border border-[#CBD5E1] bg-white px-3 py-1.5 text-xs font-semibold text-[#0F172A] hover:bg-[#F8FAFC]"
+            >
+              ล้างตัวกรองทั้งหมด
+            </button>
+          )}
+        </div>
+        {hasActiveFilters && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {search.trim() && <FilterChip label="คำค้นหา" value={search.trim()} onClear={() => { setSearch(""); setPage(1); }} />}
+            {fiscalYear !== "ทั้งหมด" && <FilterChip label="ปีงบประมาณ" value={fiscalYear} onClear={() => { setFiscalYear("ทั้งหมด"); setPage(1); }} />}
+            {organization !== "ทั้งหมด" && <FilterChip label="ฝ่าย/ชมรม" value={organization} onClear={() => { setOrganization("ทั้งหมด"); setPage(1); }} />}
+            {assetType !== "ทั้งหมด" && <FilterChip label="ลักษณะ" value={assetType} onClear={() => { setAssetType("ทั้งหมด"); setPage(1); }} />}
+            {status !== "ทั้งหมด" && <FilterChip label="สถานะ" value={status} onClear={() => { setStatus("ทั้งหมด"); setPage(1); }} />}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {visibleRows.map((row, index) => (
+          <article key={row.assetCode} className="rounded-lg border border-white/10 bg-panel p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-slate-400">ลำดับ {(safePage - 1) * pageSize + index + 1} · ปีงบประมาณ {row.fiscalYear}</p>
+                <p className="mt-1 break-words text-sm font-bold text-gold">{row.assetNumber}</p>
+                <h3 className="mt-1 break-words text-base font-extrabold text-white">{row.assetName}</h3>
+              </div>
+              <StatusBadge value={row.status} variant="soft" />
+            </div>
+            <dl className="mt-3 grid gap-2 text-sm">
+              <div><dt className="text-xs font-semibold text-slate-400">ลักษณะครุภัณฑ์</dt><dd className="mt-1"><AssetStructureBadge asset={row} /></dd></div>
+              <div><dt className="text-xs font-semibold text-slate-400">องค์กร/ฝ่าย/ชมรม</dt><dd className="mt-1 break-words text-slate-200">{row.organization}</dd></div>
+              <div><dt className="text-xs font-semibold text-slate-400">ผลการตรวจสอบประจำปี</dt><dd className="mt-1"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></dd></div>
+            </dl>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button onClick={() => onViewDetails(row)} className="min-h-11 rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-slate-200">รายละเอียด</button>
+              {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="min-h-11 rounded-md bg-orange px-3 py-2 text-sm font-semibold text-white">แก้ไข</button>}
+              {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="min-h-11 rounded-md border border-red-300/30 px-3 py-2 text-sm font-semibold text-red-200">ลบ</button>}
+            </div>
+          </article>
+        ))}
+        {visibleRows.length === 0 && <div className="rounded-lg border border-white/10 bg-panel px-4 py-10 text-center"><p className="font-bold text-white">ไม่พบข้อมูลครุภัณฑ์</p><p className="mt-2 text-sm text-slate-400">ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง</p></div>}
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-panel p-3 text-sm">
+          <button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={safePage === 1} className="min-h-11 rounded-md border border-white/15 px-3 py-2 font-semibold text-slate-200 disabled:opacity-40">ก่อนหน้า</button>
+          <span className="text-center font-bold text-white">หน้า {safePage} / {pageCount}</span>
+          <button onClick={() => setPage((value) => Math.min(pageCount, value + 1))} disabled={safePage === pageCount} className="min-h-11 rounded-md border border-white/15 px-3 py-2 font-semibold text-slate-200 disabled:opacity-40">ถัดไป</button>
+        </div>
+      </div>
+
+      <div className="hidden w-full overflow-hidden rounded-lg border border-white/10 bg-panel md:block">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full min-w-[1080px] table-fixed border-collapse text-left text-xs xl:min-w-0">
+            <colgroup>
+              <col className="w-[50px]" />
+              <col className="w-[90px]" />
+              <col className="w-[160px]" />
+              <col className="w-[260px]" />
+              <col className="w-[150px]" />
+              <col className="w-[250px]" />
+              <col className="w-[110px]" />
+              <col className="w-[140px]" />
+              <col className="w-[80px]" />
+              <col className="w-[170px]" />
+            </colgroup>
+            <thead className="bg-panelSoft text-slate-300">
+              <tr>
+                {["ลำดับ", "ปีงบประมาณ", "หมายเลขครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "ลักษณะ", "ฝ่าย/ชมรมที่รับผิดชอบ", "สถานะ", "ผลการตรวจสอบประจำปี", "รูปภาพ", "จัดการ"].map((heading) => (
+                  <th key={heading} className={`border-b border-white/10 px-2 py-2 font-semibold ${heading === "สถานะ" || heading === "ผลการตรวจสอบประจำปี" || heading === "จัดการ" ? "whitespace-nowrap" : ""}`}>
+                    {heading}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/10 bg-slate-950/20 text-slate-200">
+              {visibleRows.map((row, index) => (
+                <tr key={row.assetCode} className="align-top hover:bg-white/[0.03]">
+                  <td className="px-2 py-2 text-slate-400">{(safePage - 1) * pageSize + index + 1}</td>
+                  <td className="px-2 py-2">{row.fiscalYear}</td>
+                  <td className="px-2 py-2 font-semibold leading-5 text-gold" title={row.assetNumber}><div className="line-clamp-2 max-w-[150px] break-words">{row.assetNumber}</div></td>
+                  <td className="px-2 py-2 font-semibold leading-5 text-white" title={row.assetName}><div className="line-clamp-2 max-w-[220px] break-words">{row.assetName}</div></td>
+                  <td className="px-2 py-2"><AssetStructureBadge asset={row} /></td>
+                  <td className="px-2 py-2">
+                    <span className="line-clamp-2 max-w-[220px] break-words leading-5" title={row.organization}>{row.organization}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-2"><StatusBadge value={row.status} variant="soft" /></td>
+                  <td className="whitespace-nowrap px-2 py-2">
+                    <InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} />
+                  </td>
+                  <td className="px-2 py-2">
+                    <button className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-white/10 bg-slate-900 text-[11px] font-bold text-gold hover:border-gold">
+                      {row.imageCount}
+                    </button>
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-2">
+                    <div className="flex min-w-[160px] max-w-[170px] flex-row items-center gap-1.5">
+                      <button onClick={() => onViewDetails(row)} className="rounded-md border border-white/15 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:border-gold hover:text-gold">รายละเอียด</button>
+                      {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="rounded-md bg-orange px-2 py-1 text-[11px] font-semibold text-white hover:bg-orange/90">แก้ไข</button>}
+                      {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="rounded-md border border-red-300/30 px-2 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/10">ลบ</button>}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {visibleRows.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="px-3 py-12 text-center">
+                    <div className="mx-auto max-w-md">
+                      <p className="text-base font-bold text-white">ไม่พบข้อมูลครุภัณฑ์</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-400">ลองเปลี่ยนคำค้นหา หรือล้างตัวกรองที่เลือกอยู่</p>
+                      {hasActiveFilters && (
+                        <button
+                          type="button"
+                          onClick={clearAllFilters}
+                          className="mt-4 rounded-md bg-gold px-4 py-2 text-sm font-bold text-slate-950 hover:bg-amberSoft"
+                        >
+                          ล้างตัวกรองทั้งหมด
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-4 py-3 text-sm text-slate-300">
+          <span>
+            แสดง {visibleRows.length > 0 ? (safePage - 1) * pageSize + 1 : 0}-
+            {Math.min(safePage * pageSize, filteredRows.length)} จากทั้งหมด {filteredRows.length.toLocaleString("th-TH")} รายการ
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((value) => Math.max(1, value - 1))}
+              disabled={safePage === 1}
+              className="rounded-md border border-white/15 px-3 py-2 font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ก่อนหน้า
+            </button>
+            <span className="rounded-md bg-panelSoft px-3 py-2 font-bold text-white">
+              หน้า {safePage} / {pageCount}
+            </span>
+            <button
+              onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
+              disabled={safePage === pageCount}
+              className="rounded-md border border-white/15 px-3 py-2 font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ถัดไป
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+

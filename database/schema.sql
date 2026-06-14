@@ -66,7 +66,7 @@ create table if not exists assets (
   responsible_person varchar(255),
   responsible_phone varchar(50),
   responsible_email varchar(255),
-  status varchar(50) not null default 'พร้อมใช้งาน',
+  status varchar(50) not null default 'ใช้งานได้',
   note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -75,8 +75,9 @@ create table if not exists assets (
   constraint assets_quantity_check check (quantity > 0),
   constraint assets_unit_price_check check (unit_price >= 0),
   constraint assets_fiscal_year_check check (fiscal_year >= 2561 and fiscal_year <= 9999),
+  -- Must match ASSET_STATUSES in src/constants/statuses.ts
   constraint assets_status_check check (
-    status in ('พร้อมใช้งาน', 'รอตรวจสอบ', 'ชำรุด', 'สูญหาย', 'จำหน่าย', 'ยืมใช้งาน', 'ยกเลิก')
+    status in ('ใช้งานได้', 'ชำรุด', 'รอซ่อม', 'สูญหาย', 'โอนย้าย', 'จำหน่ายแล้ว', 'รอตรวจสอบ')
   )
 );
 
@@ -110,8 +111,10 @@ create table if not exists annual_inspections (
   updated_at timestamptz not null default now(),
 
   constraint annual_inspections_year_check check (inspection_year >= 2561 and inspection_year <= 9999),
+  -- The app records the asset status observed during inspection as the result,
+  -- so this must match ASSET_STATUSES in src/constants/statuses.ts
   constraint annual_inspections_result_check check (
-    inspection_result in ('พบครุภัณฑ์', 'ไม่พบครุภัณฑ์', 'ชำรุด', 'ย้ายสถานที่', 'รอตรวจซ้ำ', 'จำหน่ายแล้ว')
+    inspection_result in ('ใช้งานได้', 'ชำรุด', 'รอซ่อม', 'สูญหาย', 'โอนย้าย', 'จำหน่ายแล้ว', 'รอตรวจสอบ')
   ),
   constraint annual_inspections_asset_year_unique unique (asset_id, inspection_year)
 );
