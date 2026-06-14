@@ -1,0 +1,324 @@
+@import url("https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-thai: "Prompt";
+  --color-bg-main: #f5f7fa;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+  --color-primary: #1e40af;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-soft: #dbeafe;
+  --color-navy: #0f172a;
+  --color-info: #2563eb;
+  --color-success: #059669;
+  --color-danger: #dc2626;
+  --color-repair: #ea580c;
+  --color-lost: #be123c;
+  --color-transfer: #2563eb;
+  --color-disposed: #64748b;
+  --color-pending: #ca8a04;
+  --chart-grid: #e2e8f0;
+  --chart-axis: #64748b;
+  --background: #f5f7fa;
+  --foreground: #0f172a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  background: #f5f7fa;
+  color: #0f172a;
+  font-family: var(--font-thai), Sarabun, "Noto Sans Thai", sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+input[type="date"],
+input.date-input {
+  color-scheme: light;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: none;
+  opacity: 1;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+input.date-input::-webkit-calendar-picker-indicator,
+input.date-input:hover::-webkit-calendar-picker-indicator,
+input.date-input:focus::-webkit-calendar-picker-indicator {
+  opacity: 0;
+}
+
+.asset-shell {
+  background: #f5f7fa;
+  color: #0f172a;
+}
+
+.asset-shell,
+.asset-shell * {
+  transition-property: color, background-color, border-color, box-shadow, fill, stroke;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+.asset-shell .bg-navy,
+.asset-shell .bg-navy\/90,
+.asset-shell .bg-slate-50,
+.asset-shell .bg-panelSoft,
+.asset-shell .bg-panelSoft\/80,
+.asset-shell .bg-slate-950,
+.asset-shell .bg-slate-950\/20,
+.asset-shell .bg-slate-950\/25,
+.asset-shell .bg-slate-950\/30,
+.asset-shell .bg-slate-950\/35,
+.asset-shell .bg-slate-950\/40,
+.asset-shell .bg-slate-950\/60,
+.asset-shell .bg-slate-900,
+.asset-shell .bg-slate-700,
+.asset-shell .hover\:bg-slate-600:hover,
+.asset-shell .hover\:bg-slate-700:hover {
+  background-color: #f5f7fa !important;
+}
+
+.asset-shell .bg-panel,
+.asset-shell .bg-white,
+.asset-shell input,
+.asset-shell select,
+.asset-shell textarea,
+.asset-shell option,
+.asset-shell tbody {
+  background-color: #ffffff !important;
+}
+
+.asset-shell .fixed.inset-0.bg-slate-950\/75,
+.asset-shell .fixed.inset-0.bg-black\/60 {
+  background-color: rgba(15, 23, 42, 0.35) !important;
+}
+
+.asset-shell .text-white,
+.asset-shell .text-slate-100,
+.asset-shell .text-slate-200,
+.asset-shell .text-slate-300,
+.asset-shell .hover\:text-white:hover {
+  color: #0f172a !important;
+}
+
+.asset-shell .text-slate-400,
+.asset-shell .text-slate-500,
+.asset-shell input::placeholder,
+.asset-shell textarea::placeholder {
+  color: #64748b !important;
+}
+
+.asset-shell .text-gold {
+  color: #1e40af !important;
+}
+
+.asset-shell .text-sky-100,
+.asset-shell .text-sky-200,
+.asset-shell .text-cyan-200 {
+  color: #1d4ed8 !important;
+}
+
+.asset-shell .text-emerald-100,
+.asset-shell .text-emerald-200 {
+  color: #047857 !important;
+}
+
+.asset-shell .text-rose-100,
+.asset-shell .text-rose-200,
+.asset-shell .text-red-100,
+.asset-shell .text-red-200 {
+  color: #b91c1c !important;
+}
+
+.asset-shell .text-orange-100,
+.asset-shell .text-orange-200 {
+  color: #c2410c !important;
+}
+
+.asset-shell .text-amber-100,
+.asset-shell .text-amber-200 {
+  color: #a16207 !important;
+}
+
+.asset-shell .bg-orange.text-white,
+.asset-shell .bg-gold,
+.asset-shell .hover\:bg-amberSoft:hover,
+.asset-shell .bg-red-500.text-white,
+.asset-shell .bg-rose-500.text-white,
+.asset-shell .bg-rose-500\/90.text-white,
+.asset-shell .hover\:bg-red-400:hover,
+.asset-shell .hover\:bg-rose-400:hover {
+  color: #ffffff !important;
+}
+
+.asset-shell .bg-gold,
+.asset-shell .bg-orange {
+  background-color: #1e40af !important;
+}
+
+.asset-shell .hover\:bg-amberSoft:hover,
+.asset-shell .hover\:bg-orange\/90:hover {
+  background-color: #1d4ed8 !important;
+}
+
+.asset-shell .bg-gold.text-slate-950,
+.asset-shell .bg-orange.text-white,
+.asset-shell .bg-gold svg {
+  color: #ffffff !important;
+}
+
+.asset-shell .text-slate-950 {
+  color: #0f172a !important;
+}
+
+.asset-shell .bg-gold.text-slate-950 {
+  color: #ffffff !important;
+}
+
+.asset-shell .border-white\/10,
+.asset-shell .border-white\/15,
+.asset-shell .border-slate-500,
+.asset-shell .border-rose-300\/20 {
+  border-color: #e2e8f0 !important;
+}
+
+.asset-shell .ring-white\/10,
+.asset-shell .ring-slate-950 {
+  --tw-ring-color: #e2e8f0 !important;
+}
+
+.asset-shell .divide-white\/10 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
+.asset-shell input,
+.asset-shell select,
+.asset-shell textarea {
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.asset-shell input:focus,
+.asset-shell select:focus,
+.asset-shell textarea:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px #dbeafe !important;
+}
+
+.asset-shell thead,
+.asset-shell .bg-panelSoft.text-slate-300 {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+.asset-shell tbody tr:nth-child(even) td {
+  background-color: #f8fafc !important;
+}
+
+.asset-shell tr:hover td,
+.asset-shell nav button:not(.bg-gold):hover {
+  background-color: #eff6ff !important;
+}
+
+.asset-shell .shadow-glow {
+  box-shadow: 0 4px 12px #e2e8f0 !important;
+}
+
+.asset-shell aside {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.asset-shell nav button.bg-gold {
+  background-color: #dbeafe !important;
+  color: #1e40af !important;
+  border: 1px solid #2563eb !important;
+}
+
+.asset-shell nav button.bg-gold svg {
+  color: #1e40af !important;
+}
+
+.asset-shell nav button:not(.bg-gold) {
+  color: #334155 !important;
+}
+
+.asset-shell .bg-emerald-400\/15,
+.asset-shell .bg-rose-500\/15,
+.asset-shell .bg-red-600\/18,
+.asset-shell .bg-orange-500\/15,
+.asset-shell .bg-sky-400\/15,
+.asset-shell .bg-slate-500\/18,
+.asset-shell .bg-amber-400\/15 {
+  background-color: #ffffff !important;
+}
+
+.asset-shell .bg-emerald-500\/10,
+.asset-shell .hover\:bg-emerald-500\/15:hover {
+  background-color: #ecfdf5 !important;
+}
+
+.asset-shell .bg-red-500\/10,
+.asset-shell .hover\:bg-red-500\/10:hover,
+.asset-shell .bg-rose-500\/10 {
+  background-color: #fef2f2 !important;
+}
+
+.asset-shell .bg-amber-500\/10 {
+  background-color: #fefce8 !important;
+}
+
+.asset-shell .border-emerald-300\/25,
+.asset-shell .border-emerald-300\/30,
+.asset-shell .hover\:border-emerald-300\/50:hover {
+  border-color: #10b981 !important;
+}
+
+.asset-shell .border-red-300\/30 {
+  border-color: #f87171 !important;
+}
+
+.asset-shell .border-amber-300\/20,
+.asset-shell .border-amber-400 {
+  border-color: #facc15 !important;
+}
