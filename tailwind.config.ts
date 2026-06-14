@@ -16,6 +16,15 @@ const config: Config = {
         gold: "#1e40af",
         amberSoft: "#1d4ed8",
         orange: "#1e40af",
+        surface: "#ffffff",
+        surfaceSoft: "#f8fafc",
+        line: "#e2e8f0",
+        ink: "#0f172a",
+        muted: "#64748b",
+        primary: {
+          DEFAULT: "#1e40af",
+          hover: "#1d4ed8",
+        },
       },
       fontFamily: {
         thai: ["var(--font-thai)", "Prompt", "Sarabun", "Noto Sans Thai", "sans-serif"],
