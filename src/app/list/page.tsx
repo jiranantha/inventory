@@ -1,5 +1,8 @@
 "use client";
 
+import { useAppData } from "@/components/AppDataProvider";
+import { PlaceholderPage } from "@/components/StatusPages";
+
 import { useState, useMemo } from "react";
 import { AssetStructureBadge, FilterChip, InspectionResultBadge, PageHeader, SelectField, StatusBadge, getAssetStructureFilterLabel } from "@/components/ui";
 import { assetReportExportColumns, assetToReportRow } from "@/lib/assets";
@@ -8,7 +11,7 @@ import { Permissions } from "@/lib/permissions";
 import { uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow } from "@/types";
 
-export function ListPage({
+function ListPage({
   assets,
   annualInspections,
   permissions,
@@ -284,3 +287,19 @@ export function ListPage({
   );
 }
 
+
+export default function ListRoute() {
+  const { permissions, assets, annualInspections, onGoToRecord, onViewDetails, onEditAsset, onDeleteAsset } = useAppData();
+  if (!permissions.canViewList) return <PlaceholderPage title="ไม่มีสิทธิ์ดูรายการครุภัณฑ์" />;
+  return (
+    <ListPage
+      assets={assets}
+      annualInspections={annualInspections}
+      permissions={permissions}
+      onAddAsset={onGoToRecord}
+      onViewDetails={onViewDetails}
+      onEditAsset={onEditAsset}
+      onDeleteAsset={onDeleteAsset}
+    />
+  );
+}

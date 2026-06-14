@@ -1,5 +1,8 @@
 "use client";
 
+import { useAppData } from "@/components/AppDataProvider";
+import { PlaceholderPage } from "@/components/StatusPages";
+
 import { useState, useMemo } from "react";
 import { AssetSetItemsEditor, CloseIconButton, Field, FieldError, FiscalYearField, PhoneField, RecordFormSection, SearchableOrganizationSelect, SelectField, TextAreaField, ThaiDateField, isValidDateInput } from "@/components/ui";
 import { budgetSourceOptions } from "@/constants/options";
@@ -10,7 +13,7 @@ import { readAssetRowsFromFile } from "@/lib/import-export";
 import { AssetImportPreviewRow, AssetListRow, AssetSetItem, EvidenceImage, Organization } from "@/types";
 import { allowedAssetStatuses } from "@/constants/statuses";
 
-export function RecordPage({
+function RecordPage({
   assets,
   onCreateAsset,
   organizationOptions,
@@ -625,3 +628,17 @@ export function RecordPage({
   );
 }
 
+
+export default function RecordRoute() {
+  const { permissions, assets, onCreateAsset, activeOrganizations, activeEquipmentTypes, activeLocations } = useAppData();
+  if (!permissions.canCreate) return <PlaceholderPage title="ไม่มีสิทธิ์เพิ่มข้อมูล" />;
+  return (
+    <RecordPage
+      assets={assets}
+      onCreateAsset={onCreateAsset}
+      organizationOptions={activeOrganizations}
+      equipmentTypeOptions={activeEquipmentTypes}
+      locationOptions={activeLocations}
+    />
+  );
+}

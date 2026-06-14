@@ -1,62 +1,45 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session } from "next-auth";
 import { signOut, useSession } from "next-auth/react";
-import { AssetDetailPage } from "@/components/AssetDetailPage";
-import { AssetEditPage } from "@/components/AssetEditPage";
-import { ListPage } from "@/components/AssetListPage";
-import { AuditPage } from "@/components/AuditPage";
-import { DashboardPage } from "@/components/DashboardPage";
-import { RecordPage } from "@/components/RecordPage";
-import { ReportsPage } from "@/components/ReportsPage";
-import { LoginPage, PendingApprovalPage, PlaceholderPage, UserManagementPage } from "@/components/SettingsPage";
-import { Icon, PageHeader } from "@/components/ui";
-import { menuItems, pageDescriptions } from "@/constants/options";
+import { usePathname, useRouter } from "next/navigation";
+import { LoginPage, PendingApprovalPage } from "@/components/StatusPages";
 import { api, type ActivityLogInput } from "@/lib/api-client";
 import { formatThaiDateTimeWithSeconds } from "@/lib/dates";
 import { exportDashboardToPDF } from "@/lib/import-export";
 import { getOrganizationType } from "@/lib/organizations";
-import { AppUser, Permissions, RoleDefinition, canAccessAsset, getPermissions, getRoleDefinition, initialRoleDefinitions } from "@/lib/permissions";
-import { ActivityLog, AnnualInspection, AssetListRow, MasterDataItem, PageKey } from "@/types";
+import { assetDetailHref, assetEditHref, ROUTES } from "@/lib/routes";
+import {
+  AppUser,
+  Permissions,
+  RoleDefinition,
+  canAccessAsset,
+  getPermissions,
+  initialRoleDefinitions,
+} from "@/lib/permissions";
+import { ActivityLog, AnnualInspection, AssetListRow, MasterDataItem, Organization } from "@/types";
 
-export function PageContent({
-  activePage,
-  assets,
-  annualInspections,
-  activityLogs,
-  permissions,
-  users,
-  selectedAsset,
-  onViewDetails,
-  onEditAsset,
-  onGoToRecord,
-  onCreateAsset,
-  onSaveAnnualInspection,
-  onCancelAnnualInspection,
-  onSaveAsset,
-  onSaveInspectionStatus,
-  onDeleteAsset,
-  onAddUser,
-  onUpdateUser,
-  onBackToList,
-  onViewAllAssets,
-  organizationItems,
-  onOrganizationItemsChange,
-  locationItems,
-  onLocationItemsChange,
-  equipmentTypeItems,
-  onEquipmentTypeItemsChange,
-  roles,
-  onRolesChange,
-}: {
-  activePage: PageKey;
+// Everything every page needs, lifted out of the old single-page component and
+// shared through context so navigating between routes never refetches the data.
+type AppData = {
+  currentUser: AppUser;
+  permissions: Permissions;
   assets: AssetListRow[];
   annualInspections: AnnualInspection[];
   activityLogs: ActivityLog[];
-  permissions: Permissions;
   users: AppUser[];
-  selectedAsset: AssetListRow | null;
+  roles: RoleDefinition[];
+  organizationItems: MasterDataItem[];
+  locationItems: MasterDataItem[];
+  equipmentTypeItems: MasterDataItem[];
+  activeOrganizations: Organization[];
+  activeLocations: string[];
+  activeEquipmentTypes: string[];
+  isDashboardExporting: boolean;
+  toast: string;
+  deleteTarget: AssetListRow | null;
+  showToast: (message: string) => void;
   onViewDetails: (asset: AssetListRow) => void;
   onEditAsset: (asset: AssetListRow) => void;
   onGoToRecord: () => void;
@@ -66,32 +49,26 @@ export function PageContent({
   onSaveAsset: (asset: AssetListRow, oldAsset: AssetListRow) => void;
   onSaveInspectionStatus: (asset: AssetListRow, status: string, inspectionDate: string, note: string) => void;
   onDeleteAsset: (asset: AssetListRow) => void;
+  confirmDeleteAsset: () => void;
+  cancelDelete: () => void;
   onAddUser: (user: AppUser) => void;
   onUpdateUser: (user: AppUser) => void;
   onBackToList: () => void;
   onViewAllAssets: () => void;
-  organizationItems: MasterDataItem[];
+  onDashboardExport: () => void;
   onOrganizationItemsChange: (items: MasterDataItem[]) => void;
-  locationItems: MasterDataItem[];
   onLocationItemsChange: (items: MasterDataItem[]) => void;
-  equipmentTypeItems: MasterDataItem[];
   onEquipmentTypeItemsChange: (items: MasterDataItem[]) => void;
-  roles: RoleDefinition[];
   onRolesChange: (roles: RoleDefinition[]) => void;
-}) {
-  const activeOrganizations = organizationItems.filter((item) => item.active).map((item) => ({ name: item.name, type: getOrganizationType(item.name) }));
-  const activeLocations = locationItems.filter((item) => item.active).map((item) => item.name);
-  const activeEquipmentTypes = equipmentTypeItems.filter((item) => item.active).map((item) => item.name);
-  const title = menuItems.find((item) => item.key === activePage)?.label ?? "Dashboard";
-  if (activePage === "dashboard") return permissions.canViewDashboard ? <DashboardPage assets={assets} annualInspections={annualInspections} onViewAllAssets={onViewAllAssets} /> : <PlaceholderPage title="ไม่มีสิทธิ์เข้าถึง Dashboard" />;
-  if (activePage === "record") return permissions.canCreate ? <RecordPage assets={assets} onCreateAsset={onCreateAsset} organizationOptions={activeOrganizations} equipmentTypeOptions={activeEquipmentTypes} locationOptions={activeLocations} /> : <PlaceholderPage title="ไม่มีสิทธิ์เพิ่มข้อมูล" />;
-  if (activePage === "list") return permissions.canViewList ? <ListPage assets={assets} annualInspections={annualInspections} permissions={permissions} onAddAsset={onGoToRecord} onViewDetails={onViewDetails} onEditAsset={onEditAsset} onDeleteAsset={onDeleteAsset} /> : <PlaceholderPage title="ไม่มีสิทธิ์ดูรายการครุภัณฑ์" />;
-  if (activePage === "detail") return permissions.canViewList ? <AssetDetailPage asset={selectedAsset ?? assets[0]} activityLogs={activityLogs} permissions={permissions} onEdit={onEditAsset} onDelete={onDeleteAsset} onBack={onBackToList} /> : <PlaceholderPage title="ไม่มีสิทธิ์ดูรายละเอียดครุภัณฑ์" />;
-  if (activePage === "edit") return (permissions.canEdit || permissions.canEditLimitedFields) ? <AssetEditPage asset={selectedAsset ?? assets[0]} permissions={permissions} onSave={onSaveAsset} onCancel={() => selectedAsset ? onViewDetails(selectedAsset) : onBackToList()} organizationOptions={activeOrganizations} equipmentTypeOptions={activeEquipmentTypes} locationOptions={activeLocations} existingAssets={assets} /> : <PlaceholderPage title="ไม่มีสิทธิ์แก้ไขข้อมูล" />;
-  if (activePage === "audit") return permissions.canInspect ? <AuditPage assets={assets} annualInspections={annualInspections} onSaveAnnualInspection={onSaveAnnualInspection} onCancelAnnualInspection={onCancelAnnualInspection} onSaveInspectionStatus={onSaveInspectionStatus} /> : <PlaceholderPage title="ไม่มีสิทธิ์ตรวจสอบประจำปี" />;
-  if (activePage === "reports") return permissions.canViewReports ? <ReportsPage assets={assets} annualInspections={annualInspections} permissions={permissions} /> : <PlaceholderPage title="ไม่มีสิทธิ์ดูรายงาน" />;
-  if (activePage === "settings") return permissions.canManageUsers ? <UserManagementPage users={users} onAddUser={onAddUser} permissions={permissions} onUpdateUser={onUpdateUser} roles={roles} onRolesChange={onRolesChange} organizationItems={organizationItems} onOrganizationItemsChange={onOrganizationItemsChange} locationItems={locationItems} onLocationItemsChange={onLocationItemsChange} equipmentTypeItems={equipmentTypeItems} onEquipmentTypeItemsChange={onEquipmentTypeItemsChange} assets={assets} /> : <PlaceholderPage title="ไม่มีสิทธิ์เข้าถึงการตั้งค่า" />;
-  return <PlaceholderPage title={title} />;
+  onLogout: () => void;
+};
+
+const AppDataContext = createContext<AppData | null>(null);
+
+export function useAppData(): AppData {
+  const ctx = useContext(AppDataContext);
+  if (!ctx) throw new Error("useAppData must be used within <AppDataProvider>");
+  return ctx;
 }
 
 function LoadingScreen({ message = "กำลังเตรียมระบบ..." }: { message?: string }) {
@@ -132,7 +109,8 @@ function ConnectionErrorScreen({ onRetry }: { onRetry: () => void }) {
 // of an endless spinner.
 const SESSION_LOADING_TIMEOUT_MS = 15000;
 
-export default function Home() {
+// Gates the authenticated app on session state, then hands off to the data layer.
+export function AppDataProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
 
@@ -156,10 +134,13 @@ export default function Home() {
   if (!session.user.active || !session.user.role) {
     return <PendingApprovalPage email={session.user.email ?? ""} onSignOut={() => signOut()} />;
   }
-  return <AuthenticatedApp sessionUser={session.user} />;
+  return <AuthenticatedDataProvider sessionUser={session.user}>{children}</AuthenticatedDataProvider>;
 }
 
-function AuthenticatedApp({ sessionUser }: { sessionUser: Session["user"] }) {
+function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Session["user"]; children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const currentUser = useMemo<AppUser>(
     () => ({
       id: sessionUser.id,
@@ -189,12 +170,10 @@ function AuthenticatedApp({ sessionUser }: { sessionUser: Session["user"] }) {
   const [assets, setAssets] = useState<AssetListRow[]>([]);
   const [annualInspections, setAnnualInspections] = useState<AnnualInspection[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-  const [selectedAsset, setSelectedAsset] = useState<AssetListRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AssetListRow | null>(null);
   const [toast, setToast] = useState("");
   const [isDashboardExporting, setIsDashboardExporting] = useState(false);
   const [dataReady, setDataReady] = useState(false);
-  const [activePage, setActivePage] = useState<PageKey>("dashboard");
 
   const permissions = getPermissions(currentUser, roles);
 
@@ -238,23 +217,6 @@ function AuthenticatedApp({ sessionUser }: { sessionUser: Session["user"] }) {
     api.getUsers().then(setUsers).catch(() => undefined);
   }, [permissions.canManageUsers]);
 
-  // Keep the active page within what the current role is allowed to see.
-  useEffect(() => {
-    const currentPermissions = getPermissions(currentUser, roles);
-    const pageAllowed =
-      ((activePage === "list" || activePage === "detail") && currentPermissions.canViewList) ||
-      (activePage === "dashboard" && currentPermissions.canViewDashboard) ||
-      (activePage === "record" && currentPermissions.canCreate) ||
-      (activePage === "edit" && (currentPermissions.canEdit || currentPermissions.canEditLimitedFields)) ||
-      (activePage === "audit" && currentPermissions.canInspect) ||
-      (activePage === "reports" && currentPermissions.canViewReports) ||
-      (activePage === "settings" && currentPermissions.canManageUsers);
-    if (!pageAllowed) {
-      setActivePage(currentPermissions.canViewList ? "list" : currentPermissions.canInspect ? "audit" : currentPermissions.canViewDashboard ? "dashboard" : "list");
-      setSelectedAsset(null);
-    }
-  }, [activePage, currentUser, roles]);
-
   const showToast = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 3000);
@@ -269,8 +231,7 @@ function AuthenticatedApp({ sessionUser }: { sessionUser: Session["user"] }) {
       showToast("ไม่มีสิทธิ์ดูข้อมูลครุภัณฑ์รายการนี้");
       return;
     }
-    setSelectedAsset(asset);
-    setActivePage("detail");
+    router.push(assetDetailHref(asset));
   };
 
   const handleEditAsset = (asset: AssetListRow) => {
@@ -278,13 +239,11 @@ function AuthenticatedApp({ sessionUser }: { sessionUser: Session["user"] }) {
       showToast("ไม่มีสิทธิ์แก้ไขข้อมูลครุภัณฑ์รายการนี้");
       return;
     }
-    setSelectedAsset(asset);
-    setActivePage("edit");
+    router.push(assetEditHref(asset));
   };
 
   const handleGoToRecord = () => {
-    setSelectedAsset(null);
-    setActivePage("record");
+    router.push(ROUTES.record);
   };
 
   const handleDashboardExport = async () => {
@@ -322,10 +281,9 @@ function AuthenticatedApp({ sessionUser }: { sessionUser: Session["user"] }) {
     try {
       const { asset: updated, log } = await api.updateAsset(savedAsset.id, savedAsset, logInput);
       setAssets((items) => items.map((item) => (item.id === updated.id ? updated : item)));
-      setSelectedAsset(updated);
       prependLog(log);
       showToast("บันทึกการแก้ไขและ activity_logs สำเร็จ");
-      setActivePage("detail");
+      router.push(assetDetailHref(updated));
     } catch (error) {
       showToast(`บันทึกไม่สำเร็จ: ${(error as Error).message}`);
     }
@@ -393,7 +351,6 @@ function AuthenticatedApp({ sessionUser }: { sessionUser: Session["user"] }) {
     try {
       const { asset: created, log } = await api.createAsset(asset, logInput);
       setAssets((items) => [created, ...items]);
-      setSelectedAsset(created);
       prependLog(log);
       showToast("เพิ่มข้อมูลครุภัณฑ์ใหม่เรียบร้อยแล้ว");
     } catch (error) {
@@ -433,9 +390,9 @@ function AuthenticatedApp({ sessionUser }: { sessionUser: Session["user"] }) {
       prependLog(log);
       setDeleteTarget(null);
       showToast("ลบข้อมูลแบบ soft delete และบันทึก activity_logs แล้ว");
-      if (selectedAsset?.id === target.id) {
-        setSelectedAsset(null);
-        setActivePage("list");
+      // If we were looking at the asset we just deleted, fall back to the list.
+      if (pathname.startsWith(`/list/${target.id}`)) {
+        router.push(ROUTES.list);
       }
     } catch (error) {
       setDeleteTarget(null);
@@ -444,7 +401,7 @@ function AuthenticatedApp({ sessionUser }: { sessionUser: Session["user"] }) {
   };
 
   const handleBackToList = () => {
-    setActivePage("list");
+    router.push(ROUTES.list);
   };
 
   const handleUpdateUser = async (nextUser: AppUser) => {
@@ -519,164 +476,55 @@ function AuthenticatedApp({ sessionUser }: { sessionUser: Session["user"] }) {
     }
   };
 
-  const handleLogout = () => {
-    signOut();
-  };
-
   if (!dataReady) return <LoadingScreen message="กำลังโหลดข้อมูลจากระบบ..." />;
 
   const visibleAssets = assets.filter((asset) => !asset.deletedAt && canAccessAsset(currentUser, permissions, asset));
-  const allowedMenuItems = menuItems.filter((item) => {
-    if (item.key === "dashboard") return permissions.canViewDashboard;
-    if (item.key === "list") return permissions.canViewList;
-    if (item.key === "record") return permissions.canCreate;
-    if (item.key === "audit") return permissions.canInspect;
-    if (item.key === "reports") return permissions.canViewReports;
-    if (item.key === "settings") return permissions.canManageUsers;
-    return true;
-  });
-  const activeItem = activePage === "detail"
-    ? { label: "รายละเอียดครุภัณฑ์" }
-    : activePage === "edit"
-      ? { label: "แก้ไขข้อมูลครุภัณฑ์" }
-    : (menuItems.find((item) => item.key === activePage) ?? menuItems[0]);
+  const activeOrganizations = organizationItems
+    .filter((item) => item.active)
+    .map((item) => ({ name: item.name, type: getOrganizationType(item.name) }));
+  const activeLocations = locationItems.filter((item) => item.active).map((item) => item.name);
+  const activeEquipmentTypes = equipmentTypeItems.filter((item) => item.active).map((item) => item.name);
 
-  return (
-    <main className="asset-shell min-h-screen w-full max-w-full overflow-x-hidden font-thai text-ink transition-colors duration-200">
-      {toast && (
-        <div className="fixed right-4 top-24 z-50 rounded-lg border border-primary/30 bg-slate-950 px-5 py-3 text-sm font-semibold text-primary shadow-glow">
-          {toast}
-        </div>
-      )}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4">
-          <div className="w-full max-w-md rounded-lg border border-line bg-surface p-5 shadow-2xl">
-            <h2 className="text-xl font-bold text-white">ยืนยันการลบข้อมูล</h2>
-            <p className="mt-3 text-sm leading-6 text-ink">
-              ต้องการลบครุภัณฑ์รายการนี้หรือไม่? ข้อมูลจะถูกเก็บไว้ในประวัติและสามารถตรวจสอบย้อนหลังได้
-            </p>
-            <p className="mt-3 rounded-md border border-line bg-slate-950/30 px-3 py-2 text-sm font-semibold text-white">
-              {deleteTarget.assetNumber} · {deleteTarget.assetName}
-            </p>
-            <div className="mt-5 flex justify-end gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">ยกเลิก</button>
-              <button onClick={confirmDeleteAsset} className="rounded-md bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-400">ยืนยันลบ</button>
-            </div>
-          </div>
-        </div>
-      )}
-      <header className="sticky top-0 z-20 border-b border-line bg-navy/90 backdrop-blur">
-        <div className="flex min-h-20 items-center gap-2 px-3 py-3 sm:gap-4 sm:px-4 sm:py-4 lg:px-8">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gold text-slate-950 shadow-glow sm:h-12 sm:w-12">
-            <Icon path="M12 3l8 4v10l-8 4-8-4V7l8-4Zm0 0v18M4 7l8 4 8-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="line-clamp-2 text-sm font-extrabold leading-5 text-white sm:text-lg md:text-2xl">
-              ระบบจัดเก็บและตรวจสอบครุภัณฑ์องค์กรนักศึกษา
-            </h1>
-            <p className="mt-1 hidden text-sm text-muted sm:block md:text-base">
-              ระบบบริหารจัดการครุภัณฑ์ ฝ่าย/ชมรม มหาวิทยาลัยเชียงใหม่
-            </p>
-          </div>
-          <div className="ml-auto flex shrink-0 items-center gap-2 rounded-lg border border-line bg-surface p-1.5 text-sm sm:px-2 sm:py-2 md:gap-3 md:px-3">
-            <div className="hidden text-right sm:block">
-              <p className="font-bold text-white">{currentUser.name}</p>
-              <p className="max-w-[220px] truncate text-xs text-primary">{getRoleDefinition(currentUser.role, roles).name} · {currentUser.organization}</p>
-            </div>
-            <button onClick={handleLogout} className="min-h-10 rounded-md border border-line px-2 py-2 text-xs font-semibold text-ink hover:border-primary hover:text-primary sm:px-3">
-              ออกจากระบบ
-            </button>
-          </div>
-        </div>
-      </header>
+  const value: AppData = {
+    currentUser,
+    permissions,
+    assets: visibleAssets,
+    annualInspections,
+    activityLogs,
+    users,
+    roles,
+    organizationItems,
+    locationItems,
+    equipmentTypeItems,
+    activeOrganizations,
+    activeLocations,
+    activeEquipmentTypes,
+    isDashboardExporting,
+    toast,
+    deleteTarget,
+    showToast,
+    onViewDetails: handleViewDetails,
+    onEditAsset: handleEditAsset,
+    onGoToRecord: handleGoToRecord,
+    onCreateAsset: handleCreateAsset,
+    onSaveAnnualInspection: handleSaveAnnualInspection,
+    onCancelAnnualInspection: handleCancelAnnualInspection,
+    onSaveAsset: handleSaveAsset,
+    onSaveInspectionStatus: handleSaveInspectionStatus,
+    onDeleteAsset: handleDeleteAsset,
+    confirmDeleteAsset,
+    cancelDelete: () => setDeleteTarget(null),
+    onAddUser: handleAddUser,
+    onUpdateUser: handleUpdateUser,
+    onBackToList: handleBackToList,
+    onViewAllAssets: () => router.push(ROUTES.list),
+    onDashboardExport: handleDashboardExport,
+    onOrganizationItemsChange: handleOrganizationItemsChange,
+    onLocationItemsChange: handleLocationItemsChange,
+    onEquipmentTypeItemsChange: handleEquipmentTypeItemsChange,
+    onRolesChange: handleRolesChange,
+    onLogout: () => signOut(),
+  };
 
-      <div className="grid w-full min-w-0 lg:grid-cols-[240px_minmax(0,1fr)]">
-        <aside className="min-w-0 border-b border-line bg-slate-950/30 p-3 lg:min-h-[calc(100vh-80px)] lg:border-b-0 lg:border-r">
-          <nav className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
-            {allowedMenuItems.map((item) => {
-              const active = item.key === activePage;
-              return (
-                <button
-                  key={item.key}
-                  onClick={() => {
-                    setActivePage(item.key);
-                    if (item.key !== "detail" && item.key !== "edit") setSelectedAsset(null);
-                  }}
-                  className={`flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-3 text-left text-sm font-semibold transition ${
-                    active
-                      ? "bg-gold text-blue-800 shadow-glow"
-                      : "bg-surface text-ink ring-1 ring-line hover:bg-surfaceSoft hover:text-white"
-                  }`}
-                >
-                  <Icon path={item.icon} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </aside>
-
-        <section className="min-w-0 px-3 py-4 md:px-4 lg:px-5 lg:py-6">
-          {!(["list", "reports", "detail", "edit"] as PageKey[]).includes(activePage) && (
-            <div className="mx-auto mb-5 w-full max-w-screen-2xl">
-              <PageHeader
-                title={activePage === "audit" ? "ตรวจสอบครุภัณฑ์ประจำปี" : activePage === "record" ? "บันทึกข้อมูลครุภัณฑ์" : activeItem.label}
-                description={pageDescriptions[activePage]}
-                actions={activePage !== "record" && activePage !== "settings" ? (
-                  <>
-                    {permissions.canExport && (
-                  <button
-                    onClick={activePage === "dashboard" ? handleDashboardExport : () => setActivePage("reports")}
-                    disabled={activePage === "dashboard" && isDashboardExporting}
-                    className="rounded-md border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:bg-surfaceSoft disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {activePage === "dashboard" && isDashboardExporting ? "กำลังสร้าง PDF..." : "ส่งออก"}
-                  </button>
-                    )}
-                    {activePage !== "dashboard" && permissions.canCreate && <button onClick={handleGoToRecord} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 transition hover:bg-primary-hover">บันทึกใหม่</button>}
-                  </>
-                ) : undefined}
-              />
-            </div>
-          )}
-
-          <div className="mx-auto w-full max-w-screen-2xl min-w-0">
-            <PageContent
-              activePage={activePage}
-              assets={visibleAssets}
-              annualInspections={annualInspections}
-              activityLogs={activityLogs}
-              permissions={permissions}
-              users={users}
-              selectedAsset={selectedAsset}
-              onViewDetails={handleViewDetails}
-              onEditAsset={handleEditAsset}
-              onGoToRecord={handleGoToRecord}
-              onCreateAsset={handleCreateAsset}
-              onSaveAnnualInspection={handleSaveAnnualInspection}
-              onCancelAnnualInspection={handleCancelAnnualInspection}
-              onSaveAsset={handleSaveAsset}
-              onSaveInspectionStatus={handleSaveInspectionStatus}
-              onDeleteAsset={handleDeleteAsset}
-              onAddUser={handleAddUser}
-              onUpdateUser={handleUpdateUser}
-              onBackToList={handleBackToList}
-              onViewAllAssets={() => {
-                setSelectedAsset(null);
-                setActivePage("list");
-              }}
-              organizationItems={organizationItems}
-              onOrganizationItemsChange={handleOrganizationItemsChange}
-              locationItems={locationItems}
-              onLocationItemsChange={handleLocationItemsChange}
-              equipmentTypeItems={equipmentTypeItems}
-              onEquipmentTypeItemsChange={handleEquipmentTypeItemsChange}
-              roles={roles}
-              onRolesChange={handleRolesChange}
-            />
-          </div>
-        </section>
-      </div>
-    </main>
-  );
+  return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
 }

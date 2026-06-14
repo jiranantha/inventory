@@ -1,5 +1,8 @@
 "use client";
 
+import { useAppData } from "@/components/AppDataProvider";
+import { PlaceholderPage } from "@/components/StatusPages";
+
 import { useState, useMemo } from "react";
 import { FilterChip, PageHeader, SelectField } from "@/components/ui";
 import { annualInspectionToReportRow, assetReportDisplayColumns, assetReportExportColumns, assetToReportRow, getAssetValue, getReportRowValue, inspectionReportColumns } from "@/lib/assets";
@@ -10,7 +13,7 @@ import { uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow } from "@/types";
 import { ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
 
-export function ReportsPage({
+function ReportsPage({
   assets,
   annualInspections,
   permissions,
@@ -258,3 +261,9 @@ export function ReportsPage({
   );
 }
 
+
+export default function ReportsRoute() {
+  const { permissions, assets, annualInspections } = useAppData();
+  if (!permissions.canViewReports) return <PlaceholderPage title="ไม่มีสิทธิ์ดูรายงาน" />;
+  return <ReportsPage assets={assets} annualInspections={annualInspections} permissions={permissions} />;
+}

@@ -1,5 +1,8 @@
 "use client";
 
+import { useAppData } from "@/components/AppDataProvider";
+import { PlaceholderPage } from "@/components/StatusPages";
+
 import { useState, useEffect } from "react";
 import {
   Bar,
@@ -20,7 +23,7 @@ import { formatThaiDate, getCurrentInspectionYear, getDateSortTime } from "@/lib
 import { countBy } from "@/lib/utils";
 import { AnnualInspection, AssetListRow } from "@/types";
 
-export function DashboardTable({
+function DashboardTable({
   title,
   columns,
   rows,
@@ -99,7 +102,7 @@ export function DashboardTable({
   );
 }
 
-export function DashboardPage({
+function DashboardPage({
   assets,
   annualInspections,
   onViewAllAssets,
@@ -362,3 +365,9 @@ export function DashboardPage({
   );
 }
 
+
+export default function DashboardRoute() {
+  const { permissions, assets, annualInspections, onViewAllAssets } = useAppData();
+  if (!permissions.canViewDashboard) return <PlaceholderPage title="ไม่มีสิทธิ์เข้าถึง Dashboard" />;
+  return <DashboardPage assets={assets} annualInspections={annualInspections} onViewAllAssets={onViewAllAssets} />;
+}

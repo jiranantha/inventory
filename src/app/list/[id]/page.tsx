@@ -1,5 +1,9 @@
 "use client";
 
+import { useParams } from "next/navigation";
+import { useAppData } from "@/components/AppDataProvider";
+import { PlaceholderPage } from "@/components/StatusPages";
+
 import { useState } from "react";
 import { AssetStructureBadge, BackIconButton, CloseIconButton, DetailInfoItem, DetailSection, PageHeader, StatusBadge } from "@/components/ui";
 import { getAssetDerivedValues, getNumberPlacementValue, getPurchaseProjectValue } from "@/lib/assets";
@@ -7,7 +11,7 @@ import { formatThaiDateTime } from "@/lib/dates";
 import { Permissions } from "@/lib/permissions";
 import { ActivityLog, AssetListRow, HistoryFieldRow } from "@/types";
 
-export function AssetDetailPage({
+function AssetDetailPage({
   asset,
   activityLogs,
   permissions,
@@ -296,3 +300,21 @@ export function AssetDetailPage({
   );
 }
 
+
+export default function AssetDetailRoute() {
+  const params = useParams<{ id: string }>();
+  const { permissions, assets, activityLogs, onEditAsset, onDeleteAsset, onBackToList } = useAppData();
+  if (!permissions.canViewList) return <PlaceholderPage title="ไม่มีสิทธิ์ดูรายละเอียดครุภัณฑ์" />;
+  const asset = assets.find((item) => String(item.id) === params.id);
+  if (!asset) return <PlaceholderPage title="ไม่พบครุภัณฑ์รายการนี้" />;
+  return (
+    <AssetDetailPage
+      asset={asset}
+      activityLogs={activityLogs}
+      permissions={permissions}
+      onEdit={onEditAsset}
+      onDelete={onDeleteAsset}
+      onBack={onBackToList}
+    />
+  );
+}
