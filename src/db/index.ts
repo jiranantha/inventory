@@ -29,6 +29,16 @@ const client =
     // Supabase's transaction pooler (port 6543) does not support prepared
     // statements / session state — required for serverless. Harmless otherwise.
     prepare: false,
+    // Fail fast if a connection can't be established, instead of letting the
+    // serverless function hang up to its 300s max duration.
+    connect_timeout: Number(process.env.DB_CONNECT_TIMEOUT ?? 10),
+    // On serverless the postgres.js client is reused across invocations, but
+    // Supabase's pooler silently reaps idle server-side connections. Reusing a
+    // reaped connection makes the next query block on a dead socket until the
+    // function times out (the 300s "/api/auth/session" hang). Recycle our own
+    // connections first so we always reconnect to a live one.
+    idle_timeout: isServerless ? 20 : undefined,
+    max_lifetime: isServerless ? 60 * 5 : undefined,
   });
 
 if (process.env.NODE_ENV !== "production") {
