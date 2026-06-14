@@ -11,3 +11,13 @@ declare module "next-auth" {
     } & DefaultSession["user"];
   }
 }
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    role: string | null;
+    organization: string;
+    active: boolean;
+    viewerCanExport: boolean;
+  }
+}

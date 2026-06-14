@@ -129,7 +129,11 @@ export function getPermissions(
   roles: RoleDefinition[] = initialRoleDefinitions,
 ): Permissions {
   const role = getRoleDefinition(user.role, roles);
-  return { ...role.permissions, canExport: role.permissions.canExport && user.viewerCanExport };
+  // A role row loaded from the database can have a null/partial `permissions`
+  // value (bad seed data, schema drift). Merge onto a full default so render-time
+  // reads like `permissions.canExport` can never throw and crash the whole app.
+  const rolePermissions: Permissions = { ...noPermissions, ...(role?.permissions ?? {}) };
+  return { ...rolePermissions, canExport: rolePermissions.canExport && Boolean(user.viewerCanExport) };
 }
 
 export function getPermissionLabel(permissions: Permissions) {
