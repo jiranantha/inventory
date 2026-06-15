@@ -12,3 +12,7 @@
 
 # typescript incremental build cache
 tsconfig.tsbuildinfo
+
+# import scripts and backup data (may contain sensitive export dumps)
+/imports/run-import.js
+/imports/backups/

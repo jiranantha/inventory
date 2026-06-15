@@ -9,7 +9,6 @@ import { ListPage } from "@/components/AssetListPage";
 import { AuditPage } from "@/components/AuditPage";
 import { DashboardPage } from "@/components/DashboardPage";
 import { RecordPage } from "@/components/RecordPage";
-import { ReportsPage } from "@/components/ReportsPage";
 import { LoginPage, PendingApprovalPage, PlaceholderPage, UserManagementPage } from "@/components/SettingsPage";
 import { Icon, PageHeader } from "@/components/ui";
 import { menuItems, pageDescriptions } from "@/constants/options";
@@ -89,7 +88,6 @@ export function PageContent({
   if (activePage === "detail") return permissions.canViewList ? <AssetDetailPage asset={selectedAsset ?? assets[0]} activityLogs={activityLogs} permissions={permissions} onEdit={onEditAsset} onDelete={onDeleteAsset} onBack={onBackToList} /> : <PlaceholderPage title="ไม่มีสิทธิ์ดูรายละเอียดครุภัณฑ์" />;
   if (activePage === "edit") return (permissions.canEdit || permissions.canEditLimitedFields) ? <AssetEditPage asset={selectedAsset ?? assets[0]} permissions={permissions} onSave={onSaveAsset} onCancel={() => selectedAsset ? onViewDetails(selectedAsset) : onBackToList()} organizationOptions={activeOrganizations} equipmentTypeOptions={activeEquipmentTypes} locationOptions={activeLocations} existingAssets={assets} /> : <PlaceholderPage title="ไม่มีสิทธิ์แก้ไขข้อมูล" />;
   if (activePage === "audit") return permissions.canInspect ? <AuditPage assets={assets} annualInspections={annualInspections} onSaveAnnualInspection={onSaveAnnualInspection} onCancelAnnualInspection={onCancelAnnualInspection} onSaveInspectionStatus={onSaveInspectionStatus} /> : <PlaceholderPage title="ไม่มีสิทธิ์ตรวจสอบประจำปี" />;
-  if (activePage === "reports") return permissions.canViewReports ? <ReportsPage assets={assets} annualInspections={annualInspections} permissions={permissions} /> : <PlaceholderPage title="ไม่มีสิทธิ์ดูรายงาน" />;
   if (activePage === "settings") return permissions.canManageUsers ? <UserManagementPage users={users} onAddUser={onAddUser} permissions={permissions} onUpdateUser={onUpdateUser} roles={roles} onRolesChange={onRolesChange} organizationItems={organizationItems} onOrganizationItemsChange={onOrganizationItemsChange} locationItems={locationItems} onLocationItemsChange={onLocationItemsChange} equipmentTypeItems={equipmentTypeItems} onEquipmentTypeItemsChange={onEquipmentTypeItemsChange} assets={assets} /> : <PlaceholderPage title="ไม่มีสิทธิ์เข้าถึงการตั้งค่า" />;
   return <PlaceholderPage title={title} />;
 }
@@ -247,7 +245,6 @@ function AuthenticatedApp({ sessionUser }: { sessionUser: Session["user"] }) {
       (activePage === "record" && currentPermissions.canCreate) ||
       (activePage === "edit" && (currentPermissions.canEdit || currentPermissions.canEditLimitedFields)) ||
       (activePage === "audit" && currentPermissions.canInspect) ||
-      (activePage === "reports" && currentPermissions.canViewReports) ||
       (activePage === "settings" && currentPermissions.canManageUsers);
     if (!pageAllowed) {
       setActivePage(currentPermissions.canViewList ? "list" : currentPermissions.canInspect ? "audit" : currentPermissions.canViewDashboard ? "dashboard" : "list");
@@ -531,7 +528,6 @@ function AuthenticatedApp({ sessionUser }: { sessionUser: Session["user"] }) {
     if (item.key === "list") return permissions.canViewList;
     if (item.key === "record") return permissions.canCreate;
     if (item.key === "audit") return permissions.canInspect;
-    if (item.key === "reports") return permissions.canViewReports;
     if (item.key === "settings") return permissions.canManageUsers;
     return true;
   });
@@ -617,20 +613,20 @@ function AuthenticatedApp({ sessionUser }: { sessionUser: Session["user"] }) {
         </aside>
 
         <section className="min-w-0 px-3 py-4 md:px-4 lg:px-5 lg:py-6">
-          {!(["list", "reports", "detail", "edit"] as PageKey[]).includes(activePage) && (
+          {!(["list", "detail", "edit"] as PageKey[]).includes(activePage) && (
             <div className="mx-auto mb-5 w-full max-w-screen-2xl">
               <PageHeader
                 title={activePage === "audit" ? "ตรวจสอบครุภัณฑ์ประจำปี" : activePage === "record" ? "บันทึกข้อมูลครุภัณฑ์" : activeItem.label}
                 description={pageDescriptions[activePage]}
                 actions={activePage !== "record" && activePage !== "settings" ? (
                   <>
-                    {permissions.canExport && (
+                    {permissions.canExport && activePage === "dashboard" && (
                   <button
-                    onClick={activePage === "dashboard" ? handleDashboardExport : () => setActivePage("reports")}
-                    disabled={activePage === "dashboard" && isDashboardExporting}
+                    onClick={handleDashboardExport}
+                    disabled={isDashboardExporting}
                     className="rounded-md border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:bg-surfaceSoft disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {activePage === "dashboard" && isDashboardExporting ? "กำลังสร้าง PDF..." : "ส่งออก"}
+                    {isDashboardExporting ? "กำลังสร้าง PDF..." : "ส่งออก"}
                   </button>
                     )}
                     {activePage !== "dashboard" && permissions.canCreate && <button onClick={handleGoToRecord} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 transition hover:bg-primary-hover">บันทึกใหม่</button>}

@@ -10,7 +10,6 @@ export type Permissions = {
   canDelete: boolean;
   canExport: boolean;
   canInspect: boolean;
-  canViewReports: boolean;
   canManageUsers: boolean;
   canViewAllOrganizations: boolean;
   canEditLimitedFields: boolean;
@@ -57,7 +56,7 @@ export type ApiAssetScope = {
 
 export const noPermissions: Permissions = {
   canViewDashboard: false, canViewList: false, canCreate: false, canEdit: false, canDelete: false, canExport: false,
-  canInspect: false, canViewReports: false, canManageUsers: false, canViewAllOrganizations: true,
+  canInspect: false, canManageUsers: false, canViewAllOrganizations: true,
   canEditLimitedFields: false,
 };
 
@@ -70,7 +69,6 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canDelete: true,
       canExport: true,
       canInspect: true,
-      canViewReports: true,
       canManageUsers: true,
       canViewAllOrganizations: true,
       canEditLimitedFields: false,
@@ -83,7 +81,6 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canDelete: false,
       canExport: true,
       canInspect: true,
-      canViewReports: true,
       canManageUsers: false,
       canViewAllOrganizations: true,
       canEditLimitedFields: false,
@@ -96,7 +93,6 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canDelete: false,
       canExport: false,
       canInspect: true,
-      canViewReports: false,
       canManageUsers: false,
       canViewAllOrganizations: true,
       canEditLimitedFields: false,
@@ -104,8 +100,8 @@ export const initialRoleDefinitions: RoleDefinition[] = [
   { key: "Inspector", name: "ผู้ตรวจสอบ", description: "ดูรายการและบันทึกผลตรวจสอบประจำปี", allowExport: false, active: true, permissions: {
       ...noPermissions, canViewList: true, canInspect: true, canViewAllOrganizations: true,
   } },
-  { key: "Viewer", name: "ผู้ดูรายงาน", description: "ดูหน้าภาพรวมและรายงาน", allowExport: false, active: true, permissions: {
-      ...noPermissions, canViewDashboard: true, canViewList: true, canViewReports: true, canViewAllOrganizations: false,
+  { key: "Viewer", name: "ผู้ดูรายงาน", description: "ดูหน้าภาพรวมและรายการครุภัณฑ์", allowExport: false, active: true, permissions: {
+      ...noPermissions, canViewDashboard: true, canViewList: true, canViewAllOrganizations: false,
   } },
 ];
 
@@ -142,7 +138,6 @@ export function getPermissionLabel(permissions: Permissions) {
     permissions.canViewList && "แสดงรายการ",
     permissions.canInspect && "ตรวจสอบประจำปี",
     permissions.canCreate && "บันทึกข้อมูล",
-    permissions.canViewReports && "รายงาน",
     permissions.canManageUsers && "ตั้งค่า",
     permissions.canEdit && "แก้ไขข้อมูลครุภัณฑ์",
     permissions.canDelete && "ลบข้อมูลครุภัณฑ์",

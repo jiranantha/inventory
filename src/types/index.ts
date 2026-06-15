@@ -1,4 +1,4 @@
-export type PageKey = "dashboard" | "record" | "list" | "detail" | "edit" | "audit" | "reports" | "settings";
+export type PageKey = "dashboard" | "record" | "list" | "detail" | "edit" | "audit" | "settings";
 export type Organization = {
   name: string;
   type: "สโมสรนักศึกษา" | "สภานักศึกษา" | "ฝ่าย" | "ชมรม" | "ชมรมจังหวัด" | "อื่น ๆ";
