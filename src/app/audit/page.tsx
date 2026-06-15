@@ -1,5 +1,8 @@
 "use client";
 
+import { useAppData } from "@/components/AppDataProvider";
+import { PlaceholderPage } from "@/components/StatusPages";
+
 import { useState, useMemo } from "react";
 import { buttonColors, inspectionStatusColors } from "@/constants/colors";
 import { CloseIconButton, Field, FilterChip, SelectField, StatusBadge, TextAreaField, ThaiDateField } from "@/components/ui";
@@ -9,7 +12,7 @@ import { uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow, EvidenceImage } from "@/types";
 import { allowedAssetStatuses, ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
 
-export function AuditPage({
+function AuditPage({
   assets,
   annualInspections,
   onSaveAnnualInspection,
@@ -591,3 +594,17 @@ export function AuditPage({
   );
 }
 
+
+export default function AuditRoute() {
+  const { permissions, assets, annualInspections, onSaveAnnualInspection, onCancelAnnualInspection, onSaveInspectionStatus } = useAppData();
+  if (!permissions.canInspect) return <PlaceholderPage title="ไม่มีสิทธิ์ตรวจสอบประจำปี" />;
+  return (
+    <AuditPage
+      assets={assets}
+      annualInspections={annualInspections}
+      onSaveAnnualInspection={onSaveAnnualInspection}
+      onCancelAnnualInspection={onCancelAnnualInspection}
+      onSaveInspectionStatus={onSaveInspectionStatus}
+    />
+  );
+}

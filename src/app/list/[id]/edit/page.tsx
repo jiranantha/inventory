@@ -1,5 +1,10 @@
 "use client";
 
+import { useParams, useRouter } from "next/navigation";
+import { useAppData } from "@/components/AppDataProvider";
+import { PlaceholderPage } from "@/components/StatusPages";
+import { assetDetailHref } from "@/lib/routes";
+
 import { useState, useMemo } from "react";
 import { AssetSetItemsEditor, BackIconButton, DetailInfoItem, Field, FiscalYearField, PageHeader, PhoneField, RecordFormSection, SearchableOrganizationSelect, SelectField, TextAreaField, ThaiDateField } from "@/components/ui";
 import { budgetSourceOptions } from "@/constants/options";
@@ -10,7 +15,7 @@ import { Permissions } from "@/lib/permissions";
 import { AssetListRow, AssetSetItem, Organization } from "@/types";
 import { allowedAssetStatuses } from "@/constants/statuses";
 
-export function AssetEditPage({
+function AssetEditPage({
   asset,
   permissions,
   onSave,
@@ -275,3 +280,24 @@ export function AssetEditPage({
   );
 }
 
+
+export default function AssetEditRoute() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const { permissions, assets, onSaveAsset, activeOrganizations, activeEquipmentTypes, activeLocations } = useAppData();
+  if (!(permissions.canEdit || permissions.canEditLimitedFields)) return <PlaceholderPage title="ไม่มีสิทธิ์แก้ไขข้อมูล" />;
+  const asset = assets.find((item) => String(item.id) === params.id);
+  if (!asset) return <PlaceholderPage title="ไม่พบครุภัณฑ์รายการนี้" />;
+  return (
+    <AssetEditPage
+      asset={asset}
+      permissions={permissions}
+      onSave={onSaveAsset}
+      onCancel={() => router.push(assetDetailHref(asset))}
+      organizationOptions={activeOrganizations}
+      equipmentTypeOptions={activeEquipmentTypes}
+      locationOptions={activeLocations}
+      existingAssets={assets}
+    />
+  );
+}
