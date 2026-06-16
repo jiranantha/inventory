@@ -1,10 +1,10 @@
 import { PageKey } from "@/types";
 
 export const menuItems: Array<{ key: PageKey; label: string; icon: string }> = [
-  { key: "dashboard", label: "Dashboard", icon: "M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z" },
-  { key: "list", label: "แสดงรายการครุภัณฑ์", icon: "M4 6h16M4 12h16M4 18h16M7 6v12" },
-  { key: "audit", label: "ตรวจสอบครุภัณฑ์", icon: "M9 12l2 2 4-5M12 3l8 4v5c0 5-3.4 8.5-8 9-4.6-.5-8-4-8-9V7l8-4Z" },
-  { key: "record", label: "บันทึกข้อมูลครุภัณฑ์", icon: "M5 3h10l4 4v14H5V3Zm9 1.5V8h3.5M8 12h8M8 16h8M8 8h3" },
+  { key: "dashboard", label: "ภาพรวม", icon: "M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z" },
+  { key: "list", label: "รายงาน", icon: "M4 6h16M4 12h16M4 18h16M7 6v12" },
+  { key: "audit", label: "ตรวจสอบ", icon: "M9 12l2 2 4-5M12 3l8 4v5c0 5-3.4 8.5-8 9-4.6-.5-8-4-8-9V7l8-4Z" },
+  { key: "record", label: "เพิ่มข้อมูล", icon: "M5 3h10l4 4v14H5V3Zm9 1.5V8h3.5M8 12h8M8 16h8M8 8h3" },
   { key: "settings", label: "ตั้งค่า", icon: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8 4a7.7 7.7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1L15.5 3h-4l-.3 3a7 7 0 0 0-1.7 1l-2.4-1-2 3.5L7.1 11a7.7 7.7 0 0 0 0 2L5.1 14.5l2 3.5 2.4-1a7 7 0 0 0 1.7 1l.3 3h4l.3-3a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5c.1-.3.1-.7.1-1Z" },
 ];
 
