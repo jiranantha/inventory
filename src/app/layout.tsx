@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import { Noto_Sans_Thai } from "next/font/google";
+import { IBM_Plex_Sans_Thai } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { AppDataProvider } from "@/components/AppDataProvider";
 import { AppShell } from "@/components/AppShell";
 import "./globals.css";
 
-const notoSansThai = Noto_Sans_Thai({
+const ibmPlexSansThai = IBM_Plex_Sans_Thai({
   subsets: ["thai"],
   weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-thai",
+  variable: "--font-ibm-plex-thai",
   display: "swap",
 });
 
@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className={notoSansThai.variable}>
+    <html lang="th" className={ibmPlexSansThai.variable}>
       <body>
         <Providers>
           <AppDataProvider>
