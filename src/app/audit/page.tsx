@@ -227,6 +227,7 @@ function AuditPage({
       evidenceFileNames: evidenceImages.map((image) => image.name),
       evidenceImages,
       note: inspectionNote,
+      previousStatus: existing ? (existing.previousStatus ?? undefined) : selectedAsset.status,
       createdAt: existing?.createdAt ?? savedAt,
       updatedAt: savedAt,
     };

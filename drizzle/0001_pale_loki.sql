@@ -1,0 +1,1 @@
+ALTER TABLE "annual_inspections" ADD COLUMN "previous_status" text;

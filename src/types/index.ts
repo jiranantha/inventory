@@ -73,6 +73,7 @@ export type AnnualInspection = {
   evidenceFileNames: string[];
   evidenceImages?: EvidenceImage[];
   note: string;
+  previousStatus?: string;
   createdAt: string;
   updatedAt: string;
 };

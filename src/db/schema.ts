@@ -194,6 +194,7 @@ export const annualInspections = pgTable(
     evidenceFileNames: jsonb("evidence_file_names").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     evidenceImages: jsonb("evidence_images").$type<EvidenceImage[]>().notNull().default(sql`'[]'::jsonb`),
     note: text("note").notNull().default(""),
+    previousStatus: text("previous_status"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -101,6 +101,7 @@ export function rowToInspection(row: InspectionRow): AnnualInspection {
     evidenceFileNames: row.evidenceFileNames ?? [],
     evidenceImages: (row.evidenceImages ?? []) as EvidenceImage[],
     note: row.note,
+    previousStatus: row.previousStatus ?? undefined,
     createdAt: row.createdAt ? formatThaiDateTimeWithSeconds(row.createdAt.toISOString()) : "",
     updatedAt: row.updatedAt ? formatThaiDateTimeWithSeconds(row.updatedAt.toISOString()) : "",
   };
@@ -118,6 +119,7 @@ export function inspectionToColumns(inspection: AnnualInspection) {
     evidenceFileNames: inspection.evidenceFileNames ?? [],
     evidenceImages: (inspection.evidenceImages ?? []) as EvidenceImage[],
     note: inspection.note ?? "",
+    previousStatus: inspection.previousStatus ?? null,
   };
 }
 

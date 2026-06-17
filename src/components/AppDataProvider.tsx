@@ -312,6 +312,7 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
   };
 
   const handleCancelAnnualInspection = async (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => {
+    const previousStatus = inspection?.previousStatus;
     const logInput: ActivityLogInput = {
       userName: currentUser.name,
       actionType: "ยกเลิกผลตรวจ",
@@ -321,13 +322,20 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
       oldValue: inspection
         ? `ปีตรวจสอบ: ${inspection.inspectionYear}, วันที่ตรวจสอบ: ${inspection.inspectionDate}, สถานะหลังตรวจ: ${inspection.result}`
         : `ปีตรวจสอบ: ${inspectionYear}`,
-      newValue: "ลบเฉพาะ annual_inspections ของปีที่เลือก",
-      note: "ไม่ได้ย้อนสถานะครุภัณฑ์โดยอัตโนมัติ",
+      newValue: previousStatus
+        ? `ย้อนสถานะครุภัณฑ์จาก "${inspection?.result}" กลับเป็น "${previousStatus}"`
+        : "ลบเฉพาะ annual_inspections ของปีที่เลือก",
+      note: previousStatus ? "ย้อนสถานะครุภัณฑ์โดยอัตโนมัติ" : "ไม่ได้ย้อนสถานะครุภัณฑ์โดยอัตโนมัติ (ไม่มีข้อมูลสถานะก่อนหน้า)",
     };
     try {
       const { log } = await api.deleteInspection(asset.id, inspectionYear, logInput);
       setAnnualInspections((items) => items.filter((item) => !(item.assetId === asset.id && item.inspectionYear === inspectionYear)));
       prependLog(log);
+      if (previousStatus) {
+        const restoredAsset = { ...asset, status: previousStatus, inspectionResult: previousStatus };
+        const { asset: saved } = await api.updateAsset(asset.id, restoredAsset);
+        setAssets((items) => items.map((item) => (item.id === saved.id ? saved : item)));
+      }
       showToast(`ยกเลิกผลตรวจสอบประจำปี ${inspectionYear} แล้ว`);
     } catch (error) {
       showToast(`ยกเลิกผลตรวจสอบไม่สำเร็จ: ${(error as Error).message}`);
