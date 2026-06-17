@@ -184,23 +184,23 @@ function ListPage({
 
       <div className="hidden w-full overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="w-full overflow-x-auto">
-          <table className="w-full min-w-[1080px] table-fixed border-collapse text-left text-xs xl:min-w-0">
+          <table className="w-full min-w-[960px] table-fixed border-collapse text-left text-sm xl:min-w-0">
             <colgroup>
-              <col className="w-[50px]" />
-              <col className="w-[90px]" />
-              <col className="w-[160px]" />
-              <col className="w-[260px]" />
-              <col className="w-[150px]" />
-              <col className="w-[250px]" />
-              <col className="w-[110px]" />
-              <col className="w-[140px]" />
+              <col className="w-[45px]" />
               <col className="w-[80px]" />
-              <col className="w-[170px]" />
+              <col className="w-[150px]" />
+              <col className="w-[200px]" />
+              <col className="w-[115px]" />
+              <col className="w-[165px]" />
+              <col className="w-[100px]" />
+              <col className="w-[130px]" />
+              <col className="w-[65px]" />
+              <col className="w-[165px]" />
             </colgroup>
             <thead className="bg-surfaceSoft text-ink">
               <tr>
                 {["ลำดับ", "ปีงบประมาณ", "หมายเลขครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "ลักษณะ", "ฝ่าย/ชมรมที่รับผิดชอบ", "สถานะ", "ผลการตรวจสอบประจำปี", "รูปภาพ", "จัดการ"].map((heading) => (
-                  <th key={heading} className={`border-b border-line px-2 py-2 font-semibold ${heading === "สถานะ" || heading === "ผลการตรวจสอบประจำปี" || heading === "จัดการ" ? "whitespace-nowrap" : ""}`}>
+                  <th key={heading} className="border-b border-line px-2 py-2.5 font-semibold">
                     {heading}
                   </th>
                 ))}
@@ -209,25 +209,25 @@ function ListPage({
             <tbody className="divide-y divide-line bg-surface text-ink">
               {visibleRows.map((row, index) => (
                 <tr key={row.assetCode} className="align-top hover:bg-surfaceMuted">
-                  <td className="px-2 py-2 text-muted">{(safePage - 1) * pageSize + index + 1}</td>
-                  <td className="px-2 py-2">{row.fiscalYear}</td>
-                  <td className="px-2 py-2 font-semibold leading-5 text-primary" title={row.assetNumber}><div className="line-clamp-2 max-w-[150px] break-words">{row.assetNumber}</div></td>
-                  <td className="px-2 py-2 font-semibold leading-5 text-ink" title={row.assetName}><div className="line-clamp-2 max-w-[220px] break-words">{row.assetName}</div></td>
-                  <td className="px-2 py-2"><AssetStructureBadge asset={row} /></td>
-                  <td className="px-2 py-2">
-                    <span className="line-clamp-2 max-w-[220px] break-words leading-5" title={row.organization}>{row.organization}</span>
+                  <td className="px-2 py-3 text-muted">{(safePage - 1) * pageSize + index + 1}</td>
+                  <td className="px-2 py-3">{row.fiscalYear}</td>
+                  <td className="px-2 py-3 font-semibold text-primary" title={row.assetNumber}><div className="line-clamp-2 break-words">{row.assetNumber}</div></td>
+                  <td className="px-2 py-3 font-semibold text-ink" title={row.assetName}><div className="line-clamp-2 break-words">{row.assetName}</div></td>
+                  <td className="px-2 py-3"><AssetStructureBadge asset={row} /></td>
+                  <td className="px-2 py-3">
+                    <span className="truncate" title={row.organization}>{row.organization}</span>
                   </td>
-                  <td className="whitespace-nowrap px-2 py-2"><StatusBadge value={row.status} variant="soft" /></td>
-                  <td className="whitespace-nowrap px-2 py-2">
+                  <td className="px-2 py-3"><StatusBadge value={row.status} variant="soft" /></td>
+                  <td className="px-2 py-3">
                     <InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-3">
                     <button className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-line bg-slate-900 text-[11px] font-bold text-primary hover:border-primary">
                       {row.imageCount}
                     </button>
                   </td>
-                  <td className="whitespace-nowrap px-2 py-2">
-                    <div className="flex min-w-[160px] max-w-[170px] flex-row items-center gap-1.5">
+                  <td className="px-2 py-3">
+                    <div className="flex flex-row items-center gap-1.5">
                       <button onClick={() => onViewDetails(row)} className="rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-ink hover:border-primary hover:text-primary">รายละเอียด</button>
                       {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="rounded-md bg-orange px-2 py-1 text-[11px] font-semibold text-white hover:bg-orange/90">แก้ไข</button>}
                       {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="rounded-md border border-red-300/30 px-2 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/10">ลบ</button>}
