@@ -89,15 +89,7 @@ function AuditPage({
     setAssetStatus("ทั้งหมด");
     setInspectionResult("ทั้งหมด");
   };
-  const auditResultText = (() => {
-    const countText = rows.length.toLocaleString("th-TH");
-    const hasSearch = Boolean(search.trim());
-    const hasFilters = assetFiscalYear !== "ทั้งหมด" || organization !== "ทั้งหมด" || assetStatus !== "ทั้งหมด" || inspectionResult !== "ทั้งหมด";
-    if (hasSearch && hasFilters) return `แสดง ${countText} รายการตามคำค้นหาและตัวกรองที่เลือก`;
-    if (hasSearch) return `แสดง ${countText} รายการตามคำค้นหา`;
-    if (hasFilters) return `แสดง ${countText} รายการตามตัวกรองที่เลือก`;
-    return `แสดง ${countText} รายการ`;
-  })();
+  const auditResultText = `แสดง ${rows.length.toLocaleString("th-TH")} รายการ`;
 
   const openInspectionModal = (asset: AssetListRow) => {
     const activeInspectionYear = String(getCurrentInspectionYear());
@@ -313,7 +305,7 @@ function AuditPage({
           <SelectField label="ผลการตรวจสอบ" value={inspectionResult} onChange={setInspectionResult} options={inspectionStateOptions} />
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
-          <p className="text-sm font-semibold text-muted">
+          <p className="text-sm font-normal text-muted">
             {auditResultText}
           </p>
           {hasActiveAuditFilters && (

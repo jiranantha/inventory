@@ -127,8 +127,8 @@ function ListPage({
           <SelectField label="สถานะครุภัณฑ์" value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={statusOptions} />
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
-          <p className="text-sm font-semibold text-muted">
-            พบข้อมูล {filteredRows.length.toLocaleString("th-TH")} รายการจากทั้งหมด {assets.length.toLocaleString("th-TH")} รายการ
+          <p className="text-sm font-normal text-muted">
+            แสดง {filteredRows.length.toLocaleString("th-TH")} รายการ
           </p>
           {hasActiveFilters && (
             <button
