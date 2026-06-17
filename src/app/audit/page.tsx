@@ -47,6 +47,9 @@ function AuditPage({
   const [modalResult, setModalResult] = useState("ใช้งานได้");
   const [evidenceImages, setEvidenceImages] = useState<EvidenceImage[]>([]);
   const [evidenceError, setEvidenceError] = useState("");
+  const [isMobile] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches,
+  );
   const [inspectionNote, setInspectionNote] = useState("");
   const [toast, setToast] = useState("");
 
@@ -120,16 +123,23 @@ function AuditPage({
     const selectedFiles = Array.from(files ?? []);
     if (selectedFiles.length === 0) return;
 
+    const maxEvidence = 3;
+    const remaining = maxEvidence - evidenceImages.length;
+    if (remaining <= 0) return;
+
     const acceptedTypes = ["image/jpeg", "image/png", "image/webp"];
-    const maxImages = 5;
     const maxSize = 5 * 1024 * 1024;
     const errors: string[] = [];
 
-    if (selectedFiles.length > maxImages) errors.push("อัปโหลดได้สูงสุด 5 รูป");
-    const limitedFiles = selectedFiles.slice(0, maxImages);
+    if (selectedFiles.length > remaining) {
+      errors.push(`เลือกได้อีก ${remaining} รูป (ครบ ${maxEvidence} รูปแล้ว ใช้ได้ ${remaining} รูปแรกเท่านั้น)`);
+    }
+    const limitedFiles = selectedFiles.slice(0, remaining);
     const validFiles = limitedFiles.filter((file) => {
       const extension = file.name.split(".").pop()?.toLowerCase();
-      const isAcceptedImage = acceptedTypes.includes(file.type) || ["jpg", "jpeg", "png", "webp"].includes(extension ?? "");
+      const isAcceptedImage =
+        acceptedTypes.includes(file.type) ||
+        ["jpg", "jpeg", "png", "webp"].includes(extension ?? "");
       if (!isAcceptedImage) {
         errors.push("รองรับเฉพาะไฟล์รูปภาพเท่านั้น");
         return false;
@@ -148,13 +158,17 @@ function AuditPage({
     }
 
     if (validFiles.length === 0) {
-      setEvidenceImages([]);
-      if (errors.length === 0) setEvidenceError("กรุณาอัปโหลดรูปหลักฐานอย่างน้อย 1 รูปก่อนบันทึกผลตรวจสอบ");
+      // Do not clear existing images — just report the error.
+      if (errors.length === 0 && evidenceImages.length === 0) {
+        setEvidenceError("กรุณาอัปโหลดรูปหลักฐานอย่างน้อย 1 รูปก่อนบันทึกผลตรวจสอบ");
+      }
       return;
     }
 
     try {
-      setEvidenceImages(await Promise.all(validFiles.map(readEvidenceFile)));
+      const newImages = await Promise.all(validFiles.map(readEvidenceFile));
+      // Append to existing — never replace.
+      setEvidenceImages((prev) => [...prev, ...newImages].slice(0, maxEvidence));
       if (errors.length === 0) setEvidenceError("");
     } catch (error) {
       const message = error instanceof Error ? error.message : "ไม่สามารถอ่านรูปหลักฐานได้";
@@ -482,61 +496,90 @@ function AuditPage({
               <Field label="สถานที่ที่พบครุภัณฑ์" value={foundLocation} onChange={(event) => setFoundLocation(event.target.value)} placeholder="ระบุสถานที่ที่พบครุภัณฑ์" />
               <Field label="ผู้ตรวจสอบ" value={inspectorName} onChange={(event) => setInspectorName(event.target.value)} placeholder="ชื่อผู้ตรวจสอบ" />
               <SelectField label="สถานะครุภัณฑ์" value={modalResult} onChange={setModalResult} options={modalStatusOptions} />
-              <label className="block">
-                <span className="text-sm font-semibold text-ink">
-                  อัปโหลดรูปหลักฐาน <span className="text-muted">(ถ่ายรูปหรือเลือกได้หลายภาพ)</span>
-                </span>
-                <p className="mt-1 text-xs text-muted">
-                  สามารถถ่ายรูปจากมือถือ หรือเลือกรูปจากเครื่อง เพื่อใช้เป็นหลักฐานการตรวจสอบครุภัณฑ์
-                </p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  multiple
-                  onChange={(event) => {
-                    void handleEvidenceImageChange(event.target.files);
-                    event.target.value = "";
-                  }}
-                  className="mt-2 w-full rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-4 py-4 text-sm text-ink file:mr-4 file:rounded-md file:border-0 file:bg-gold file:px-3 file:py-2 file:font-bold file:text-slate-950"
-                />
-                {(evidenceError || evidenceImages.length === 0) && (
-                  <p className="mt-2 text-xs font-semibold text-rose-200">
-                    {evidenceError || "กรุณาอัปโหลดรูปหลักฐานอย่างน้อย 1 รูปก่อนบันทึกผลตรวจสอบ"}
+              <div className="space-y-3 md:col-span-2">
+                <div>
+                  <p className="text-sm font-semibold text-ink">
+                    รูปหลักฐาน{" "}
+                    <span className="font-normal text-muted">
+                      ({evidenceImages.length}/3 รูป)
+                    </span>
                   </p>
-                )}
+                  <p className="mt-1 text-xs text-muted">
+                    {isMobile
+                      ? "ถ่ายรูปเพื่อใช้เป็นหลักฐานการตรวจสอบ สูงสุด 3 รูป ไม่เกิน 5MB ต่อรูป"
+                      : "เลือกรูปภาพจากคอมพิวเตอร์ สูงสุด 3 รูป ไม่เกิน 5MB ต่อรูป"}
+                  </p>
+                  {evidenceImages.length < 3 ? (
+                    <label className="mt-2 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-4 py-3 hover:border-primary">
+                      <span className="text-sm font-semibold text-gold">
+                        {isMobile ? "ถ่ายรูปหลักฐาน" : "เลือกรูปภาพ"}
+                      </span>
+                      {isMobile ? (
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="sr-only"
+                          onChange={(event) => {
+                            void handleEvidenceImageChange(event.target.files);
+                            event.target.value = "";
+                          }}
+                        />
+                      ) : (
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="sr-only"
+                          onChange={(event) => {
+                            void handleEvidenceImageChange(event.target.files);
+                            event.target.value = "";
+                          }}
+                        />
+                      )}
+                    </label>
+                  ) : (
+                    <p className="mt-2 rounded-md border border-line bg-surfaceSoft px-3 py-2 text-sm text-muted">
+                      เพิ่มรูปภาพครบ 3 รูปแล้ว หากต้องการเปลี่ยน ให้ลบรูปที่ไม่ต้องการก่อน
+                    </p>
+                  )}
+                  {(evidenceError || evidenceImages.length === 0) && (
+                    <p className="mt-2 text-xs font-semibold text-rose-200">
+                      {evidenceError || "กรุณาอัปโหลดรูปหลักฐานอย่างน้อย 1 รูปก่อนบันทึกผลตรวจสอบ"}
+                    </p>
+                  )}
+                </div>
                 {evidenceImages.length > 0 && (
-                  <div className="mt-3 rounded-lg border border-line bg-slate-950/25 p-3">
-                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-ink">
-                        เลือกรูปแล้ว {evidenceImages.length.toLocaleString("th-TH")} รูป
-                      </p>
-                      <p className="text-[11px] text-muted">สูงสุด 5 รูป / ไม่เกิน 5MB ต่อรูป</p>
-                    </div>
-                    <div className="grid max-h-64 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
-                      {evidenceImages.map((image) => (
-                        <figure key={image.url} className="overflow-hidden rounded-md border border-line bg-slate-950/40">
-                          <div className="relative">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={image.url} alt={image.name} className="h-24 w-full object-cover" />
-                            <button
-                              type="button"
-                              onClick={() => removeEvidenceImage(image.url)}
-                              className="absolute right-1 top-1 rounded-md bg-red-500/90 px-2 py-1 text-[11px] font-bold text-white hover:bg-red-400"
-                            >
-                              ลบ
-                            </button>
-                          </div>
-                          <figcaption className="space-y-0.5 px-2 py-1">
-                            <p className="truncate text-[11px] text-ink">{image.name}</p>
-                            <p className="text-[10px] text-muted">{(image.size / 1024 / 1024).toFixed(2)} MB</p>
-                          </figcaption>
-                        </figure>
-                      ))}
-                    </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {evidenceImages.map((image, index) => (
+                      <figure
+                        key={image.url}
+                        className="overflow-hidden rounded-md border border-line bg-slate-950/40"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={image.url}
+                          alt={image.name}
+                          className="h-24 w-full object-cover"
+                        />
+                        <div className="space-y-1 p-2">
+                          <p className="text-xs font-semibold text-muted">รูปที่ {index + 1}</p>
+                          <p className="truncate text-[11px] text-ink" title={image.name}>
+                            {image.name}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => removeEvidenceImage(image.url)}
+                            className="w-full rounded-md border border-danger/30 px-2 py-1 text-[11px] font-semibold text-danger hover:bg-danger/10"
+                          >
+                            ลบรูป
+                          </button>
+                        </div>
+                      </figure>
+                    ))}
                   </div>
                 )}
-              </label>
+              </div>
               <div className="md:col-span-2">
                 <TextAreaField label="หมายเหตุ" value={inspectionNote} onChange={(event) => setInspectionNote(event.target.value)} placeholder="หมายเหตุการตรวจสอบ" />
               </div>
