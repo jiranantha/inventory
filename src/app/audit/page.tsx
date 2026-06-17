@@ -5,7 +5,8 @@ import { PlaceholderPage } from "@/components/StatusPages";
 
 import { useState, useMemo } from "react";
 import { buttonColors, inspectionStatusColors } from "@/constants/colors";
-import { CloseIconButton, Field, FilterChip, SelectField, StatusBadge, TextAreaField, ThaiDateField } from "@/components/ui";
+import { CloseIconButton, Field, FilterChip, PageHeader, SelectField, StatusBadge, TextAreaField, ThaiDateField } from "@/components/ui";
+import { Permissions } from "@/lib/permissions";
 import { formatThaiDate, getCurrentInspectionYear } from "@/lib/dates";
 import { uploadImage } from "@/lib/image-upload";
 import { uniqueSorted } from "@/lib/utils";
@@ -15,12 +16,16 @@ import { allowedAssetStatuses, ASSET_STATUS_FILTER_OPTIONS } from "@/constants/s
 function AuditPage({
   assets,
   annualInspections,
+  permissions,
+  onAddAsset,
   onSaveAnnualInspection,
   onCancelAnnualInspection,
   onSaveInspectionStatus,
 }: {
   assets: AssetListRow[];
   annualInspections: AnnualInspection[];
+  permissions: Permissions;
+  onAddAsset: () => void;
   onSaveAnnualInspection: (inspection: AnnualInspection) => void;
   onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => void;
   onSaveInspectionStatus: (asset: AssetListRow, status: string, inspectionDate: string, note: string) => void;
@@ -280,6 +285,16 @@ function AuditPage({
           {toast}
         </div>
       )}
+
+      <PageHeader
+        title="ตรวจสอบครุภัณฑ์ประจำปี"
+        description="บันทึกและติดตามผลตรวจสอบครุภัณฑ์ประจำปีของฝ่าย/ชมรม"
+        actions={(
+          permissions.canCreate && (
+            <button onClick={onAddAsset} className="min-h-11 rounded-md bg-primary px-3 py-2 text-xs font-extrabold text-white transition hover:bg-primary-hover">เพิ่มข้อมูล</button>
+          )
+        )}
+      />
 
       <div className="rounded-lg border border-line bg-surface p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
@@ -640,12 +655,14 @@ function AuditPage({
 
 
 export default function AuditRoute() {
-  const { permissions, assets, annualInspections, onSaveAnnualInspection, onCancelAnnualInspection, onSaveInspectionStatus } = useAppData();
+  const { permissions, assets, annualInspections, onGoToRecord, onSaveAnnualInspection, onCancelAnnualInspection, onSaveInspectionStatus } = useAppData();
   if (!permissions.canInspect) return <PlaceholderPage title="ไม่มีสิทธิ์ตรวจสอบประจำปี" />;
   return (
     <AuditPage
       assets={assets}
       annualInspections={annualInspections}
+      permissions={permissions}
+      onAddAsset={onGoToRecord}
       onSaveAnnualInspection={onSaveAnnualInspection}
       onCancelAnnualInspection={onCancelAnnualInspection}
       onSaveInspectionStatus={onSaveInspectionStatus}
