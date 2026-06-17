@@ -103,7 +103,7 @@ function ListPage({
                   setSearch(event.target.value);
                   setPage(1);
                 }}
-                placeholder="ค้นหาชื่อครุภัณฑ์ หมายเลขครุภัณฑ์ หรือฝ่าย/ชมรม"
+                placeholder="ค้นหาครุภัณฑ์"
                 className="min-h-11 w-full rounded-lg border border-line bg-surfaceSoft py-2 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
               />
               {search.trim() && (

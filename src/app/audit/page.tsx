@@ -292,7 +292,7 @@ function AuditPage({
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="ค้นหาชื่อครุภัณฑ์ หมายเลขครุภัณฑ์ หรือฝ่าย/ชมรม"
+                placeholder="ค้นหาครุภัณฑ์"
                 className="min-h-11 w-full rounded-lg border border-lineStrong bg-surface py-2 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
               />
               {search.trim() && (
