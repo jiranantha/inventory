@@ -1,11 +1,9 @@
-@import url("https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-thai: "Prompt";
+  --font-thai: "Noto Sans Thai";
   --color-bg-main: #f5f7fa;
   --color-bg-card: #ffffff;
   --color-bg-input: #ffffff;
@@ -44,7 +42,13 @@ body {
   overflow-x: hidden;
   background: #f5f7fa;
   color: #0f172a;
-  font-family: var(--font-thai), Sarabun, "Noto Sans Thai", sans-serif;
+  font-family: var(--font-thai), "Noto Sans Thai", sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0.005em;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
