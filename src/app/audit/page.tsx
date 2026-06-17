@@ -285,7 +285,7 @@ function AuditPage({
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
           <label className="block md:col-span-2 xl:col-span-1">
             <span className="text-sm font-semibold text-ink">ค้นหา</span>
-            <div className="relative mt-1.5">
+            <div className="relative mt-2">
               <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="m14 14 3.5 3.5M8.5 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
               </svg>
@@ -293,7 +293,7 @@ function AuditPage({
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="ค้นหาครุภัณฑ์"
-                className="min-h-11 w-full rounded-lg border border-lineStrong bg-surface py-2 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
+                className="h-12 w-full rounded-lg border border-lineStrong bg-surface py-3 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
               />
               {search.trim() && (
                 <button
