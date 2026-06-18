@@ -535,26 +535,42 @@ function AuditPage({
                   </p>
                   <p className="mt-1 text-xs text-muted">
                     {isMobile
-                      ? "ถ่ายรูปเพื่อใช้เป็นหลักฐานการตรวจสอบ สูงสุด 3 รูป ไม่เกิน 5MB ต่อรูป"
+                      ? "ถ่ายรูปหรือเลือกจากคลังภาพ สูงสุด 3 รูป ไม่เกิน 5MB ต่อรูป"
                       : "เลือกรูปภาพจากคอมพิวเตอร์ สูงสุด 3 รูป ไม่เกิน 5MB ต่อรูป"}
                   </p>
                   {evidenceImages.length < 3 ? (
-                    <label className="mt-2 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-4 py-3 hover:border-primary">
-                      <span className="text-sm font-semibold text-gold">
-                        {isMobile ? "ถ่ายรูปหลักฐาน" : "เลือกรูปภาพ"}
-                      </span>
-                      {isMobile ? (
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="sr-only"
-                          onChange={(event) => {
-                            void handleEvidenceImageChange(event.target.files);
-                            event.target.value = "";
-                          }}
-                        />
-                      ) : (
+                    isMobile ? (
+                      <div className="mt-2 flex gap-2">
+                        <label className="flex flex-1 cursor-pointer items-center justify-center rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-3 py-3 hover:border-primary">
+                          <span className="text-sm font-semibold text-gold">ถ่ายรูป</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="sr-only"
+                            onChange={(event) => {
+                              void handleEvidenceImageChange(event.target.files);
+                              event.target.value = "";
+                            }}
+                          />
+                        </label>
+                        <label className="flex flex-1 cursor-pointer items-center justify-center rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-3 py-3 hover:border-primary">
+                          <span className="text-sm font-semibold text-gold">เลือกรูปภาพ</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="sr-only"
+                            onChange={(event) => {
+                              void handleEvidenceImageChange(event.target.files);
+                              event.target.value = "";
+                            }}
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <label className="mt-2 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-4 py-3 hover:border-primary">
+                        <span className="text-sm font-semibold text-gold">เลือกรูปภาพ</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -565,8 +581,8 @@ function AuditPage({
                             event.target.value = "";
                           }}
                         />
-                      )}
-                    </label>
+                      </label>
+                    )
                   ) : (
                     <p className="mt-2 rounded-md border border-line bg-surfaceSoft px-3 py-2 text-sm text-muted">
                       เพิ่มรูปภาพครบ 3 รูปแล้ว หากต้องการเปลี่ยน ให้ลบรูปที่ไม่ต้องการก่อน
