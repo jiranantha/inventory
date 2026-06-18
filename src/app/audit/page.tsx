@@ -686,7 +686,7 @@ function AuditPage({
                 onClick={confirmCancelInspection}
                 className="rounded-md bg-rose-500 px-4 py-2 text-sm font-extrabold text-white hover:bg-rose-400"
               >
-                ยืนยันยกเลิก
+                ยืนยัน
               </button>
             </div>
           </div>
