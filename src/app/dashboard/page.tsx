@@ -18,7 +18,7 @@ import {
 } from "recharts";
 import { chartColors, dashboardCardColors } from "@/constants/colors";
 import { ChartCard, StatusBadge } from "@/components/ui";
-import { statusColors } from "@/constants/statuses";
+
 import { formatThaiDate, getCurrentInspectionYear, getDateSortTime } from "@/lib/dates";
 import { countBy } from "@/lib/utils";
 import { AnnualInspection, AssetListRow } from "@/types";
@@ -127,9 +127,10 @@ function DashboardPage({
   const assetsByOrganization = Object.entries(countBy(assetsForOrganizationChart, (asset) => asset.organization))
     .sort(([nameA, countA], [nameB, countB]) => countB - countA || nameA.localeCompare(nameB, "th"))
     .map(([name, value]) => ({ name, value }));
+  const PIE_BLUES = ["#044377", "#508ABA", "#9CD1FC", "#C3E3FD", "#032D50", "#B0DADF", "#E1F1FE", "#011628"];
   const assetsByStatus = Object.entries(countBy(assets, (asset) => asset.status))
     .sort(([, a], [, b]) => b - a)
-    .map(([name, value]) => ({ name, value, color: statusColors[name] ?? "#cbd5e1" }));
+    .map(([name, value], index) => ({ name, value, color: PIE_BLUES[index % PIE_BLUES.length] }));
   const assetStatusTotal = assetsByStatus.reduce((total, item) => total + item.value, 0);
   const assetStatusDescription = assetsByStatus.length === 1
     ? `ครุภัณฑ์ทั้งหมดอยู่ในสถานะ${assetsByStatus[0].name}`
@@ -255,7 +256,7 @@ function DashboardPage({
                       <YAxis stroke={chartColors.axis} tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
                       <Tooltip
                         contentStyle={tooltipStyle}
-                        cursor={{ fill: "#DBEAFE" }}
+                        cursor={{ fill: "#E1F1FE" }}
                         formatter={(value) => [`${Number(value).toLocaleString("th-TH")} รายการ`, "จำนวนครุภัณฑ์"]}
                         labelFormatter={(label) => `ปีงบประมาณ: ${label}`}
                       />
@@ -288,7 +289,7 @@ function DashboardPage({
                   />
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    cursor={{ fill: "#DBEAFE" }}
+                    cursor={{ fill: "#E1F1FE" }}
                     formatter={(value) => [`${Number(value).toLocaleString("th-TH")} รายการ`, "จำนวนครุภัณฑ์"]}
                     labelFormatter={(label) => `องค์กร/ฝ่าย/ชมรม: ${label}`}
                   />
@@ -341,7 +342,7 @@ function DashboardPage({
                 <CartesianGrid stroke={chartColors.grid} vertical={false} />
                 <XAxis dataKey="name" stroke={chartColors.axis} tickLine={false} axisLine={false} fontSize={11} interval={0} />
                 <YAxis stroke={chartColors.axis} tickLine={false} axisLine={false} fontSize={12} />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "#DBEAFE" }} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "#E1F1FE" }} />
                 <Bar dataKey="value" name="จำนวนรายการ" radius={[6, 6, 0, 0]}>
                   {inspectionResults.map((item) => (
                     <Cell key={item.name} fill={item.name === "ตรวจสอบแล้ว" ? chartColors.inspectionCompleted : chartColors.inspectionPending} />

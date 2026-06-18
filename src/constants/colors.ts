@@ -51,11 +51,11 @@ export const dashboardCardColors = {
 };
 
 export const chartColors = {
-  fiscalYearBar: "#2563EB",
+  fiscalYearBar: "#044377",
   organizationBar: "#044377",
-  inspectionBar: "#2563EB",
-  inspectionCompleted: "#059669",
-  inspectionPending: "#CA8A04",
+  inspectionBar: "#044377",
+  inspectionCompleted: "#044377",
+  inspectionPending: "#9CD1FC",
   grid: "#C3E3FD",
   axis: "#508ABA",
 };
