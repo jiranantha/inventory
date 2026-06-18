@@ -40,14 +40,14 @@ export const inspectionStatusColors = {
 };
 
 export const dashboardCardColors = {
-  total: { accent: "text-[#2563EB]", glow: "from-[#EFF6FF]", border: "border-[#BFDBFE]" },
-  active: { accent: "text-[#059669]", glow: "from-[#ECFDF5]", border: "border-[#A7F3D0]" },
-  broken: { accent: "text-[#DC2626]", glow: "from-[#FEF2F2]", border: "border-[#FECACA]" },
-  missing: { accent: "text-[#BE123C]", glow: "from-[#FDF2F8]", border: "border-[#FBCFE8]" },
-  repair: { accent: "text-[#EA580C]", glow: "from-[#FFF7ED]", border: "border-[#FED7AA]" },
-  disposed: { accent: "text-[#64748B]", glow: "from-[#F8FAFC]", border: "border-[#CBD5E1]" },
-  inspected: { accent: "text-[#059669]", glow: "from-[#ECFDF5]", border: "border-[#A7F3D0]" },
-  pending: { accent: "text-[#CA8A04]", glow: "from-[#FEFCE8]", border: "border-[#FEF08A]" },
+  total:     { accent: "text-[#044377]", glow: "from-[#E1F1FE]", border: "border-[#9CD1FC]" },
+  active:    { accent: "text-[#044377]", glow: "from-[#F0F8FF]", border: "border-[#C3E3FD]" },
+  broken:    { accent: "text-[#032D50]", glow: "from-[#E1F1FE]", border: "border-[#9CD1FC]" },
+  missing:   { accent: "text-[#032D50]", glow: "from-[#E1F1FE]", border: "border-[#9CD1FC]" },
+  repair:    { accent: "text-[#044377]", glow: "from-[#F0F8FF]", border: "border-[#C3E3FD]" },
+  disposed:  { accent: "text-[#508ABA]", glow: "from-[#F0F8FF]", border: "border-[#C3E3FD]" },
+  inspected: { accent: "text-[#044377]", glow: "from-[#F0F8FF]", border: "border-[#C3E3FD]" },
+  pending:   { accent: "text-[#032D50]", glow: "from-[#E1F1FE]", border: "border-[#9CD1FC]" },
 };
 
 export const chartColors = {
