@@ -478,7 +478,7 @@ function AssetEditPage({
               {assetImages.map((image, index) => (
                 <div
                   key={`${image.url}-${index}`}
-                  className="overflow-hidden rounded-lg border border-line bg-slate-950/40"
+                  className="relative overflow-hidden rounded-lg border border-line bg-slate-950/40"
                 >
                   <div
                     role="img"
@@ -486,30 +486,29 @@ function AssetEditPage({
                     className="h-24 w-full bg-cover bg-center"
                     style={{ backgroundImage: `url(${image.url})` }}
                   />
-                  <div className="space-y-1.5 p-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteImage(index)}
+                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-sm font-bold leading-none text-danger shadow hover:bg-red-100"
+                    aria-label="ลบรูปภาพ"
+                  >
+                    ×
+                  </button>
+                  <div className="p-2">
                     <p className="truncate text-xs text-ink" title={image.name}>
                       {image.name}
                     </p>
-                    <div className="flex gap-1">
-                      <label className="flex-1 cursor-pointer rounded border border-line bg-surfaceSoft px-2 py-1 text-center text-xs font-semibold text-ink hover:border-primary hover:text-primary">
-                        เปลี่ยน
-                        <input
-                          type="file"
-                          accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                          className="sr-only"
-                          onChange={(event) =>
-                            handleReplaceImage(index, event.target.files)
-                          }
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteImage(index)}
-                        className="flex-1 rounded border border-line bg-surfaceSoft px-2 py-1 text-xs font-semibold text-danger hover:border-danger hover:bg-danger/10"
-                      >
-                        ลบ
-                      </button>
-                    </div>
+                    <label className="mt-1.5 block cursor-pointer rounded border border-line bg-surfaceSoft px-2 py-1 text-center text-xs font-semibold text-ink hover:border-primary hover:text-primary">
+                      เปลี่ยน
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        onChange={(event) =>
+                          handleReplaceImage(index, event.target.files)
+                        }
+                      />
+                    </label>
                   </div>
                 </div>
               ))}
