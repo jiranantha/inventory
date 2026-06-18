@@ -52,6 +52,7 @@ function AuditPage({
   );
   const [inspectionNote, setInspectionNote] = useState("");
   const [toast, setToast] = useState("");
+  const [previewImage, setPreviewImage] = useState<EvidenceImage | null>(null);
   const [page, setPage] = useState(1);
 
   const rows = useMemo(() => {
@@ -582,26 +583,28 @@ function AuditPage({
                     {evidenceImages.map((image, index) => (
                       <figure
                         key={image.url}
-                        className="overflow-hidden rounded-md border border-line bg-slate-950/40"
+                        className="relative overflow-hidden rounded-md border border-line bg-slate-950/40"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={image.url}
                           alt={image.name}
-                          className="h-24 w-full object-cover"
+                          className="h-24 w-full cursor-pointer object-cover"
+                          onClick={() => setPreviewImage(image)}
                         />
-                        <div className="space-y-1 p-2">
+                        <button
+                          type="button"
+                          onClick={(event) => { event.stopPropagation(); removeEvidenceImage(image.url); }}
+                          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-sm font-bold leading-none text-danger shadow hover:bg-red-100"
+                          aria-label="ลบรูปภาพ"
+                        >
+                          ×
+                        </button>
+                        <div className="p-2">
                           <p className="text-xs font-semibold text-muted">รูปที่ {index + 1}</p>
                           <p className="truncate text-[11px] text-ink" title={image.name}>
                             {image.name}
                           </p>
-                          <button
-                            type="button"
-                            onClick={() => removeEvidenceImage(image.url)}
-                            className="w-full rounded-md border border-danger/30 px-2 py-1 text-[11px] font-semibold text-danger hover:bg-danger/10"
-                          >
-                            ลบรูป
-                          </button>
                         </div>
                       </figure>
                     ))}
@@ -624,6 +627,34 @@ function AuditPage({
                 บันทึกผลตรวจสอบ
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative flex max-h-[90vh] max-w-[90vw] flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewImage(null)}
+              className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink shadow hover:bg-slate-100"
+              aria-label="ปิด"
+            >
+              ×
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewImage.url}
+              alt={previewImage.name}
+              className="max-h-[80vh] max-w-[80vw] rounded-lg object-contain shadow-2xl"
+            />
+            <p className="mt-2 text-center text-sm text-white/80">{previewImage.name}</p>
           </div>
         </div>
       )}
