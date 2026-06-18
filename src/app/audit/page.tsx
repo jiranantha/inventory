@@ -281,6 +281,17 @@ function AuditPage({
         </div>
       )}
 
+      <div className="grid gap-3 md:grid-cols-3">
+        {summaryItems.map((item) => (
+          <article key={item.label} className={`relative overflow-hidden rounded-lg border bg-surface p-4 ${item.cardClass}`}>
+            <span className={`absolute left-0 top-0 h-full w-1 ${item.accentClass}`} aria-hidden="true" />
+            <p className="text-xs font-semibold text-ink">{item.label}</p>
+            <strong className="mt-2 block text-2xl font-extrabold text-ink">{item.value.toLocaleString("th-TH")}</strong>
+            <p className={`mt-1 text-xs ${item.subtitleClass}`}>{item.subtitle}</p>
+          </article>
+        ))}
+      </div>
+
       <div className="rounded-lg border border-line bg-surface p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
           <label className="block md:col-span-2 xl:col-span-1">
@@ -335,17 +346,6 @@ function AuditPage({
             {inspectionResult !== "ทั้งหมด" && <FilterChip label="ผลตรวจ" value={inspectionResult} onClear={() => setInspectionResult("ทั้งหมด")} />}
           </div>
         )}
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-3">
-        {summaryItems.map((item) => (
-          <article key={item.label} className={`relative overflow-hidden rounded-lg border bg-surface p-4 ${item.cardClass}`}>
-            <span className={`absolute left-0 top-0 h-full w-1 ${item.accentClass}`} aria-hidden="true" />
-            <p className="text-xs font-semibold text-ink">{item.label}</p>
-            <strong className="mt-2 block text-2xl font-extrabold text-ink">{item.value.toLocaleString("th-TH")}</strong>
-            <p className={`mt-1 text-xs ${item.subtitleClass}`}>{item.subtitle}</p>
-          </article>
-        ))}
       </div>
 
       <div className="space-y-3 md:hidden">
