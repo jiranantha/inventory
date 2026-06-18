@@ -43,7 +43,7 @@ function ListPage({
   const [assetType, setAssetType] = useState("ทั้งหมด");
   const [status, setStatus] = useState("ทั้งหมด");
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 25;
 
   const filteredRows = useMemo(() => {
     const cleanSearch = search.trim().toLowerCase();
@@ -177,7 +177,7 @@ function ListPage({
         {visibleRows.length === 0 && <div className="rounded-lg border border-line bg-surface px-4 py-10 text-center"><p className="font-bold text-ink">ไม่พบข้อมูลครุภัณฑ์</p><p className="mt-2 text-sm text-muted">ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง</p></div>}
         <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface p-3 text-sm">
           <button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={safePage === 1} className="min-h-11 rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:opacity-40">ก่อนหน้า</button>
-          <span className="text-center font-bold text-ink">หน้า {safePage} / {pageCount}</span>
+          <span className="text-center font-bold text-ink">หน้า {safePage}/{pageCount}</span>
           <button onClick={() => setPage((value) => Math.min(pageCount, value + 1))} disabled={safePage === pageCount} className="min-h-11 rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:opacity-40">ถัดไป</button>
         </div>
       </div>
@@ -271,7 +271,7 @@ function ListPage({
               ก่อนหน้า
             </button>
             <span className="rounded-md bg-surfaceSoft px-3 py-2 font-bold text-white">
-              หน้า {safePage} / {pageCount}
+              หน้า {safePage}/{pageCount}
             </span>
             <button
               onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
