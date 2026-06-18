@@ -3,7 +3,6 @@
 import { useParams, useRouter } from "next/navigation";
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
-import { assetDetailHref } from "@/lib/routes";
 
 import { useState } from "react";
 import {
@@ -746,7 +745,7 @@ export default function AssetEditRoute() {
       asset={asset}
       permissions={permissions}
       onSave={onSaveAsset}
-      onCancel={() => router.push(assetDetailHref(asset))}
+      onCancel={() => router.push("/list")}
       organizationOptions={activeOrganizations}
       equipmentTypeOptions={activeEquipmentTypes}
       locationOptions={activeLocations}
