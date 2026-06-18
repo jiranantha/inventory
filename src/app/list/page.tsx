@@ -146,7 +146,7 @@ function ListPage({
             </div>
           </label>
           <SelectField label="ปีงบประมาณ" value={fiscalYear} onChange={(value) => { setFiscalYear(value); setPage(1); }} options={fiscalYearOptions} />
-          <SelectField label="ฝ่าย/ชมรม" value={organization} onChange={(value) => { setOrganization(value); setPage(1); }} options={organizationOptions} />
+          <SelectField label="หน่วยงาน" value={organization} onChange={(value) => { setOrganization(value); setPage(1); }} options={organizationOptions} />
           <SelectField label="ลักษณะครุภัณฑ์" value={assetType} onChange={(value) => { setAssetType(value); setPage(1); }} options={assetTypeOptions} />
           <SelectField label="สถานะครุภัณฑ์" value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={statusOptions} />
         </div>
@@ -168,7 +168,7 @@ function ListPage({
           <div className="mt-3 flex flex-wrap gap-2">
             {search.trim() && <FilterChip label="คำค้นหา" value={search.trim()} onClear={() => { setSearch(""); setPage(1); }} />}
             {fiscalYear !== "ทั้งหมด" && <FilterChip label="ปีงบประมาณ" value={fiscalYear} onClear={() => { setFiscalYear("ทั้งหมด"); setPage(1); }} />}
-            {organization !== "ทั้งหมด" && <FilterChip label="ฝ่าย/ชมรม" value={organization} onClear={() => { setOrganization("ทั้งหมด"); setPage(1); }} />}
+            {organization !== "ทั้งหมด" && <FilterChip label="หน่วยงาน" value={organization} onClear={() => { setOrganization("ทั้งหมด"); setPage(1); }} />}
             {assetType !== "ทั้งหมด" && <FilterChip label="ลักษณะ" value={assetType} onClear={() => { setAssetType("ทั้งหมด"); setPage(1); }} />}
             {status !== "ทั้งหมด" && <FilterChip label="สถานะ" value={status} onClear={() => { setStatus("ทั้งหมด"); setPage(1); }} />}
           </div>
@@ -189,7 +189,7 @@ function ListPage({
             <dl className="mt-3 grid gap-2 text-sm">
               <div><dt className="text-xs font-semibold text-muted">ลักษณะครุภัณฑ์</dt><dd className="mt-1"><AssetStructureBadge asset={row} /></dd></div>
               <div><dt className="text-xs font-semibold text-muted">องค์กร/ฝ่าย/ชมรม</dt><dd className="mt-1 break-words text-ink">{row.organization}</dd></div>
-              <div><dt className="text-xs font-semibold text-muted">ผลการตรวจสอบประจำปี</dt><dd className="mt-1"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></dd></div>
+              <div><dt className="text-xs font-semibold text-muted">ผลการตรวจสอบ</dt><dd className="mt-1"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></dd></div>
             </dl>
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button onClick={() => onViewDetails(row)} className="min-h-11 rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink">รายละเอียด</button>
@@ -223,7 +223,7 @@ function ListPage({
             </colgroup>
             <thead className="bg-surfaceSoft text-ink">
               <tr>
-                {["ลำดับ", "ปีงบประมาณ", "หมายเลขครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "ลักษณะ", "ฝ่าย/ชมรมที่รับผิดชอบ", "สถานะ", "ผลการตรวจสอบประจำปี", "รูปภาพ", "จัดการ"].map((heading) => (
+                {["ลำดับ", "ปีงบประมาณ", "หมายเลขครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "ลักษณะ", "หน่วยงานรับผิดชอบ", "สถานะ", "ผลการตรวจสอบ", "รูปภาพ", "จัดการ"].map((heading) => (
                   <th key={heading} className="border-b border-line px-3 py-2.5 font-semibold">
                     {heading}
                   </th>

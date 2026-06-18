@@ -320,7 +320,7 @@ function AuditPage({
             </div>
           </label>
           <SelectField label="ปีงบประมาณ" value={assetFiscalYear} onChange={(v) => { setAssetFiscalYear(v); setPage(1); }} options={assetFiscalYearOptions} />
-          <SelectField label="ฝ่าย/ชมรม" value={organization} onChange={(v) => { setOrganization(v); setPage(1); }} options={organizationOptions} />
+          <SelectField label="หน่วยงาน" value={organization} onChange={(v) => { setOrganization(v); setPage(1); }} options={organizationOptions} />
           <SelectField label="สถานะ" value={assetStatus} onChange={(v) => { setAssetStatus(v); setPage(1); }} options={statusOptions} />
           <SelectField label="ผลการตรวจสอบ" value={inspectionResult} onChange={(v) => { setInspectionResult(v); setPage(1); }} options={inspectionStateOptions} />
         </div>
@@ -342,7 +342,7 @@ function AuditPage({
           <div className="mt-3 flex flex-wrap gap-2">
             {search.trim() && <FilterChip label="คำค้นหา" value={search.trim()} onClear={() => setSearch("")} />}
             {assetFiscalYear !== "ทั้งหมด" && <FilterChip label="ปีงบประมาณ" value={assetFiscalYear} onClear={() => setAssetFiscalYear("ทั้งหมด")} />}
-            {organization !== "ทั้งหมด" && <FilterChip label="ฝ่าย/ชมรม" value={organization} onClear={() => setOrganization("ทั้งหมด")} />}
+            {organization !== "ทั้งหมด" && <FilterChip label="หน่วยงาน" value={organization} onClear={() => setOrganization("ทั้งหมด")} />}
             {assetStatus !== "ทั้งหมด" && <FilterChip label="สถานะ" value={assetStatus} onClear={() => setAssetStatus("ทั้งหมด")} />}
             {inspectionResult !== "ทั้งหมด" && <FilterChip label="ผลตรวจ" value={inspectionResult} onClear={() => setInspectionResult("ทั้งหมด")} />}
           </div>
@@ -395,7 +395,7 @@ function AuditPage({
             </colgroup>
             <thead className="bg-surfaceSoft text-ink">
               <tr>
-                {["ผล", "ลำดับ", "หมายเลขครุภัณฑ์", "ชื่อครุภัณฑ์", "ฝ่าย/ชมรม", "สถานที่จัดเก็บ", "สถานะ", "ผลตรวจ", "จัดการ"].map((heading) => (
+                {["ผล", "ลำดับ", "หมายเลขครุภัณฑ์", "ชื่อครุภัณฑ์", "หน่วยงาน", "สถานที่จัดเก็บ", "สถานะ", "ผลการตรวจสอบ", "จัดการ"].map((heading) => (
                   <th key={heading} className="border-b border-line px-2 py-2.5 font-semibold">{heading}</th>
                 ))}
               </tr>
