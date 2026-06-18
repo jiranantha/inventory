@@ -108,7 +108,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   href={menuHref[item.key]}
                   className={`flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-3 text-left text-sm font-semibold transition ${
                     active
-                      ? "bg-gold text-blue-800 shadow-glow"
+                      ? "bg-gold text-white shadow-glow"
                       : "bg-surface text-ink ring-1 ring-line hover:bg-surfaceSoft hover:text-white"
                   }`}
                 >

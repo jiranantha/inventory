@@ -71,12 +71,12 @@ export function FilterChip({
   onClear: () => void;
 }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#BFDBFE] bg-[#DBEAFE] px-3 py-1 text-xs font-semibold text-[#1E40AF]">
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#9CD1FC] bg-[#E1F1FE] px-3 py-1 text-xs font-semibold text-[#044377]">
       <span className="min-w-0 truncate">{label}: {value}</span>
       <button
         type="button"
         onClick={onClear}
-        className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[#1E40AF] hover:bg-white/70"
+        className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[#044377] hover:bg-white/70"
         aria-label={`ล้างตัวกรอง ${label}`}
       >
         x

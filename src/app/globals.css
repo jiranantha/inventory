@@ -4,17 +4,17 @@
 
 :root {
   --font-ibm-plex-thai: "IBM Plex Sans Thai";
-  --color-bg-main: #f5f7fa;
+  --color-bg-main: #F0F8FF;
   --color-bg-card: #ffffff;
   --color-bg-input: #ffffff;
-  --color-border: #e2e8f0;
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #64748b;
-  --color-text-muted: #94a3b8;
-  --color-primary: #1e40af;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-soft: #dbeafe;
-  --color-navy: #0f172a;
+  --color-border: #C3E3FD;
+  --color-text-primary: #011628;
+  --color-text-secondary: #508ABA;
+  --color-text-muted: #508ABA;
+  --color-primary: #044377;
+  --color-primary-hover: #032D50;
+  --color-primary-soft: #E1F1FE;
+  --color-navy: #011628;
   --color-info: #2563eb;
   --color-success: #059669;
   --color-danger: #dc2626;
@@ -23,10 +23,10 @@
   --color-transfer: #2563eb;
   --color-disposed: #64748b;
   --color-pending: #ca8a04;
-  --chart-grid: #e2e8f0;
-  --chart-axis: #64748b;
-  --background: #f5f7fa;
-  --foreground: #0f172a;
+  --chart-grid: #C3E3FD;
+  --chart-axis: #508ABA;
+  --background: #F0F8FF;
+  --foreground: #011628;
 }
 
 * {
@@ -40,8 +40,8 @@ body {
   min-height: 100vh;
   margin: 0;
   overflow-x: hidden;
-  background: #f5f7fa;
-  color: #0f172a;
+  background: #F0F8FF;
+  color: #011628;
   font-family: var(--font-ibm-plex-thai), system-ui, sans-serif;
   font-weight: 400;
   line-height: 1.6;
@@ -93,8 +93,8 @@ input.date-input:focus::-webkit-calendar-picker-indicator {
 }
 
 .asset-shell {
-  background: #f5f7fa;
-  color: #0f172a;
+  background: #F0F8FF;
+  color: #011628;
 }
 
 .asset-shell,
@@ -120,7 +120,7 @@ input.date-input:focus::-webkit-calendar-picker-indicator {
 .asset-shell .bg-slate-700,
 .asset-shell .hover\:bg-slate-600:hover,
 .asset-shell .hover\:bg-slate-700:hover {
-  background-color: #f5f7fa !important;
+  background-color: #F0F8FF !important;
 }
 
 .asset-shell .bg-panel,
@@ -135,7 +135,7 @@ input.date-input:focus::-webkit-calendar-picker-indicator {
 
 .asset-shell .fixed.inset-0.bg-slate-950\/75,
 .asset-shell .fixed.inset-0.bg-black\/60 {
-  background-color: rgba(15, 23, 42, 0.35) !important;
+  background-color: rgba(1, 22, 40, 0.35) !important;
 }
 
 .asset-shell .text-white,
@@ -143,24 +143,24 @@ input.date-input:focus::-webkit-calendar-picker-indicator {
 .asset-shell .text-slate-200,
 .asset-shell .text-slate-300,
 .asset-shell .hover\:text-white:hover {
-  color: #0f172a !important;
+  color: #011628 !important;
 }
 
 .asset-shell .text-slate-400,
 .asset-shell .text-slate-500,
 .asset-shell input::placeholder,
 .asset-shell textarea::placeholder {
-  color: #64748b !important;
+  color: #508ABA !important;
 }
 
 .asset-shell .text-gold {
-  color: #1e40af !important;
+  color: #044377 !important;
 }
 
 .asset-shell .text-sky-100,
 .asset-shell .text-sky-200,
 .asset-shell .text-cyan-200 {
-  color: #1d4ed8 !important;
+  color: #032D50 !important;
 }
 
 .asset-shell .text-emerald-100,
@@ -198,12 +198,12 @@ input.date-input:focus::-webkit-calendar-picker-indicator {
 
 .asset-shell .bg-gold,
 .asset-shell .bg-orange {
-  background-color: #1e40af !important;
+  background-color: #044377 !important;
 }
 
 .asset-shell .hover\:bg-amberSoft:hover,
 .asset-shell .hover\:bg-orange\/90:hover {
-  background-color: #1d4ed8 !important;
+  background-color: #032D50 !important;
 }
 
 .asset-shell .bg-gold.text-slate-950,
@@ -213,7 +213,7 @@ input.date-input:focus::-webkit-calendar-picker-indicator {
 }
 
 .asset-shell .text-slate-950 {
-  color: #0f172a !important;
+  color: #011628 !important;
 }
 
 .asset-shell .bg-gold.text-slate-950 {
@@ -224,68 +224,77 @@ input.date-input:focus::-webkit-calendar-picker-indicator {
 .asset-shell .border-white\/15,
 .asset-shell .border-slate-500,
 .asset-shell .border-rose-300\/20 {
-  border-color: #e2e8f0 !important;
+  border-color: #C3E3FD !important;
 }
 
 .asset-shell .ring-white\/10,
 .asset-shell .ring-slate-950 {
-  --tw-ring-color: #e2e8f0 !important;
+  --tw-ring-color: #C3E3FD !important;
 }
 
 .asset-shell .divide-white\/10 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #e2e8f0 !important;
+  border-color: #C3E3FD !important;
 }
 
 .asset-shell input,
 .asset-shell select,
 .asset-shell textarea {
-  border-color: #cbd5e1 !important;
-  color: #0f172a !important;
+  border-color: #9CD1FC !important;
+  color: #011628 !important;
 }
 
 .asset-shell input:focus,
 .asset-shell select:focus,
 .asset-shell textarea:focus {
   border-color: #2563eb !important;
-  box-shadow: 0 0 0 3px #dbeafe !important;
+  box-shadow: 0 0 0 3px #E1F1FE !important;
 }
 
 .asset-shell thead,
 .asset-shell .bg-panelSoft.text-slate-300 {
-  background-color: #f1f5f9 !important;
-  color: #0f172a !important;
+  background-color: #E1F1FE !important;
+  color: #011628 !important;
 }
 
 .asset-shell tbody tr:nth-child(even) td {
-  background-color: #f8fafc !important;
+  background-color: #F0F8FF !important;
 }
 
 .asset-shell tr:hover td,
 .asset-shell nav button:not(.bg-gold):hover {
-  background-color: #eff6ff !important;
+  background-color: #E1F1FE !important;
 }
 
 .asset-shell .shadow-glow {
-  box-shadow: 0 4px 12px #e2e8f0 !important;
+  box-shadow: 0 4px 12px #C3E3FD !important;
 }
 
 .asset-shell aside {
   background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
+  border-color: #C3E3FD !important;
 }
 
 .asset-shell nav button.bg-gold {
-  background-color: #dbeafe !important;
-  color: #1e40af !important;
+  background-color: #E1F1FE !important;
+  color: #044377 !important;
   border: 1px solid #2563eb !important;
 }
 
 .asset-shell nav button.bg-gold svg {
-  color: #1e40af !important;
+  color: #044377 !important;
+}
+
+.asset-shell nav a.bg-gold {
+  background-color: #044377 !important;
+  color: #ffffff !important;
+}
+
+.asset-shell nav a.bg-gold svg {
+  color: #ffffff !important;
 }
 
 .asset-shell nav button:not(.bg-gold) {
-  color: #334155 !important;
+  color: #011628 !important;
 }
 
 .asset-shell .bg-emerald-400\/15,

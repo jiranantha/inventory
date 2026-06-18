@@ -52,17 +52,17 @@ export const dashboardCardColors = {
 
 export const chartColors = {
   fiscalYearBar: "#2563EB",
-  organizationBar: "#1E40AF",
+  organizationBar: "#044377",
   inspectionBar: "#2563EB",
   inspectionCompleted: "#059669",
   inspectionPending: "#CA8A04",
-  grid: "#E2E8F0",
-  axis: "#64748B",
+  grid: "#C3E3FD",
+  axis: "#508ABA",
 };
 
 export const buttonColors = {
-  primary: "bg-[#1E40AF] text-[#FFFFFF] hover:bg-[#1D4ED8]",
-  cancelEnabled: "border-[#CBD5E1] bg-[#FFFFFF] text-[#0F172A] hover:bg-[#F8FAFC]",
-  cancelDisabled: "border-[#CBD5E1] bg-[#E5E7EB] text-[#9CA3AF] opacity-80",
+  primary: "bg-[#044377] text-[#FFFFFF] hover:bg-[#032D50]",
+  cancelEnabled: "border-[#9CD1FC] bg-[#FFFFFF] text-[#011628] hover:bg-[#F0F8FF]",
+  cancelDisabled: "border-[#9CD1FC] bg-[#E1F1FE] text-[#508ABA] opacity-80",
   danger: "bg-[#DC2626] text-[#FFFFFF] hover:bg-[#B91C1C]",
 };
