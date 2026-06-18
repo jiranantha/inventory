@@ -52,6 +52,7 @@ function AuditPage({
   );
   const [inspectionNote, setInspectionNote] = useState("");
   const [toast, setToast] = useState("");
+  const [page, setPage] = useState(1);
 
   const rows = useMemo(() => {
     const cleanSearch = search.trim().toLowerCase();
@@ -81,6 +82,10 @@ function AuditPage({
   const totalCount = rows.length;
   const inspectedCount = rows.filter((row) => row.inspection).length;
   const pendingCount = totalCount - inspectedCount;
+  const pageSize = 25;
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const visibleRows = rows.slice((safePage - 1) * pageSize, safePage * pageSize);
   const hasActiveAuditFilters = Boolean(search.trim()) || assetFiscalYear !== "ทั้งหมด" || organization !== "ทั้งหมด" || assetStatus !== "ทั้งหมด" || inspectionResult !== "ทั้งหมด";
   const clearAuditFilters = () => {
     setSearch("");
@@ -88,8 +93,11 @@ function AuditPage({
     setOrganization("ทั้งหมด");
     setAssetStatus("ทั้งหมด");
     setInspectionResult("ทั้งหมด");
+    setPage(1);
   };
-  const auditResultText = `แสดง ${rows.length.toLocaleString("th-TH")} รายการ`;
+  const auditResultText = rows.length > 0
+    ? `แสดง ${((safePage - 1) * pageSize + 1).toLocaleString("th-TH")}-${Math.min(safePage * pageSize, rows.length).toLocaleString("th-TH")} จากทั้งหมด ${rows.length.toLocaleString("th-TH")} รายการ`
+    : "แสดง 0 รายการ";
 
   const openInspectionModal = (asset: AssetListRow) => {
     const activeInspectionYear = String(getCurrentInspectionYear());
@@ -283,7 +291,7 @@ function AuditPage({
               </svg>
               <input
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => { setSearch(event.target.value); setPage(1); }}
                 placeholder="ค้นหาครุภัณฑ์"
                 className="h-12 w-full rounded-lg border border-lineStrong bg-surface py-3 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
               />
@@ -299,10 +307,10 @@ function AuditPage({
               )}
             </div>
           </label>
-          <SelectField label="ปีงบประมาณ" value={assetFiscalYear} onChange={setAssetFiscalYear} options={assetFiscalYearOptions} />
-          <SelectField label="ฝ่าย/ชมรม" value={organization} onChange={setOrganization} options={organizationOptions} />
-          <SelectField label="สถานะ" value={assetStatus} onChange={setAssetStatus} options={statusOptions} />
-          <SelectField label="ผลการตรวจสอบ" value={inspectionResult} onChange={setInspectionResult} options={inspectionStateOptions} />
+          <SelectField label="ปีงบประมาณ" value={assetFiscalYear} onChange={(v) => { setAssetFiscalYear(v); setPage(1); }} options={assetFiscalYearOptions} />
+          <SelectField label="ฝ่าย/ชมรม" value={organization} onChange={(v) => { setOrganization(v); setPage(1); }} options={organizationOptions} />
+          <SelectField label="สถานะ" value={assetStatus} onChange={(v) => { setAssetStatus(v); setPage(1); }} options={statusOptions} />
+          <SelectField label="ผลการตรวจสอบ" value={inspectionResult} onChange={(v) => { setInspectionResult(v); setPage(1); }} options={inspectionStateOptions} />
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           <p className="text-sm font-normal text-muted">
@@ -341,11 +349,11 @@ function AuditPage({
       </div>
 
       <div className="space-y-3 md:hidden">
-        {rows.map(({ asset, inspection }, index) => (
+        {visibleRows.map(({ asset, inspection }, index) => (
           <article key={asset.assetCode} className="rounded-lg border border-line bg-surface p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-muted">ลำดับ {index + 1}</p>
+                <p className="text-xs font-semibold text-muted">ลำดับ {(safePage - 1) * pageSize + index + 1}</p>
                 <p className="mt-1 break-words text-sm font-bold text-primary">{asset.assetNumber}</p>
                 <h3 className="mt-1 break-words text-base font-extrabold text-ink">{asset.assetName}</h3>
               </div>
@@ -362,7 +370,12 @@ function AuditPage({
             </div>
           </article>
         ))}
-        {rows.length === 0 && <div className="rounded-lg border border-line bg-surface px-4 py-10 text-center"><p className="font-bold text-ink">ไม่พบข้อมูลครุภัณฑ์</p><p className="mt-2 text-sm text-muted">ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง</p></div>}
+        {visibleRows.length === 0 && <div className="rounded-lg border border-line bg-surface px-4 py-10 text-center"><p className="font-bold text-ink">ไม่พบข้อมูลครุภัณฑ์</p><p className="mt-2 text-sm text-muted">ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง</p></div>}
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface p-3 text-sm">
+          <button onClick={() => setPage((v) => Math.max(1, v - 1))} disabled={safePage === 1} className="min-h-11 rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:opacity-40">ก่อนหน้า</button>
+          <span className="text-center font-bold text-ink">หน้า {safePage}/{pageCount}</span>
+          <button onClick={() => setPage((v) => Math.min(pageCount, v + 1))} disabled={safePage === pageCount} className="min-h-11 rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:opacity-40">ถัดไป</button>
+        </div>
       </div>
 
       <div className="hidden overflow-hidden rounded-lg border border-line bg-surface md:block">
@@ -387,7 +400,7 @@ function AuditPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
-              {rows.map(({ asset, inspection }, index) => (
+              {visibleRows.map(({ asset, inspection }, index) => (
                 <tr key={asset.assetCode} className="align-top hover:bg-white/[0.03]">
                   <td className="px-2 py-3 text-center align-middle">
                     <span
@@ -395,7 +408,7 @@ function AuditPage({
                       className={`mx-auto block h-3 w-3 rounded-full ring-2 ring-surface ${inspection ? inspectionStatusColors.inspected.dot : inspectionStatusColors.pending.dot}`}
                     />
                   </td>
-                  <td className="px-2 py-3 text-muted">{index + 1}</td>
+                  <td className="px-2 py-3 text-muted">{(safePage - 1) * pageSize + index + 1}</td>
                   <td className="px-2 py-3 font-semibold text-primary" title={asset.assetNumber}>
                     <div className="line-clamp-2 break-words">{asset.assetNumber}</div>
                   </td>
@@ -442,7 +455,7 @@ function AuditPage({
                   </td>
                 </tr>
               ))}
-              {rows.length === 0 && (
+              {visibleRows.length === 0 && (
                 <tr>
                   <td colSpan={9} className="px-3 py-12 text-center">
                     <div className="mx-auto max-w-md">
@@ -463,6 +476,28 @@ function AuditPage({
               )}
             </tbody>
           </table>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm text-ink">
+          <span>{auditResultText}</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((v) => Math.max(1, v - 1))}
+              disabled={safePage === 1}
+              className="rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ก่อนหน้า
+            </button>
+            <span className="rounded-md bg-surfaceSoft px-3 py-2 font-bold text-ink">
+              หน้า {safePage}/{pageCount}
+            </span>
+            <button
+              onClick={() => setPage((v) => Math.min(pageCount, v + 1))}
+              disabled={safePage === pageCount}
+              className="rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ถัดไป
+            </button>
+          </div>
         </div>
       </div>
 
