@@ -232,7 +232,7 @@ function ListPage({
             </thead>
             <tbody className="divide-y divide-line bg-surface text-ink">
               {visibleRows.map((row, index) => (
-                <tr key={row.assetCode} className="align-middle hover:bg-surfaceMuted">
+                <tr key={row.assetCode} className="align-middle hover:bg-surfaceSoft">
                   <td className="px-3 py-3 text-muted">{(safePage - 1) * pageSize + index + 1}</td>
                   <td className="px-3 py-3">{row.fiscalYear}</td>
                   <td className="px-3 py-3 font-semibold text-primary" title={row.assetNumber}><div className="line-clamp-2 break-words">{row.assetNumber}</div></td>

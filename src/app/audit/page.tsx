@@ -400,9 +400,9 @@ function AuditPage({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
+            <tbody className="divide-y divide-line bg-surface text-ink">
               {visibleRows.map(({ asset, inspection }, index) => (
-                <tr key={asset.assetCode} className="align-middle hover:bg-white/[0.03]">
+                <tr key={asset.assetCode} className="align-middle hover:bg-surfaceSoft">
                   <td className="px-2 py-3 text-center align-middle">
                     <span
                       title={inspection ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจสอบ"}

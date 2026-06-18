@@ -256,9 +256,6 @@ input.date-input:focus::-webkit-calendar-picker-indicator {
   color: #011628 !important;
 }
 
-.asset-shell tbody tr:nth-child(even) td {
-  background-color: #F0F8FF !important;
-}
 
 .asset-shell tr:hover td,
 .asset-shell nav button:not(.bg-gold):hover {
