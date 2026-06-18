@@ -137,7 +137,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         {isDashboardExporting ? "กำลังสร้าง PDF..." : "ส่งออก"}
                       </button>
                     )}
-                    {activePage !== "dashboard" && permissions.canCreate && <button onClick={onGoToRecord} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 transition hover:bg-primary-hover">บันทึกใหม่</button>}
+                    {activePage !== "dashboard" && activePage !== "audit" && permissions.canCreate && <button onClick={onGoToRecord} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 transition hover:bg-primary-hover">บันทึกใหม่</button>}
                   </>
                 ) : undefined}
               />
