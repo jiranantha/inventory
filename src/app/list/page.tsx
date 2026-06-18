@@ -43,6 +43,7 @@ function ListPage({
   const [assetType, setAssetType] = useState("ทั้งหมด");
   const [status, setStatus] = useState("ทั้งหมด");
   const [page, setPage] = useState(1);
+  const [exportOpen, setExportOpen] = useState(false);
   const pageSize = 25;
 
   const filteredRows = useMemo(() => {
@@ -79,11 +80,34 @@ function ListPage({
         actions={(
           <>
             {permissions.canExport && (
-              <>
-                <button onClick={() => exportAssetReport("pdf", "รายงานครุภัณฑ์ทั้งหมด", assetReportExportColumns, filteredRows.map(assetToReportRow), "ข้อมูลตามเงื่อนไขตัวกรองปัจจุบัน")} className="min-h-11 rounded-md border border-line bg-surfaceSoft px-3 py-2 text-xs font-semibold text-ink transition hover:border-primary hover:text-primary">ส่งออก PDF</button>
-                <button onClick={() => exportAssetReport("word", "รายงานครุภัณฑ์ทั้งหมด", assetReportExportColumns, filteredRows.map(assetToReportRow), "ข้อมูลตามเงื่อนไขตัวกรองปัจจุบัน")} className="min-h-11 rounded-md border border-line bg-surfaceSoft px-3 py-2 text-xs font-semibold text-ink transition hover:border-primary hover:text-primary">ส่งออก Word</button>
-                <button onClick={() => exportAssetReport("excel", "รายงานครุภัณฑ์ทั้งหมด", assetReportExportColumns, filteredRows.map(assetToReportRow), "ข้อมูลตามเงื่อนไขตัวกรองปัจจุบัน")} className="min-h-11 rounded-md border border-line bg-surfaceSoft px-3 py-2 text-xs font-semibold text-ink transition hover:border-primary hover:text-primary">ส่งออก Excel</button>
-              </>
+              <div className="relative">
+                <button
+                  onClick={() => setExportOpen((v) => !v)}
+                  className="min-h-11 rounded-md border border-line bg-surfaceSoft px-3 py-2 text-xs font-semibold text-ink transition hover:border-primary hover:text-primary"
+                >
+                  ส่งออก ▾
+                </button>
+                {exportOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} />
+                    <div className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-md border border-line bg-surface shadow-glow">
+                      {(["pdf", "word", "excel"] as const).map((fmt) => (
+                        <button
+                          key={fmt}
+                          type="button"
+                          onClick={() => {
+                            exportAssetReport(fmt, "รายงานครุภัณฑ์ทั้งหมด", assetReportExportColumns, filteredRows.map(assetToReportRow), "ข้อมูลตามเงื่อนไขตัวกรองปัจจุบัน");
+                            setExportOpen(false);
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-xs font-semibold text-ink hover:bg-surfaceSoft"
+                        >
+                          {fmt === "pdf" ? "PDF" : fmt === "word" ? "Word" : "Excel"}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
             {permissions.canCreate && <button onClick={onAddAsset} className="min-h-11 rounded-md bg-primary px-3 py-2 text-xs font-extrabold text-white transition hover:bg-primary-hover">เพิ่มข้อมูล</button>}
           </>
