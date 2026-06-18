@@ -223,7 +223,7 @@ function ListPage({
             </colgroup>
             <thead className="bg-surfaceSoft text-ink">
               <tr>
-                {["ลำดับ", "ปีงบประมาณ", "หมายเลขครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "ลักษณะ", "หน่วยงานรับผิดชอบ", "สถานะ", "ผลการตรวจสอบ", "รูปภาพ", "จัดการ"].map((heading) => (
+                {["ลำดับ", "ปีงบประมาณ", "หมายเลขครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "ลักษณะ", "หน่วยงาน", "สถานะ", "ผลการตรวจสอบ", "รูปภาพ", "จัดการ"].map((heading) => (
                   <th key={heading} className="border-b border-line px-3 py-2.5 font-semibold">
                     {heading}
                   </th>
