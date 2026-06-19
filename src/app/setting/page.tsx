@@ -25,7 +25,7 @@ function MasterDataPanel({ title, description, items, onChange, addLabel }: { ti
       <p className="mt-2 text-sm text-muted">{description}</p>
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
         <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={addLabel} className="min-h-11 flex-1 rounded-lg border border-lineStrong bg-surface px-4 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-primary" />
-        <button type="button" onClick={save} className="min-h-11 rounded-md bg-primary px-4 py-2 text-sm font-extrabold text-white hover:bg-primary-hover">{editingId === null ? "เพิ่มรายการ" : "บันทึก"}</button>
+        <button type="button" onClick={save} className="min-h-11 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white hover:bg-primary-hover">{editingId === null ? "เพิ่มรายการ" : "บันทึก"}</button>
         {editingId !== null && <button type="button" onClick={() => { setEditingId(null); setDraft(""); }} className="min-h-11 rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink">ยกเลิก</button>}
       </div>
       <div className="mt-5 divide-y divide-line overflow-hidden rounded-lg border border-line">
