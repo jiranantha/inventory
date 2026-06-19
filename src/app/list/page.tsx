@@ -224,7 +224,7 @@ function ListPage({
             <thead className="bg-surfaceSoft text-ink">
               <tr>
                 {["ลำดับ", "ปีงบประมาณ", "หมายเลขครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "ลักษณะ", "หน่วยงาน", "สถานะ", "ผลการตรวจสอบ", "รูปภาพ", "จัดการ"].map((heading) => (
-                  <th key={heading} className="border-b border-line px-3 py-2.5 font-semibold">
+                  <th key={heading} className={`border-b border-line px-3 py-2.5 font-semibold ${heading === "สถานะ" || heading === "ผลการตรวจสอบ" ? "text-center" : ""}`}>
                     {heading}
                   </th>
                 ))}
