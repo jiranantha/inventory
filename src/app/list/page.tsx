@@ -109,7 +109,7 @@ function ListPage({
                 )}
               </div>
             )}
-            {permissions.canCreate && <button onClick={onAddAsset} className="min-h-11 rounded-md bg-primary px-4 py-2 text-sm font-extrabold text-white transition hover:bg-primary-hover">เพิ่มข้อมูล</button>}
+            {permissions.canCreate && <button onClick={onAddAsset} className="min-h-11 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white transition hover:bg-amberSoft">เพิ่มข้อมูล</button>}
           </>
         )}
       />
