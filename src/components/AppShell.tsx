@@ -111,54 +111,60 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       {/* ── Left Sidebar ──────────────────────────────── */}
+      {/* Outer aside: page-background container with padding (creates the gutter around the card) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[240px] flex-col border-r border-line bg-surface lg:static lg:z-auto lg:min-h-screen lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#F0F8FF] p-3 lg:static lg:z-auto lg:min-h-screen lg:translate-x-0 lg:p-4 ${
           sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
       >
-        {/* Sidebar header: logo + shortened system name */}
-        <div className="flex shrink-0 items-center gap-2.5 border-b border-line px-4 py-4">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gold shadow-glow">
-            <Icon path="M12 3l8 4v10l-8 4-8-4V7l8-4Zm0 0v18M4 7l8 4 8-4" />
-          </div>
-          {/* System name with tooltip revealing the full description on hover */}
-          <div className="group relative min-w-0 flex-1">
-            <p className="truncate text-sm font-extrabold text-ink">ระบบครุภัณฑ์นักศึกษา</p>
-            <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 w-64 rounded-lg border border-line bg-surface px-3 py-2.5 text-xs text-ink opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
-              {SYSTEM_DESCRIPTION}
-            </div>
-          </div>
-          {/* Close button — mobile only */}
-          <button
-            className="shrink-0 rounded-md p-1.5 text-ink hover:bg-surfaceSoft lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="ปิดเมนู"
-          >
-            <Icon path="M6 18L18 6M6 6l12 12" />
-          </button>
-        </div>
+        {/* Inner card panel: white rounded card with border and shadow */}
+        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-[#C3E3FD] bg-surface shadow-sm">
 
-        {/* Navigation links */}
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-          {allowedMenuItems.map((item) => {
-            const active = item.key === activePage || (item.key === "list" && (activePage === "detail" || activePage === "edit"));
-            return (
-              <Link
-                key={item.key}
-                href={menuHref[item.key]}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
-                  active
-                    ? "bg-gold text-white shadow-glow"
-                    : "text-ink hover:bg-surfaceSoft"
-                }`}
-              >
-                <Icon path={item.icon} />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+          {/* Card header: logo + system name + close button (mobile) */}
+          <div className="flex shrink-0 items-center gap-2.5 border-b border-[#C3E3FD] px-4 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold shadow-glow">
+              <Icon path="M12 3l8 4v10l-8 4-8-4V7l8-4Zm0 0v18M4 7l8 4 8-4" />
+            </div>
+            {/* System name — hover tooltip reveals the full description */}
+            <div className="group relative min-w-0 flex-1">
+              <p className="truncate text-sm font-extrabold text-ink">ระบบครุภัณฑ์นักศึกษา</p>
+              <div className="pointer-events-none absolute left-0 top-full z-20 mt-2 w-64 rounded-xl border border-line bg-surface px-3 py-2.5 text-xs text-ink opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+                {SYSTEM_DESCRIPTION}
+              </div>
+            </div>
+            {/* Close — mobile only */}
+            <button
+              className="shrink-0 rounded-lg p-1.5 text-ink hover:bg-surfaceSoft lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="ปิดเมนู"
+            >
+              <Icon path="M6 18L18 6M6 6l12 12" />
+            </button>
+          </div>
+
+          {/* Navigation links */}
+          <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+            {allowedMenuItems.map((item) => {
+              const active = item.key === activePage || (item.key === "list" && (activePage === "detail" || activePage === "edit"));
+              return (
+                <Link
+                  key={item.key}
+                  href={menuHref[item.key]}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold transition ${
+                    active
+                      ? "bg-gold text-white shadow-glow"
+                      : "text-ink hover:bg-[#E1F1FE]"
+                  }`}
+                >
+                  <Icon path={item.icon} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+        </div>
       </aside>
 
       {/* ── Right panel: Topbar + Content ─────────────── */}
