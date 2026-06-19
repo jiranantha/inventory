@@ -325,9 +325,6 @@ function AuditPage({
           <SelectField label="ผลการตรวจสอบ" value={inspectionResult} onChange={(v) => { setInspectionResult(v); setPage(1); }} options={inspectionStateOptions} />
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
-          <p className="text-sm font-normal text-muted">
-            {auditResultText}
-          </p>
           {hasActiveAuditFilters && (
             <button
               type="button"
