@@ -224,7 +224,7 @@ function ListPage({
             <thead className="bg-surfaceSoft text-ink">
               <tr>
                 {["ลำดับ", "ปีงบประมาณ", "หมายเลขครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "ลักษณะ", "หน่วยงาน", "สถานะ", "ผลการตรวจสอบ", "รูปภาพ", "จัดการ"].map((heading) => (
-                  <th key={heading} className={`border-b border-line px-3 py-2.5 font-semibold ${heading === "สถานะ" || heading === "ผลการตรวจสอบ" ? "text-center" : ""}`}>
+                  <th key={heading} className={`border-b border-line px-4 py-2.5 font-semibold ${["ลำดับ", "ปีงบประมาณ", "ลักษณะ", "สถานะ", "ผลการตรวจสอบ", "รูปภาพ", "จัดการ"].includes(heading) ? "text-center" : ""}`}>
                     {heading}
                   </th>
                 ))}
@@ -233,23 +233,23 @@ function ListPage({
             <tbody className="divide-y divide-line bg-surface text-ink">
               {visibleRows.map((row, index) => (
                 <tr key={row.assetCode} className="align-middle hover:bg-surfaceSoft">
-                  <td className="px-3 py-3 text-muted">{(safePage - 1) * pageSize + index + 1}</td>
-                  <td className="px-3 py-3">{row.fiscalYear}</td>
-                  <td className="px-3 py-3 font-semibold text-primary" title={row.assetNumber}><div className="line-clamp-2 break-words">{row.assetNumber}</div></td>
-                  <td className="px-3 py-3 font-semibold text-ink" title={row.assetName}><div className="line-clamp-2 break-words">{row.assetName}</div></td>
-                  <td className="px-3 py-3"><AssetStructureBadge asset={row} /></td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3 text-center text-muted">{(safePage - 1) * pageSize + index + 1}</td>
+                  <td className="px-3 py-3 text-center">{row.fiscalYear}</td>
+                  <td className="px-4 py-3 font-semibold text-primary" title={row.assetNumber}><div className="line-clamp-2 break-words">{row.assetNumber}</div></td>
+                  <td className="px-4 py-3 font-semibold text-ink" title={row.assetName}><div className="line-clamp-2 break-words">{row.assetName}</div></td>
+                  <td className="px-3 py-3 text-center"><AssetStructureBadge asset={row} /></td>
+                  <td className="px-4 py-3">
                     <div className="truncate" title={row.organization}>{row.organization}</div>
                   </td>
                   <td className="px-3 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
                   <td className="px-3 py-3 text-center"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3 text-center">
                     <button className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-line bg-slate-900 text-[11px] font-bold text-primary hover:border-primary">
                       {row.imageCount}
                     </button>
                   </td>
                   <td className="px-3 py-3">
-                    <div className="flex flex-row items-center gap-2">
+                    <div className="flex flex-row items-center justify-center gap-2">
                       <button onClick={() => onViewDetails(row)} className="whitespace-nowrap rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-ink hover:border-primary hover:text-primary">รายละเอียด</button>
                       {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="whitespace-nowrap rounded-md bg-orange px-2 py-1 text-[11px] font-semibold text-white hover:bg-orange/90">แก้ไข</button>}
                       {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="whitespace-nowrap rounded-md border border-red-300/30 px-2 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/10">ลบ</button>}
