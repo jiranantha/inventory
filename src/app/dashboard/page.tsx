@@ -42,7 +42,7 @@ function DashboardTable({
           <button
             type="button"
             onClick={onViewAll}
-            className="min-h-10 shrink-0 rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-800 transition hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+            className="min-h-10 shrink-0 rounded-md border border-line bg-surface px-3 py-2 text-xs font-bold text-primary transition hover:border-primary hover:bg-surfaceSoft focus:outline-none"
           >
             ดูรายการทั้งหมด
           </button>

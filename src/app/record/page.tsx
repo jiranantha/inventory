@@ -327,7 +327,7 @@ function RecordPage({
                 ))}
               </div>
 
-              <label className="block rounded-lg border border-dashed border-primary/40 bg-surfaceSoft p-4 hover:border-[#2563EB]">
+              <label className="block rounded-lg border border-dashed border-primary/40 bg-surfaceSoft p-4 hover:border-primary">
                 <span className="text-sm font-semibold text-ink">อัปโหลดไฟล์ Excel (.xlsx, .xls)</span>
                 <p className="mt-1 text-xs leading-5 text-muted">หากกรอกผ่าน Google Sheets ให้ไปที่ ไฟล์ &gt; ดาวน์โหลด &gt; Microsoft Excel (.xlsx) แล้วนำไฟล์มาอัปโหลดที่นี่</p>
                 <input

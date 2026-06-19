@@ -41,7 +41,7 @@ function AssetDetailPage({
   const getActionBadgeClass = (actionType: ActivityLog["actionType"]) => {
     if (actionType === "ลบ") return "border-danger/30 bg-danger/10 text-danger";
     if (actionType === "กู้คืน") return "border-success/30 bg-success/10 text-success";
-    return "border-[#BFDBFE] bg-[#EFF6FF] text-[#1E40AF]";
+    return "border-[#9CD1FC] bg-[#E1F1FE] text-[#044377]";
   };
   const getActionLabel = (actionType: ActivityLog["actionType"]) => {
     if (actionType === "ลบ") return "ลบข้อมูล";

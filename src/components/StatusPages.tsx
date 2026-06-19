@@ -9,7 +9,7 @@ export function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#F5F7FA] px-4 font-thai text-[#0F172A]">
       <section className="w-full max-w-[460px] rounded-2xl border border-[#E2E8F0] bg-[#FFFFFF] p-6 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
-        <p className="text-sm font-semibold text-[#1E40AF]">ระบบจัดเก็บและตรวจสอบครุภัณฑ์องค์กรนักศึกษา</p>
+        <p className="text-sm font-semibold text-[#044377]">ระบบจัดเก็บและตรวจสอบครุภัณฑ์องค์กรนักศึกษา</p>
         <h1 className="mt-2 text-2xl font-extrabold text-[#0F172A]">เข้าสู่ระบบ</h1>
         <p className="mt-2 text-sm text-[#64748B]">เข้าสู่ระบบด้วยบัญชี Google ของคุณ</p>
         <button
@@ -46,7 +46,7 @@ export function PendingApprovalPage({ email, onSignOut }: { email: string; onSig
         <button
           type="button"
           onClick={onSignOut}
-          className="mt-6 w-full rounded-md border border-[#1E40AF] bg-[#1E40AF] px-4 py-3 font-extrabold text-[#FFFFFF] transition hover:bg-[#1D4ED8]"
+          className="mt-6 w-full rounded-md border border-[#044377] bg-[#044377] px-4 py-3 font-extrabold text-[#FFFFFF] transition hover:bg-[#032D50]"
         >
           ออกจากระบบ
         </button>
