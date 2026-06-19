@@ -99,7 +99,7 @@ input.date-input:focus::-webkit-calendar-picker-indicator {
 
 .asset-shell,
 .asset-shell * {
-  transition-property: color, background-color, border-color, box-shadow, fill, stroke;
+  transition-property: color, background-color, border-color, box-shadow, fill, stroke, transform;
   transition-duration: 200ms;
   transition-timing-function: ease;
 }

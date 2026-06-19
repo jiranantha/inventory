@@ -34,6 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     onLogout,
   } = useAppData();
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [lang, setLang] = useState<"TH" | "EN">("TH");
 
@@ -68,17 +69,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const roleName = getRoleDefinition(currentUser.role, roles).name;
 
   return (
-    <main className="asset-shell min-h-screen w-full max-w-full overflow-x-hidden font-thai text-ink transition-colors duration-200">
+    <main className="asset-shell flex min-h-screen w-full max-w-full font-thai text-ink">
+
       {/* Toast notification */}
       {toast && (
-        <div className="fixed right-4 top-20 z-50 rounded-lg border border-primary/30 bg-slate-950 px-5 py-3 text-sm font-semibold text-primary shadow-glow">
+        <div className="fixed right-4 top-20 z-[70] rounded-lg border border-primary/30 bg-slate-950 px-5 py-3 text-sm font-semibold text-primary shadow-glow">
           {toast}
         </div>
       )}
 
       {/* Delete confirmation modal */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
           <div className="w-full max-w-md rounded-lg border border-line bg-surface p-5 shadow-2xl">
             <h2 className="text-xl font-bold text-white">ยืนยันการลบข้อมูล</h2>
             <p className="mt-3 text-sm leading-6 text-ink">
@@ -95,35 +97,94 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      {/* Transparent backdrop — closes user menu when clicking outside */}
+      {/* Backdrop: closes user menu on outside click */}
       {userMenuOpen && (
         <div className="fixed inset-0 z-30" onClick={() => setUserMenuOpen(false)} />
       )}
 
-      {/* Topbar */}
-      <header className="sticky top-0 z-40 border-b border-line bg-navy/90 backdrop-blur">
-        <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
+      {/* Backdrop: dims content when mobile sidebar is open */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-slate-950/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-          {/* Logo + system name (with description tooltip on hover) */}
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gold shadow-glow">
-              <Icon path="M12 3l8 4v10l-8 4-8-4V7l8-4Zm0 0v18M4 7l8 4 8-4" />
-            </div>
-            <div className="group relative hidden sm:block">
-              <span className="cursor-default select-none text-sm font-extrabold text-white sm:text-base">
-                ระบบครุภัณฑ์นักศึกษา
-              </span>
-              {/* Tooltip: full system description shown on hover */}
-              <div className="pointer-events-none absolute left-0 top-full z-50 mt-2 w-72 rounded-lg border border-line bg-surface px-3 py-2.5 text-xs text-ink opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
-                {SYSTEM_DESCRIPTION}
-              </div>
+      {/* ── Left Sidebar ──────────────────────────────── */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-[240px] flex-col border-r border-line bg-surface lg:static lg:z-auto lg:min-h-screen lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+        }`}
+      >
+        {/* Sidebar header: logo + shortened system name */}
+        <div className="flex shrink-0 items-center gap-2.5 border-b border-line px-4 py-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gold shadow-glow">
+            <Icon path="M12 3l8 4v10l-8 4-8-4V7l8-4Zm0 0v18M4 7l8 4 8-4" />
+          </div>
+          {/* System name with tooltip revealing the full description on hover */}
+          <div className="group relative min-w-0 flex-1">
+            <p className="truncate text-sm font-extrabold text-ink">ระบบครุภัณฑ์นักศึกษา</p>
+            <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 w-64 rounded-lg border border-line bg-surface px-3 py-2.5 text-xs text-ink opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+              {SYSTEM_DESCRIPTION}
             </div>
           </div>
+          {/* Close button — mobile only */}
+          <button
+            className="shrink-0 rounded-md p-1.5 text-ink hover:bg-surfaceSoft lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="ปิดเมนู"
+          >
+            <Icon path="M6 18L18 6M6 6l12 12" />
+          </button>
+        </div>
+
+        {/* Navigation links */}
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+          {allowedMenuItems.map((item) => {
+            const active = item.key === activePage || (item.key === "list" && (activePage === "detail" || activePage === "edit"));
+            return (
+              <Link
+                key={item.key}
+                href={menuHref[item.key]}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+                  active
+                    ? "bg-gold text-white shadow-glow"
+                    : "text-ink hover:bg-surfaceSoft"
+                }`}
+              >
+                <Icon path={item.icon} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+
+      {/* ── Right panel: Topbar + Content ─────────────── */}
+      <div className="flex min-w-0 flex-1 flex-col">
+
+        {/* Topbar */}
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center border-b border-line bg-navy/90 px-4 backdrop-blur sm:px-6">
+
+          {/* Hamburger button — mobile only */}
+          <button
+            className="mr-3 rounded-lg border border-line bg-surface p-2 text-ink transition hover:border-primary hover:text-primary lg:hidden"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="เปิดเมนู"
+          >
+            <Icon path="M4 6h16M4 12h16M4 18h16" />
+          </button>
+
+          {/* System name shown in topbar on mobile (sidebar is hidden) */}
+          <span className="text-sm font-extrabold text-ink lg:hidden">ระบบครุภัณฑ์นักศึกษา</span>
+
+          <div className="flex-1" />
 
           {/* Right controls */}
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
 
-            {/* Language switch — UI placeholder (no i18n) */}
+            {/* Language switch — UI placeholder (no i18n system exists) */}
             <button
               onClick={toggleLang}
               title={lang === "TH" ? "Switch to English" : "เปลี่ยนเป็นภาษาไทย"}
@@ -139,7 +200,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 onClick={() => setUserMenuOpen((o) => !o)}
                 className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2 py-1.5 transition hover:border-primary"
               >
-                {/* Avatar circle with initials */}
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold text-[11px] font-extrabold text-white">
                   {getInitials(currentUser.name)}
                 </div>
@@ -151,13 +211,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
               {userMenuOpen && (
                 <div className="absolute right-0 top-full z-40 mt-2 w-60 overflow-hidden rounded-xl border border-line bg-surface shadow-2xl">
-                  {/* User info header */}
                   <div className="border-b border-line px-4 py-3">
                     <p className="font-bold text-ink">{currentUser.name}</p>
                     <p className="mt-0.5 text-xs text-muted">{roleName}</p>
                     <p className="truncate text-xs text-muted">{currentUser.organization}</p>
                   </div>
-                  {/* Dropdown actions */}
                   <div className="p-1">
                     <button
                       onClick={() => { setUserMenuOpen(false); onLogout(); }}
@@ -171,37 +229,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               )}
             </div>
           </div>
-        </div>
-      </header>
-
-      {/* Body: sidebar + main content */}
-      <div className="grid w-full min-w-0 lg:grid-cols-[240px_minmax(0,1fr)]">
-
-        {/* Sidebar */}
-        <aside className="min-w-0 border-b border-line bg-surface p-2 lg:min-h-[calc(100vh-64px)] lg:border-b-0 lg:border-r lg:p-3">
-          <nav className="flex gap-1.5 overflow-x-auto lg:flex-col lg:gap-1 lg:overflow-visible">
-            {allowedMenuItems.map((item) => {
-              const active = item.key === activePage || (item.key === "list" && (activePage === "detail" || activePage === "edit"));
-              return (
-                <Link
-                  key={item.key}
-                  href={menuHref[item.key]}
-                  className={`flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition ${
-                    active
-                      ? "bg-gold text-white shadow-glow"
-                      : "text-ink hover:bg-surfaceSoft"
-                  }`}
-                >
-                  <Icon path={item.icon} />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </aside>
+        </header>
 
         {/* Main content area */}
-        <section className="min-w-0 px-3 py-4 md:px-4 lg:px-5 lg:py-6">
+        <section className="min-w-0 flex-1 px-3 py-4 md:px-4 lg:px-6 lg:py-6">
           {!SELF_HEADER_PAGES.includes(activePage) && (
             <div className="mx-auto mb-5 w-full max-w-screen-2xl">
               <PageHeader
