@@ -323,7 +323,7 @@ function DashboardPage({
           ) : chartFallback}
         </ChartCard>
 
-        <ChartCard title="จำนวนครุภัณฑ์แยกตามองค์กร/ฝ่าย/ชมรม">
+        <ChartCard title="จำนวนครุภัณฑ์แยกตามหน่วยงาน">
           {chartsReady ? (
             assetsByOrganization.length > 0 ? (
               <div className="flex h-full flex-col">
