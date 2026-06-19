@@ -273,29 +273,34 @@ function DashboardPage({
         <ChartCard title="จำนวนครุภัณฑ์แยกตามองค์กร/ฝ่าย/ชมรม">
           {chartsReady ? (
             assetsByOrganization.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={assetsByOrganization} layout="vertical" margin={{ top: 20, right: 30, left: 55, bottom: 20 }}>
-                  <CartesianGrid stroke={chartColors.grid} horizontal={false} />
-                  <XAxis type="number" stroke={chartColors.axis} tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={180}
-                    stroke={chartColors.axis}
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fill: chartColors.axis, fontSize: 12 }}
-                    tickFormatter={(value: string) => value.length > 24 ? `${value.slice(0, 24)}...` : value}
-                  />
-                  <Tooltip
-                    contentStyle={tooltipStyle}
-                    cursor={{ fill: "#E1F1FE" }}
-                    formatter={(value) => [`${Number(value).toLocaleString("th-TH")} รายการ`, "จำนวนครุภัณฑ์"]}
-                    labelFormatter={(label) => `องค์กร/ฝ่าย/ชมรม: ${label}`}
-                  />
-                  <Bar dataKey="value" name="จำนวนครุภัณฑ์" fill={chartColors.organizationBar} radius={[0, 6, 6, 0]} barSize={18} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="flex h-full flex-col">
+                <div className="min-h-0 flex-1">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={assetsByOrganization} margin={{ top: 10, right: 10, left: -10, bottom: 80 }}>
+                      <CartesianGrid stroke={chartColors.grid} vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        stroke={chartColors.axis}
+                        tickLine={false}
+                        axisLine={false}
+                        interval={0}
+                        angle={-35}
+                        textAnchor="end"
+                        tick={{ fill: chartColors.axis, fontSize: 11 }}
+                        tickFormatter={(value: string) => value.length > 14 ? `${value.slice(0, 14)}…` : value}
+                      />
+                      <YAxis stroke={chartColors.axis} tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
+                      <Tooltip
+                        contentStyle={tooltipStyle}
+                        cursor={{ fill: "#E1F1FE" }}
+                        formatter={(value) => [`${Number(value).toLocaleString("th-TH")} รายการ`, "จำนวนครุภัณฑ์"]}
+                        labelFormatter={(label) => `องค์กร/ฝ่าย/ชมรม: ${label}`}
+                      />
+                      <Bar dataKey="value" name="จำนวนครุภัณฑ์" fill={chartColors.organizationBar} radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             ) : organizationChartEmptyState
           ) : chartFallback}
         </ChartCard>
