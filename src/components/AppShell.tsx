@@ -23,11 +23,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     roles,
     toast,
     deleteTarget,
-    isDashboardExporting,
     confirmDeleteAsset,
     cancelDelete,
     onGoToRecord,
-    onDashboardExport,
     onLogout,
   } = useAppData();
 
@@ -128,16 +126,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 description={pageDescriptions[activePage]}
                 actions={activePage !== "record" && activePage !== "settings" ? (
                   <>
-                    {permissions.canExport && activePage === "dashboard" && (
-                      <button
-                        onClick={onDashboardExport}
-                        disabled={isDashboardExporting}
-                        className="rounded-md border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:bg-surfaceSoft disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isDashboardExporting ? "กำลังสร้าง PDF..." : "ส่งออก"}
-                      </button>
-                    )}
-                    {activePage !== "dashboard" && activePage !== "audit" && permissions.canCreate && <button onClick={onGoToRecord} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 transition hover:bg-primary-hover">บันทึกใหม่</button>}
+{activePage !== "dashboard" && activePage !== "audit" && permissions.canCreate && <button onClick={onGoToRecord} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 transition hover:bg-primary-hover">บันทึกใหม่</button>}
                   </>
                 ) : undefined}
               />
