@@ -187,6 +187,7 @@ input.date-input:focus::-webkit-calendar-picker-indicator {
 
 .asset-shell .bg-orange.text-white,
 .asset-shell .bg-gold,
+.asset-shell .bg-primary.text-white,
 .asset-shell .hover\:bg-amberSoft:hover,
 .asset-shell .bg-red-500.text-white,
 .asset-shell .bg-rose-500.text-white,
