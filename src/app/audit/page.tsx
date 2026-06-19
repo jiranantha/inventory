@@ -366,7 +366,7 @@ function AuditPage({
               <div><dt className="text-xs font-semibold text-muted">สถานะครุภัณฑ์</dt><dd className="mt-1"><StatusBadge value={asset.status} /></dd></div>
             </dl>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <button onClick={() => openInspectionModal(asset)} className="min-h-12 rounded-md bg-primary px-4 py-2 text-sm font-extrabold text-white">ตรวจสอบ</button>
+              <button onClick={() => openInspectionModal(asset)} className="min-h-12 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white transition hover:bg-amberSoft">ตรวจสอบ</button>
               <button type="button" disabled={!inspection} onClick={() => inspection && setCancelTarget({ asset, inspection })} className={`min-h-12 rounded-md border px-4 py-2 text-sm font-semibold ${inspection ? buttonColors.cancelEnabled : `cursor-not-allowed ${buttonColors.cancelDisabled}`}`}>ยกเลิก</button>
             </div>
           </article>
@@ -436,7 +436,7 @@ function AuditPage({
                   </td>
                   <td className="px-2 py-3">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openInspectionModal(asset)} className="whitespace-nowrap rounded-md bg-primary px-3 py-1.5 text-xs font-extrabold text-white hover:bg-primary-hover">
+                      <button onClick={() => openInspectionModal(asset)} className="whitespace-nowrap rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-white transition hover:bg-amberSoft">
                         ตรวจสอบ
                       </button>
                       <button
