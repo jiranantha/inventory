@@ -83,7 +83,7 @@ function ListPage({
               <div className="relative">
                 <button
                   onClick={() => setExportOpen((v) => !v)}
-                  className="min-h-11 rounded-md border border-line bg-surfaceSoft px-3 py-2 text-xs font-semibold text-ink transition hover:border-primary hover:text-primary"
+                  className="min-h-11 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink transition hover:border-primary hover:text-primary"
                 >
                   ส่งออก ▾
                 </button>
@@ -109,7 +109,7 @@ function ListPage({
                 )}
               </div>
             )}
-            {permissions.canCreate && <button onClick={onAddAsset} className="min-h-11 rounded-md bg-primary px-3 py-2 text-xs font-extrabold text-white transition hover:bg-primary-hover">เพิ่มข้อมูล</button>}
+            {permissions.canCreate && <button onClick={onAddAsset} className="min-h-11 rounded-md bg-primary px-4 py-2 text-sm font-extrabold text-white transition hover:bg-primary-hover">เพิ่มข้อมูล</button>}
           </>
         )}
       />
