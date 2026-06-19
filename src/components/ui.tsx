@@ -471,7 +471,7 @@ export function RecordFormSection({
   return (
     <article className="rounded-xl border border-line bg-surfaceSoft/80 p-4 shadow-glow md:p-5">
       <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-white">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-white">
           {number}
         </span>
         <div>
