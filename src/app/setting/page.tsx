@@ -103,14 +103,14 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, roles, onRolesChan
   const latestSequence = assets.reduce((highest, asset) => Math.max(highest, Number(asset.assetNumber.match(/(\d{1,6})\s*\/\s*\d{4}/)?.[1] ?? 0)), 143);
   const currentThaiYear = new Date().getFullYear() + 543;
   const tabs = [
-    ["users", "จัดการผู้ใช้งาน"], ["roles", "จัดการบทบาท"], ["organizations", "องค์กร/หน่วยงาน"], ["locations", "สถานที่จัดเก็บ"], ["types", "ประเภทครุภัณฑ์"], ["numbers", "การออกเลขครุภัณฑ์"],
+    ["users", "จัดการผู้ใช้งาน"], ["roles", "จัดการบทบาท"], ["organizations", "หน่วยงาน"], ["locations", "สถานที่จัดเก็บ"], ["types", "ประเภทครุภัณฑ์"], ["numbers", "การออกเลขครุภัณฑ์"],
   ] as const;
 
   return (
     <>
       <div className="mx-auto mb-4 w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-3">
         <p className="px-2 text-sm text-muted">จัดการข้อมูลกลาง ผู้ใช้งาน และสิทธิ์การใช้งานระบบ</p>
-        <div className="mt-3 flex gap-2 overflow-x-auto">{tabs.map(([key, label]) => <button key={key} type="button" onClick={() => setActiveTab(key)} className={`min-h-11 shrink-0 rounded-md px-3 py-2 text-sm font-semibold ${activeTab === key ? "bg-primary text-white" : "bg-surfaceSoft text-ink hover:text-primary"}`}>{label}</button>)}</div>
+        <div className="mt-3 flex flex-wrap gap-2">{tabs.map(([key, label]) => <button key={key} type="button" onClick={() => setActiveTab(key)} className={`min-h-11 flex-1 rounded-md px-3 py-2 text-center text-sm font-semibold ${activeTab === key ? "bg-primary text-white" : "bg-surfaceSoft text-ink hover:text-primary"}`}>{label}</button>)}</div>
       </div>
       {activeTab === "users" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-5">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-white">จัดการผู้ใช้งาน</h2><p className="mt-2 text-sm text-muted">ตรวจสอบบัญชี บทบาท องค์กร และสิทธิ์การใช้งานของผู้ใช้ในระบบ</p></div><button type="button" onClick={openAddUser} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover">เพิ่มผู้ใช้งาน</button></div>
