@@ -132,7 +132,7 @@ function AssetDetailPage({
             {(permissions.canEdit || permissions.canEditLimitedFields) && (
               <button
                 onClick={() => onEdit(asset)}
-                className="min-h-11 rounded-md bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-hover"
+                className="min-h-11 rounded-md bg-gold px-4 py-2 text-sm font-bold text-white hover:bg-primary-hover"
               >
                 แก้ไขข้อมูล
               </button>
