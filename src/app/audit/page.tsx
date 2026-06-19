@@ -358,12 +358,12 @@ function AuditPage({
                 <p className="mt-1 break-words text-sm font-bold text-primary">{asset.assetNumber}</p>
                 <h3 className="mt-1 break-words text-base font-extrabold text-ink">{asset.assetName}</h3>
               </div>
-              <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${inspection ? inspectionStatusColors.inspected.badge : inspectionStatusColors.pending.badge}`}>{inspection ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจ"}</span>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${inspection ? inspectionStatusColors.inspected.badge : inspectionStatusColors.pending.badge}`}>{inspection ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจ"}</span>
             </div>
             <dl className="mt-3 grid gap-2 text-sm">
               <div><dt className="text-xs font-semibold text-muted">องค์กร/ฝ่าย/ชมรม</dt><dd className="mt-1 break-words text-ink">{asset.organization}</dd></div>
               <div><dt className="text-xs font-semibold text-muted">สถานที่จัดเก็บ</dt><dd className="mt-1 text-ink">{asset.location}</dd></div>
-              <div><dt className="text-xs font-semibold text-muted">สถานะครุภัณฑ์</dt><dd className="mt-1"><StatusBadge value={asset.status} /></dd></div>
+              <div><dt className="text-xs font-semibold text-muted">สถานะครุภัณฑ์</dt><dd className="mt-1"><StatusBadge value={asset.status} variant="soft" /></dd></div>
             </dl>
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button onClick={() => openInspectionModal(asset)} className="min-h-12 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white transition hover:bg-amberSoft">ตรวจสอบ</button>
@@ -422,14 +422,14 @@ function AuditPage({
                   <td className="px-2 py-3 text-ink" title={asset.location}>
                     <div className="truncate">{asset.location}</div>
                   </td>
-                  <td className="px-2 py-3"><StatusBadge value={asset.status} /></td>
-                  <td className="px-2 py-3">
+                  <td className="px-2 py-3 text-center"><StatusBadge value={asset.status} variant="soft" /></td>
+                  <td className="px-2 py-3 text-center">
                     {inspection ? (
-                      <span title={`ตรวจสอบแล้ว (ปี ${inspectionYear})`} className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-semibold ${inspectionStatusColors.inspected.badge}`}>
+                      <span title={`ตรวจสอบแล้ว (ปี ${inspectionYear})`} className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${inspectionStatusColors.inspected.badge}`}>
                         ตรวจสอบแล้ว ({inspectionYear})
                       </span>
                     ) : (
-                      <span title={`ยังไม่ได้ตรวจสอบ (ปี ${inspectionYear})`} className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-semibold ${inspectionStatusColors.pending.badge}`}>
+                      <span title={`ยังไม่ได้ตรวจสอบ (ปี ${inspectionYear})`} className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${inspectionStatusColors.pending.badge}`}>
                         ยังไม่ได้ตรวจ ({inspectionYear})
                       </span>
                     )}

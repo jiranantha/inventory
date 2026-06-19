@@ -55,7 +55,7 @@ export function StatusBadge({ value, variant = "outline" }: { value: string; var
 export function InspectionResultBadge({ inspected }: { inspected: boolean }) {
   const colors = inspected ? inspectionStatusColors.inspected : inspectionStatusColors.pending;
   return (
-    <span className={`inline-flex min-h-6 items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-bold leading-none ${colors.badge}`}>
+    <span className={`inline-flex min-h-6 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold leading-none ${colors.badge}`}>
       {inspected ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจ"}
     </span>
   );

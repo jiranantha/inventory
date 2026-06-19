@@ -241,10 +241,8 @@ function ListPage({
                   <td className="px-3 py-3">
                     <div className="truncate" title={row.organization}>{row.organization}</div>
                   </td>
-                  <td className="px-3 py-3"><StatusBadge value={row.status} variant="soft" /></td>
-                  <td className="px-3 py-3">
-                    <InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} />
-                  </td>
+                  <td className="px-3 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
+                  <td className="px-3 py-3 text-center"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></td>
                   <td className="px-3 py-3">
                     <button className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-line bg-slate-900 text-[11px] font-bold text-primary hover:border-primary">
                       {row.imageCount}
