@@ -393,7 +393,7 @@ function AuditPage({
             <thead className="bg-surfaceSoft text-ink">
               <tr>
                 {["ผล", "ลำดับ", "หมายเลขครุภัณฑ์", "ชื่อครุภัณฑ์", "หน่วยงาน", "สถานที่จัดเก็บ", "สถานะ", "ผลการตรวจสอบ", "จัดการ"].map((heading) => (
-                  <th key={heading} className="border-b border-line px-2 py-2.5 font-semibold">{heading}</th>
+                  <th key={heading} className={`border-b border-line px-2 py-2.5 font-semibold ${heading === "สถานะ" || heading === "ผลการตรวจสอบ" ? "text-center" : ""}`}>{heading}</th>
                 ))}
               </tr>
             </thead>
