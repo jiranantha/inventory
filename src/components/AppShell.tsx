@@ -256,6 +256,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
           </header>
+          <div aria-hidden="true" className="pointer-events-none absolute hidden h-px bg-[#C3E3FD] lg:block lg:bottom-3 lg:-left-4 lg:right-[calc(100%-1rem)]" />
         </div>
 
         <section className="min-w-0 flex-1 px-3 py-4 md:px-4 lg:px-6 lg:py-6">
