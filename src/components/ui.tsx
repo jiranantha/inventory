@@ -6,6 +6,8 @@ import { assetStatusColors, inspectionStatusColors } from "@/constants/colors";
 import { formatThaiDate } from "@/lib/dates";
 import { organizations } from "@/lib/organizations";
 import { AssetListRow, AssetSetItem, Organization } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translateOption } from "@/lib/i18n";
 
 export function Icon({ path }: { path: string }) {
   return (
@@ -46,17 +48,22 @@ export function CloseIconButton({ onClick }: { onClick: () => void }) {
 }
 
 export function StatusBadge({ value, variant = "outline" }: { value: string; variant?: "outline" | "soft" }) {
+  const { lang } = useLanguage();
   const colors = assetStatusColors[value] ?? { bg: "bg-slate-500/18", text: "text-ink", border: "ring-slate-300/30" };
   const style = `${colors.bg} ${colors.text} ${variant === "outline" ? colors.border : ""}`;
 
-  return <span className={`inline-flex min-h-6 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold leading-none ${variant === "outline" ? "ring-1" : ""} ${style}`}>{value}</span>;
+  return <span className={`inline-flex min-h-6 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold leading-none ${variant === "outline" ? "ring-1" : ""} ${style}`}>{translateOption(value, lang)}</span>;
 }
 
 export function InspectionResultBadge({ inspected }: { inspected: boolean }) {
+  const { lang } = useLanguage();
   const colors = inspected ? inspectionStatusColors.inspected : inspectionStatusColors.pending;
+  const label = inspected
+    ? translateOption("ตรวจสอบแล้ว", lang)
+    : translateOption("ยังไม่ได้ตรวจ", lang);
   return (
     <span className={`inline-flex min-h-6 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold leading-none ${colors.badge}`}>
-      {inspected ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจ"}
+      {label}
     </span>
   );
 }

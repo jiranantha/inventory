@@ -12,6 +12,8 @@ import { formatThaiDate } from "@/lib/dates";
 import { readAssetRowsFromFile } from "@/lib/import-export";
 import { AssetImportPreviewRow, AssetListRow, AssetSetItem, EvidenceImage, Organization } from "@/types";
 import { allowedAssetStatuses } from "@/constants/statuses";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translateOption } from "@/lib/i18n";
 
 function RecordPage({
   assets,
@@ -26,6 +28,7 @@ function RecordPage({
   equipmentTypeOptions: string[];
   locationOptions: string[];
 }) {
+  const { lang, t } = useLanguage();
   const today = new Date().toISOString().slice(0, 10);
   const currentFiscalYear = new Date().getFullYear() + 543;
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(organizationOptions[0] ?? null);
@@ -436,7 +439,7 @@ function RecordPage({
       )}
 
       <div className="space-y-5">
-        <RecordFormSection number={1} title="ข้อมูลทั่วไปของครุภัณฑ์" description="ระบุข้อมูลหลัก งบประมาณ โครงการ และวันที่ได้รับครุภัณฑ์">
+        <RecordFormSection number={1} title={t("rec.sec1")} description={t("rec.sec1desc")}>
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
               <Field label="ชื่อรายการครุภัณฑ์" value={assetName} onChange={(event) => { setAssetName(event.target.value); setMainFormErrors((errors) => ({ ...errors, assetName: "" })); }} placeholder="เช่น กล้องถ่ายภาพ โต๊ะพับ ลำโพง" />
@@ -503,7 +506,7 @@ function RecordPage({
           </div>
         </RecordFormSection>
 
-        <RecordFormSection number={2} title="ข้อมูลสถานะ" description="ระบุสถานะการใช้งานและหมายเหตุของครุภัณฑ์ โดยแนบรูปถ่ายในขั้นตอนยืนยันการออกเลข">
+        <RecordFormSection number={2} title={t("rec.sec2")} description={t("rec.sec2desc")}>
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
               <SelectField
@@ -511,6 +514,7 @@ function RecordPage({
                 value={status}
                 onChange={(value) => { setStatus(value); setMainFormErrors((errors) => ({ ...errors, status: "" })); }}
                 options={allowedAssetStatuses}
+                getOptionLabel={(v) => translateOption(v, lang)}
               />
               <FieldError message={mainFormErrors.status} />
             </div>
@@ -518,7 +522,7 @@ function RecordPage({
           </div>
         </RecordFormSection>
 
-        <RecordFormSection number={3} title="หน่วยงานที่ครอบครองและเก็บรักษา" description="ระบุหน่วยงาน สถานที่จัดเก็บ และผู้รับผิดชอบครุภัณฑ์">
+        <RecordFormSection number={3} title={t("rec.sec3")} description={t("rec.sec3desc")}>
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
               <SearchableOrganizationSelect
@@ -558,10 +562,10 @@ function RecordPage({
 
       <div className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-3 rounded-xl border border-line bg-navy/90 p-4 backdrop-blur">
         <button type="button" onClick={() => handleReset()} className="rounded-md border border-line bg-surfaceSoft px-5 py-2.5 text-sm font-semibold text-ink transition hover:border-primary hover:text-primary">
-          ล้างข้อมูล
+          {t("rec.reset")}
         </button>
         <button type="button" onClick={openIssueAssetModal} className="rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-slate-950 transition hover:bg-primary-hover">
-          บันทึกและออกเลขครุภัณฑ์
+          {t("rec.save")}
         </button>
       </div>
 
@@ -570,8 +574,8 @@ function RecordPage({
           <div className="max-h-[90vh] w-full max-w-xl overflow-hidden rounded-xl border border-line bg-surface shadow-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-line p-5">
               <div>
-                <h3 className="text-xl font-bold text-white">ยืนยันการออกเลขครุภัณฑ์</h3>
-                <p className="mt-1 text-sm text-muted">ตรวจสอบข้อมูลก่อนบันทึกครุภัณฑ์ 1 รายการ</p>
+                <h3 className="text-xl font-bold text-white">{t("rec.issue.title")}</h3>
+                <p className="mt-1 text-sm text-muted">{t("rec.issue.sub")}</p>
               </div>
               <CloseIconButton onClick={() => setIssueModalOpen(false)} />
             </div>
@@ -617,7 +621,7 @@ function RecordPage({
               )}
               <div className="flex justify-end border-t border-line pt-4">
                 <button type="button" onClick={handleSubmit} className="rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-slate-950 hover:bg-primary-hover">
-                  บันทึก
+                  {t("rec.issue.save")}
                 </button>
               </div>
             </div>

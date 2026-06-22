@@ -10,6 +10,8 @@ import { exportAssetReport } from "@/lib/import-export";
 import { Permissions } from "@/lib/permissions";
 import { uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translateOption } from "@/lib/i18n";
 
 function ListPage({
   assets,
@@ -28,6 +30,7 @@ function ListPage({
   onEditAsset: (asset: AssetListRow) => void;
   onDeleteAsset: (asset: AssetListRow) => void;
 }) {
+  const { lang, t } = useLanguage();
   const inspectedAssetIds = useMemo(
     () => new Set(annualInspections.map((inspection) => inspection.assetId)),
     [annualInspections],
@@ -72,11 +75,18 @@ function ListPage({
     setPage(1);
   };
 
+  const tableHeadings = [
+    t("col.no"), t("col.year"), t("col.number"), t("col.name"),
+    t("col.type"), t("col.org"), t("col.status"), t("col.inspection"),
+    t("col.image"), t("col.manage"),
+  ];
+  const centeredHeadings = new Set([t("col.no"), t("col.year"), t("col.type"), t("col.status"), t("col.inspection"), t("col.image"), t("col.manage")]);
+
   return (
     <section className="mx-auto w-full max-w-screen-2xl space-y-4">
       <PageHeader
-        title="แสดงรายการครุภัณฑ์ทั้งหมด"
-        description="ค้นหาและกรองข้อมูลจากหมายเลขครุภัณฑ์ ชื่อรายการ หรือฝ่าย/ชมรม"
+        title={t("list.title")}
+        description={t("list.desc")}
         actions={(
           <>
             {permissions.canExport && (
@@ -85,7 +95,7 @@ function ListPage({
                   onClick={() => setExportOpen((v) => !v)}
                   className="min-h-11 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink transition hover:border-primary hover:text-primary"
                 >
-                  ส่งออก ▾
+                  {t("c.export")} ▾
                 </button>
                 {exportOpen && (
                   <>
@@ -109,14 +119,18 @@ function ListPage({
                 )}
               </div>
             )}
-            {permissions.canCreate && <button onClick={onAddAsset} className="min-h-11 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white transition hover:bg-amberSoft">เพิ่มข้อมูล</button>}
+            {permissions.canCreate && (
+              <button onClick={onAddAsset} className="min-h-11 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white transition hover:bg-amberSoft">
+                {t("c.add")}
+              </button>
+            )}
           </>
         )}
       />
       <div className="rounded-lg border border-line bg-surface p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
           <label className="block md:col-span-2 xl:col-span-1">
-            <span className="text-sm font-semibold text-ink">ค้นหา</span>
+            <span className="text-sm font-semibold text-ink">{t("c.search")}</span>
             <div className="relative mt-2">
               <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="m14 14 3.5 3.5M8.5 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -127,16 +141,13 @@ function ListPage({
                   setSearch(event.target.value);
                   setPage(1);
                 }}
-                placeholder="ค้นหาครุภัณฑ์"
+                placeholder={t("c.searchAssets")}
                 className="h-12 w-full rounded-lg border border-line bg-surfaceSoft py-3 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
               />
               {search.trim() && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearch("");
-                    setPage(1);
-                  }}
+                  onClick={() => { setSearch(""); setPage(1); }}
                   className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-sm font-bold text-muted hover:bg-slate-100 hover:text-slate-900"
                   aria-label="ล้างคำค้นหา"
                 >
@@ -145,14 +156,14 @@ function ListPage({
               )}
             </div>
           </label>
-          <SelectField label="ปีงบประมาณ" value={fiscalYear} onChange={(value) => { setFiscalYear(value); setPage(1); }} options={fiscalYearOptions} />
-          <SelectField label="หน่วยงาน" value={organization} onChange={(value) => { setOrganization(value); setPage(1); }} options={organizationOptions} />
-          <SelectField label="ลักษณะครุภัณฑ์" value={assetType} onChange={(value) => { setAssetType(value); setPage(1); }} options={assetTypeOptions} />
-          <SelectField label="สถานะครุภัณฑ์" value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={statusOptions} />
+          <SelectField label={t("list.filterYear")} value={fiscalYear} onChange={(value) => { setFiscalYear(value); setPage(1); }} options={fiscalYearOptions} getOptionLabel={(v) => translateOption(v, lang)} />
+          <SelectField label={t("list.filterOrg")} value={organization} onChange={(value) => { setOrganization(value); setPage(1); }} options={organizationOptions} getOptionLabel={(v) => translateOption(v, lang)} />
+          <SelectField label={t("list.filterType")} value={assetType} onChange={(value) => { setAssetType(value); setPage(1); }} options={assetTypeOptions} getOptionLabel={(v) => translateOption(v, lang)} />
+          <SelectField label={t("list.filterStatus")} value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={statusOptions} getOptionLabel={(v) => translateOption(v, lang)} />
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           <p className="text-sm font-normal text-muted">
-            แสดง {filteredRows.length.toLocaleString("th-TH")} รายการ
+            {t("c.showing")} {filteredRows.length.toLocaleString("th-TH")} {t("c.items")}
           </p>
           {hasActiveFilters && (
             <button
@@ -160,52 +171,59 @@ function ListPage({
               onClick={clearAllFilters}
               className="rounded-md border border-[#CBD5E1] bg-white px-3 py-1.5 text-xs font-semibold text-[#0F172A] hover:bg-[#F8FAFC]"
             >
-              ล้างตัวกรองทั้งหมด
+              {t("c.clearFilters")}
             </button>
           )}
         </div>
         {hasActiveFilters && (
           <div className="mt-3 flex flex-wrap gap-2">
-            {search.trim() && <FilterChip label="คำค้นหา" value={search.trim()} onClear={() => { setSearch(""); setPage(1); }} />}
-            {fiscalYear !== "ทั้งหมด" && <FilterChip label="ปีงบประมาณ" value={fiscalYear} onClear={() => { setFiscalYear("ทั้งหมด"); setPage(1); }} />}
-            {organization !== "ทั้งหมด" && <FilterChip label="หน่วยงาน" value={organization} onClear={() => { setOrganization("ทั้งหมด"); setPage(1); }} />}
-            {assetType !== "ทั้งหมด" && <FilterChip label="ลักษณะ" value={assetType} onClear={() => { setAssetType("ทั้งหมด"); setPage(1); }} />}
-            {status !== "ทั้งหมด" && <FilterChip label="สถานะ" value={status} onClear={() => { setStatus("ทั้งหมด"); setPage(1); }} />}
+            {search.trim() && <FilterChip label={t("chip.search")} value={search.trim()} onClear={() => { setSearch(""); setPage(1); }} />}
+            {fiscalYear !== "ทั้งหมด" && <FilterChip label={t("chip.year")} value={fiscalYear} onClear={() => { setFiscalYear("ทั้งหมด"); setPage(1); }} />}
+            {organization !== "ทั้งหมด" && <FilterChip label={t("chip.org")} value={organization} onClear={() => { setOrganization("ทั้งหมด"); setPage(1); }} />}
+            {assetType !== "ทั้งหมด" && <FilterChip label={t("chip.type")} value={translateOption(assetType, lang)} onClear={() => { setAssetType("ทั้งหมด"); setPage(1); }} />}
+            {status !== "ทั้งหมด" && <FilterChip label={t("chip.status")} value={translateOption(status, lang)} onClear={() => { setStatus("ทั้งหมด"); setPage(1); }} />}
           </div>
         )}
       </div>
 
+      {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
         {visibleRows.map((row, index) => (
           <article key={row.assetCode} className="rounded-lg border border-line bg-surface p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-muted">ลำดับ {(safePage - 1) * pageSize + index + 1} · ปีงบประมาณ {row.fiscalYear}</p>
+                <p className="text-xs font-semibold text-muted">{t("col.no")} {(safePage - 1) * pageSize + index + 1} · {t("col.year")} {row.fiscalYear}</p>
                 <p className="mt-1 break-words text-sm font-bold text-primary">{row.assetNumber}</p>
                 <h3 className="mt-1 break-words text-base font-extrabold text-ink">{row.assetName}</h3>
               </div>
               <StatusBadge value={row.status} variant="soft" />
             </div>
             <dl className="mt-3 grid gap-2 text-sm">
-              <div><dt className="text-xs font-semibold text-muted">ลักษณะครุภัณฑ์</dt><dd className="mt-1"><AssetStructureBadge asset={row} /></dd></div>
-              <div><dt className="text-xs font-semibold text-muted">องค์กร/ฝ่าย/ชมรม</dt><dd className="mt-1 break-words text-ink">{row.organization}</dd></div>
-              <div><dt className="text-xs font-semibold text-muted">ผลการตรวจสอบ</dt><dd className="mt-1"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></dd></div>
+              <div><dt className="text-xs font-semibold text-muted">{t("col.type")}</dt><dd className="mt-1"><AssetStructureBadge asset={row} /></dd></div>
+              <div><dt className="text-xs font-semibold text-muted">{t("col.org")}</dt><dd className="mt-1 break-words text-ink">{row.organization}</dd></div>
+              <div><dt className="text-xs font-semibold text-muted">{t("col.inspection")}</dt><dd className="mt-1"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></dd></div>
             </dl>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <button onClick={() => onViewDetails(row)} className="min-h-11 rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink">รายละเอียด</button>
-              {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="min-h-11 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white">แก้ไข</button>}
-              {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="min-h-11 rounded-md border border-red-300/30 px-3 py-2 text-sm font-semibold text-danger">ลบ</button>}
+              <button onClick={() => onViewDetails(row)} className="min-h-11 rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink">{t("c.detail")}</button>
+              {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="min-h-11 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white">{t("c.edit")}</button>}
+              {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="min-h-11 rounded-md border border-red-300/30 px-3 py-2 text-sm font-semibold text-danger">{t("c.delete")}</button>}
             </div>
           </article>
         ))}
-        {visibleRows.length === 0 && <div className="rounded-lg border border-line bg-surface px-4 py-10 text-center"><p className="font-bold text-ink">ไม่พบข้อมูลครุภัณฑ์</p><p className="mt-2 text-sm text-muted">ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง</p></div>}
+        {visibleRows.length === 0 && (
+          <div className="rounded-lg border border-line bg-surface px-4 py-10 text-center">
+            <p className="font-bold text-ink">{t("c.noData")}</p>
+            <p className="mt-2 text-sm text-muted">{t("c.noDataSub")}</p>
+          </div>
+        )}
         <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface p-3 text-sm">
-          <button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={safePage === 1} className="min-h-11 rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:opacity-40">ก่อนหน้า</button>
-          <span className="text-center font-bold text-ink">หน้า {safePage}/{pageCount}</span>
-          <button onClick={() => setPage((value) => Math.min(pageCount, value + 1))} disabled={safePage === pageCount} className="min-h-11 rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:opacity-40">ถัดไป</button>
+          <button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={safePage === 1} className="min-h-11 rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:opacity-40">{t("c.prev")}</button>
+          <span className="text-center font-bold text-ink">{t("c.page")} {safePage}/{pageCount}</span>
+          <button onClick={() => setPage((value) => Math.min(pageCount, value + 1))} disabled={safePage === pageCount} className="min-h-11 rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:opacity-40">{t("c.next")}</button>
         </div>
       </div>
 
+      {/* Desktop table */}
       <div className="hidden w-full overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="w-full overflow-x-auto">
           <table className="w-full min-w-[1024px] table-fixed border-collapse text-left text-sm xl:min-w-0">
@@ -223,8 +241,8 @@ function ListPage({
             </colgroup>
             <thead className="bg-surfaceSoft text-ink">
               <tr>
-                {["ลำดับ", "ปีงบประมาณ", "หมายเลขครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "ลักษณะ", "หน่วยงาน", "สถานะ", "ผลการตรวจสอบ", "รูปภาพ", "จัดการ"].map((heading) => (
-                  <th key={heading} className={`border-b border-line px-4 py-2.5 font-semibold ${["ลำดับ", "ปีงบประมาณ", "ลักษณะ", "สถานะ", "ผลการตรวจสอบ", "รูปภาพ", "จัดการ"].includes(heading) ? "text-center" : ""}`}>
+                {tableHeadings.map((heading) => (
+                  <th key={heading} className={`border-b border-line px-4 py-2.5 font-semibold ${centeredHeadings.has(heading) ? "text-center" : ""}`}>
                     {heading}
                   </th>
                 ))}
@@ -238,9 +256,7 @@ function ListPage({
                   <td className="px-4 py-3 font-semibold text-primary" title={row.assetNumber}><div className="line-clamp-2 break-words">{row.assetNumber}</div></td>
                   <td className="px-4 py-3 font-semibold text-ink" title={row.assetName}><div className="line-clamp-2 break-words">{row.assetName}</div></td>
                   <td className="px-3 py-3 text-center"><AssetStructureBadge asset={row} /></td>
-                  <td className="px-4 py-3">
-                    <div className="truncate" title={row.organization}>{row.organization}</div>
-                  </td>
+                  <td className="px-4 py-3"><div className="truncate" title={row.organization}>{row.organization}</div></td>
                   <td className="px-3 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
                   <td className="px-3 py-3 text-center"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></td>
                   <td className="px-3 py-3 text-center">
@@ -250,9 +266,9 @@ function ListPage({
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex flex-row items-center justify-center gap-2">
-                      <button onClick={() => onViewDetails(row)} className="whitespace-nowrap rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-ink hover:border-primary hover:text-primary">รายละเอียด</button>
-                      {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="whitespace-nowrap rounded-md bg-orange px-2 py-1 text-[11px] font-semibold text-white hover:bg-orange/90">แก้ไข</button>}
-                      {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="whitespace-nowrap rounded-md border border-red-300/30 px-2 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/10">ลบ</button>}
+                      <button onClick={() => onViewDetails(row)} className="whitespace-nowrap rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-ink hover:border-primary hover:text-primary">{t("c.detail")}</button>
+                      {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="whitespace-nowrap rounded-md bg-orange px-2 py-1 text-[11px] font-semibold text-white hover:bg-orange/90">{t("c.edit")}</button>}
+                      {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="whitespace-nowrap rounded-md border border-red-300/30 px-2 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/10">{t("c.delete")}</button>}
                     </div>
                   </td>
                 </tr>
@@ -261,15 +277,15 @@ function ListPage({
                 <tr>
                   <td colSpan={10} className="px-3 py-12 text-center">
                     <div className="mx-auto max-w-md">
-                      <p className="text-base font-bold text-white">ไม่พบข้อมูลครุภัณฑ์</p>
-                      <p className="mt-2 text-sm leading-6 text-muted">ลองเปลี่ยนคำค้นหา หรือล้างตัวกรองที่เลือกอยู่</p>
+                      <p className="text-base font-bold text-white">{t("c.noData")}</p>
+                      <p className="mt-2 text-sm leading-6 text-muted">{t("c.noDataSub")}</p>
                       {hasActiveFilters && (
                         <button
                           type="button"
                           onClick={clearAllFilters}
                           className="mt-4 rounded-md bg-gold px-4 py-2 text-sm font-bold text-slate-950 hover:bg-primary-hover"
                         >
-                          ล้างตัวกรองทั้งหมด
+                          {t("c.clearFilters")}
                         </button>
                       )}
                     </div>
@@ -281,8 +297,7 @@ function ListPage({
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm text-ink">
           <span>
-            แสดง {visibleRows.length > 0 ? (safePage - 1) * pageSize + 1 : 0}-
-            {Math.min(safePage * pageSize, filteredRows.length)} จากทั้งหมด {filteredRows.length.toLocaleString("th-TH")} รายการ
+            {t("c.showing")} {visibleRows.length > 0 ? (safePage - 1) * pageSize + 1 : 0}-{Math.min(safePage * pageSize, filteredRows.length)} {t("c.of")} {filteredRows.length.toLocaleString("th-TH")} {t("c.items")}
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -290,17 +305,17 @@ function ListPage({
               disabled={safePage === 1}
               className="rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40"
             >
-              ก่อนหน้า
+              {t("c.prev")}
             </button>
             <span className="rounded-md bg-surfaceSoft px-3 py-2 font-bold text-white">
-              หน้า {safePage}/{pageCount}
+              {t("c.page")} {safePage}/{pageCount}
             </span>
             <button
               onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
               disabled={safePage === pageCount}
               className="rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40"
             >
-              ถัดไป
+              {t("c.next")}
             </button>
           </div>
         </div>

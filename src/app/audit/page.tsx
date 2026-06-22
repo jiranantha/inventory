@@ -11,6 +11,8 @@ import { uploadImage } from "@/lib/image-upload";
 import { uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow, EvidenceImage } from "@/types";
 import { allowedAssetStatuses, ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translateOption } from "@/lib/i18n";
 
 function AuditPage({
   assets,
@@ -25,6 +27,7 @@ function AuditPage({
   onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => void;
   onSaveInspectionStatus: (asset: AssetListRow, status: string, inspectionDate: string, note: string) => void;
 }) {
+  const { lang, t } = useLanguage();
   const currentInspectionYear = getCurrentInspectionYear();
   const today = new Date().toISOString().slice(0, 10);
   const assetFiscalYearOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((row) => row.fiscalYear)).sort((a, b) => Number(a) - Number(b))];
@@ -97,8 +100,8 @@ function AuditPage({
     setPage(1);
   };
   const auditResultText = rows.length > 0
-    ? `แสดง ${((safePage - 1) * pageSize + 1).toLocaleString("th-TH")}-${Math.min(safePage * pageSize, rows.length).toLocaleString("th-TH")} จากทั้งหมด ${rows.length.toLocaleString("th-TH")} รายการ`
-    : "แสดง 0 รายการ";
+    ? `${t("c.showing")} ${((safePage - 1) * pageSize + 1).toLocaleString("th-TH")}-${Math.min(safePage * pageSize, rows.length).toLocaleString("th-TH")} ${t("c.of")} ${rows.length.toLocaleString("th-TH")} ${t("c.items")}`
+    : `${t("c.showing")} 0 ${t("c.items")}`;
 
   const openInspectionModal = (asset: AssetListRow) => {
     const activeInspectionYear = String(getCurrentInspectionYear());
@@ -159,7 +162,6 @@ function AuditPage({
     }
 
     if (validFiles.length === 0) {
-      // Do not clear existing images — just report the error.
       if (errors.length === 0 && evidenceImages.length === 0) {
         setEvidenceError("กรุณาอัปโหลดรูปหลักฐานอย่างน้อย 1 รูปก่อนบันทึกผลตรวจสอบ");
       }
@@ -168,7 +170,6 @@ function AuditPage({
 
     try {
       const newImages = await Promise.all(validFiles.map(readEvidenceFile));
-      // Append to existing — never replace.
       setEvidenceImages((prev) => [...prev, ...newImages].slice(0, maxEvidence));
       if (errors.length === 0) setEvidenceError("");
     } catch (error) {
@@ -193,8 +194,6 @@ function AuditPage({
 
   const confirmCancelInspection = () => {
     if (!cancelTarget) return;
-    // Cancel the year of the inspection actually targeted, not whatever the audit-year
-    // selector happens to show now (they can differ if the selector changed meanwhile).
     const targetYear = cancelTarget.inspection.inspectionYear;
     onCancelAnnualInspection(cancelTarget.asset, targetYear, cancelTarget.inspection);
     setCancelTarget(null);
@@ -241,25 +240,25 @@ function AuditPage({
 
   const summaryItems = [
     {
-      label: "ครุภัณฑ์ทั้งหมด",
+      label: t("audit.totalAssets"),
       value: totalCount,
-      subtitle: "ตามเงื่อนไขที่เลือก",
+      subtitle: t("audit.perFilter"),
       cardClass: "border-[#9CD1FC] bg-[#E1F1FE] shadow-glow",
       accentClass: "bg-[#044377]",
       subtitleClass: "text-[#508ABA]",
     },
     {
-      label: "ตรวจสอบแล้ว",
+      label: t("audit.audited"),
       value: inspectedCount,
-      subtitle: `มีผลตรวจของปี ${inspectionYear}`,
+      subtitle: lang === "th" ? `มีผลตรวจของปี ${inspectionYear}` : `Inspection record for ${inspectionYear}`,
       cardClass: "border-[#A7F3D0] bg-[#ECFDF5] shadow-glow",
       accentClass: "bg-[#059669]",
       subtitleClass: "text-[#047857]",
     },
     {
-      label: "ไม่ได้ตรวจสอบ",
+      label: t("audit.unaudited"),
       value: pendingCount,
-      subtitle: `ไม่มีผลตรวจของปี ${inspectionYear}`,
+      subtitle: lang === "th" ? `ไม่มีผลตรวจของปี ${inspectionYear}` : `No inspection record for ${inspectionYear}`,
       cardClass: "border-[#FECACA] bg-[#FEF2F2] shadow-glow",
       accentClass: "bg-[#DC2626]",
       subtitleClass: "text-[#B91C1C]",
@@ -273,6 +272,12 @@ function AuditPage({
     modalResult &&
     evidenceImages.length > 0,
   );
+
+  const tableHeadings = [
+    t("col.dot"), t("col.no"), t("col.number"), t("audit.col.assetName"),
+    t("col.org"), t("col.location"), t("col.status"), t("col.inspection"), t("col.manage"),
+  ];
+  const centeredTableHeadings = new Set([t("col.status"), t("col.inspection")]);
 
   return (
     <section className="mx-auto w-full max-w-screen-2xl space-y-5">
@@ -296,7 +301,7 @@ function AuditPage({
       <div className="rounded-lg border border-line bg-surface p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
           <label className="block md:col-span-2 xl:col-span-1">
-            <span className="text-sm font-semibold text-ink">ค้นหา</span>
+            <span className="text-sm font-semibold text-ink">{t("c.search")}</span>
             <div className="relative mt-2">
               <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="m14 14 3.5 3.5M8.5 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -304,7 +309,7 @@ function AuditPage({
               <input
                 value={search}
                 onChange={(event) => { setSearch(event.target.value); setPage(1); }}
-                placeholder="ค้นหาครุภัณฑ์"
+                placeholder={t("c.searchAssets")}
                 className="h-12 w-full rounded-lg border border-lineStrong bg-surface py-3 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
               />
               {search.trim() && (
@@ -319,10 +324,10 @@ function AuditPage({
               )}
             </div>
           </label>
-          <SelectField label="ปีงบประมาณ" value={assetFiscalYear} onChange={(v) => { setAssetFiscalYear(v); setPage(1); }} options={assetFiscalYearOptions} />
-          <SelectField label="หน่วยงาน" value={organization} onChange={(v) => { setOrganization(v); setPage(1); }} options={organizationOptions} />
-          <SelectField label="สถานะ" value={assetStatus} onChange={(v) => { setAssetStatus(v); setPage(1); }} options={statusOptions} />
-          <SelectField label="ผลการตรวจสอบ" value={inspectionResult} onChange={(v) => { setInspectionResult(v); setPage(1); }} options={inspectionStateOptions} />
+          <SelectField label={t("audit.filterYear")} value={assetFiscalYear} onChange={(v) => { setAssetFiscalYear(v); setPage(1); }} options={assetFiscalYearOptions} getOptionLabel={(v) => translateOption(v, lang)} />
+          <SelectField label={t("audit.filterOrg")} value={organization} onChange={(v) => { setOrganization(v); setPage(1); }} options={organizationOptions} getOptionLabel={(v) => translateOption(v, lang)} />
+          <SelectField label={t("audit.filterStatus")} value={assetStatus} onChange={(v) => { setAssetStatus(v); setPage(1); }} options={statusOptions} getOptionLabel={(v) => translateOption(v, lang)} />
+          <SelectField label={t("audit.filterInspection")} value={inspectionResult} onChange={(v) => { setInspectionResult(v); setPage(1); }} options={inspectionStateOptions} getOptionLabel={(v) => translateOption(v, lang)} />
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           {hasActiveAuditFilters && (
@@ -331,51 +336,60 @@ function AuditPage({
               onClick={clearAuditFilters}
               className="rounded-md border border-[#CBD5E1] bg-white px-3 py-1.5 text-xs font-semibold text-[#0F172A] hover:bg-[#F8FAFC]"
             >
-              ล้างตัวกรองทั้งหมด
+              {t("c.clearFilters")}
             </button>
           )}
         </div>
         {hasActiveAuditFilters && (
           <div className="mt-3 flex flex-wrap gap-2">
-            {search.trim() && <FilterChip label="คำค้นหา" value={search.trim()} onClear={() => setSearch("")} />}
-            {assetFiscalYear !== "ทั้งหมด" && <FilterChip label="ปีงบประมาณ" value={assetFiscalYear} onClear={() => setAssetFiscalYear("ทั้งหมด")} />}
-            {organization !== "ทั้งหมด" && <FilterChip label="หน่วยงาน" value={organization} onClear={() => setOrganization("ทั้งหมด")} />}
-            {assetStatus !== "ทั้งหมด" && <FilterChip label="สถานะ" value={assetStatus} onClear={() => setAssetStatus("ทั้งหมด")} />}
-            {inspectionResult !== "ทั้งหมด" && <FilterChip label="ผลตรวจ" value={inspectionResult} onClear={() => setInspectionResult("ทั้งหมด")} />}
+            {search.trim() && <FilterChip label={t("chip.search")} value={search.trim()} onClear={() => setSearch("")} />}
+            {assetFiscalYear !== "ทั้งหมด" && <FilterChip label={t("chip.year")} value={assetFiscalYear} onClear={() => setAssetFiscalYear("ทั้งหมด")} />}
+            {organization !== "ทั้งหมด" && <FilterChip label={t("chip.org")} value={organization} onClear={() => setOrganization("ทั้งหมด")} />}
+            {assetStatus !== "ทั้งหมด" && <FilterChip label={t("chip.status")} value={translateOption(assetStatus, lang)} onClear={() => setAssetStatus("ทั้งหมด")} />}
+            {inspectionResult !== "ทั้งหมด" && <FilterChip label={t("chip.inspection")} value={translateOption(inspectionResult, lang)} onClear={() => setInspectionResult("ทั้งหมด")} />}
           </div>
         )}
       </div>
 
+      {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
         {visibleRows.map(({ asset, inspection }, index) => (
           <article key={asset.assetCode} className="rounded-lg border border-line bg-surface p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-muted">ลำดับ {(safePage - 1) * pageSize + index + 1}</p>
+                <p className="text-xs font-semibold text-muted">{t("col.no")} {(safePage - 1) * pageSize + index + 1}</p>
                 <p className="mt-1 break-words text-sm font-bold text-primary">{asset.assetNumber}</p>
                 <h3 className="mt-1 break-words text-base font-extrabold text-ink">{asset.assetName}</h3>
               </div>
-              <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${inspection ? inspectionStatusColors.inspected.badge : inspectionStatusColors.pending.badge}`}>{inspection ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจ"}</span>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${inspection ? inspectionStatusColors.inspected.badge : inspectionStatusColors.pending.badge}`}>
+                {inspection ? translateOption("ตรวจสอบแล้ว", lang) : translateOption("ยังไม่ได้ตรวจ", lang)}
+              </span>
             </div>
             <dl className="mt-3 grid gap-2 text-sm">
-              <div><dt className="text-xs font-semibold text-muted">องค์กร/ฝ่าย/ชมรม</dt><dd className="mt-1 break-words text-ink">{asset.organization}</dd></div>
-              <div><dt className="text-xs font-semibold text-muted">สถานที่จัดเก็บ</dt><dd className="mt-1 text-ink">{asset.location}</dd></div>
-              <div><dt className="text-xs font-semibold text-muted">สถานะครุภัณฑ์</dt><dd className="mt-1"><StatusBadge value={asset.status} variant="soft" /></dd></div>
+              <div><dt className="text-xs font-semibold text-muted">{t("col.org")}</dt><dd className="mt-1 break-words text-ink">{asset.organization}</dd></div>
+              <div><dt className="text-xs font-semibold text-muted">{t("col.location")}</dt><dd className="mt-1 text-ink">{asset.location}</dd></div>
+              <div><dt className="text-xs font-semibold text-muted">{t("col.status")}</dt><dd className="mt-1"><StatusBadge value={asset.status} variant="soft" /></dd></div>
             </dl>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <button onClick={() => openInspectionModal(asset)} className="min-h-12 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white transition hover:bg-amberSoft">ตรวจสอบ</button>
-              <button type="button" disabled={!inspection} onClick={() => inspection && setCancelTarget({ asset, inspection })} className={`min-h-12 rounded-md border px-4 py-2 text-sm font-semibold ${inspection ? buttonColors.cancelEnabled : `cursor-not-allowed ${buttonColors.cancelDisabled}`}`}>ยกเลิก</button>
+              <button onClick={() => openInspectionModal(asset)} className="min-h-12 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white transition hover:bg-amberSoft">{t("audit.btnAudit")}</button>
+              <button type="button" disabled={!inspection} onClick={() => inspection && setCancelTarget({ asset, inspection })} className={`min-h-12 rounded-md border px-4 py-2 text-sm font-semibold ${inspection ? buttonColors.cancelEnabled : `cursor-not-allowed ${buttonColors.cancelDisabled}`}`}>{t("audit.btnCancel")}</button>
             </div>
           </article>
         ))}
-        {visibleRows.length === 0 && <div className="rounded-lg border border-line bg-surface px-4 py-10 text-center"><p className="font-bold text-ink">ไม่พบข้อมูลครุภัณฑ์</p><p className="mt-2 text-sm text-muted">ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง</p></div>}
+        {visibleRows.length === 0 && (
+          <div className="rounded-lg border border-line bg-surface px-4 py-10 text-center">
+            <p className="font-bold text-ink">{t("c.noData")}</p>
+            <p className="mt-2 text-sm text-muted">{t("c.noDataSub")}</p>
+          </div>
+        )}
         <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface p-3 text-sm">
-          <button onClick={() => setPage((v) => Math.max(1, v - 1))} disabled={safePage === 1} className="min-h-11 rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:opacity-40">ก่อนหน้า</button>
-          <span className="text-center font-bold text-ink">หน้า {safePage}/{pageCount}</span>
-          <button onClick={() => setPage((v) => Math.min(pageCount, v + 1))} disabled={safePage === pageCount} className="min-h-11 rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:opacity-40">ถัดไป</button>
+          <button onClick={() => setPage((v) => Math.max(1, v - 1))} disabled={safePage === 1} className="min-h-11 rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:opacity-40">{t("c.prev")}</button>
+          <span className="text-center font-bold text-ink">{t("c.page")} {safePage}/{pageCount}</span>
+          <button onClick={() => setPage((v) => Math.min(pageCount, v + 1))} disabled={safePage === pageCount} className="min-h-11 rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:opacity-40">{t("c.next")}</button>
         </div>
       </div>
 
+      {/* Desktop table */}
       <div className="hidden overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] table-fixed border-collapse text-left text-sm">
@@ -392,8 +406,8 @@ function AuditPage({
             </colgroup>
             <thead className="bg-surfaceSoft text-ink">
               <tr>
-                {["ผล", "ลำดับ", "หมายเลขครุภัณฑ์", "ชื่อครุภัณฑ์", "หน่วยงาน", "สถานที่จัดเก็บ", "สถานะ", "ผลการตรวจสอบ", "จัดการ"].map((heading) => (
-                  <th key={heading} className={`border-b border-line px-2 py-2.5 font-semibold ${heading === "สถานะ" || heading === "ผลการตรวจสอบ" ? "text-center" : ""}`}>{heading}</th>
+                {tableHeadings.map((heading) => (
+                  <th key={heading} className={`border-b border-line px-2 py-2.5 font-semibold ${centeredTableHeadings.has(heading) ? "text-center" : ""}`}>{heading}</th>
                 ))}
               </tr>
             </thead>
@@ -402,7 +416,7 @@ function AuditPage({
                 <tr key={asset.assetCode} className="align-middle hover:bg-surfaceSoft">
                   <td className="px-2 py-3 text-center align-middle">
                     <span
-                      title={inspection ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจสอบ"}
+                      title={inspection ? translateOption("ตรวจสอบแล้ว", lang) : translateOption("ยังไม่ได้ตรวจสอบ", lang)}
                       className={`mx-auto block h-3 w-3 rounded-full ring-2 ring-surface ${inspection ? inspectionStatusColors.inspected.dot : inspectionStatusColors.pending.dot}`}
                     />
                   </td>
@@ -422,24 +436,23 @@ function AuditPage({
                   <td className="px-2 py-3 text-center"><StatusBadge value={asset.status} variant="soft" /></td>
                   <td className="px-2 py-3 text-center">
                     {inspection ? (
-                      <span title={`ตรวจสอบแล้ว (ปี ${inspectionYear})`} className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${inspectionStatusColors.inspected.badge}`}>
-                        ตรวจสอบแล้ว ({inspectionYear})
+                      <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${inspectionStatusColors.inspected.badge}`}>
+                        {translateOption("ตรวจสอบแล้ว", lang)} ({inspectionYear})
                       </span>
                     ) : (
-                      <span title={`ยังไม่ได้ตรวจสอบ (ปี ${inspectionYear})`} className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${inspectionStatusColors.pending.badge}`}>
-                        ยังไม่ได้ตรวจ ({inspectionYear})
+                      <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${inspectionStatusColors.pending.badge}`}>
+                        {translateOption("ยังไม่ได้ตรวจ", lang)} ({inspectionYear})
                       </span>
                     )}
                   </td>
                   <td className="px-2 py-3">
                     <div className="flex items-center gap-2">
                       <button onClick={() => openInspectionModal(asset)} className="whitespace-nowrap rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-white transition hover:bg-amberSoft">
-                        ตรวจสอบ
+                        {t("audit.btnAudit")}
                       </button>
                       <button
                         type="button"
                         disabled={!inspection}
-                        title={inspection ? "ยกเลิกผลตรวจสอบประจำปี" : "ยังไม่มีผลตรวจสอบของปีนี้ให้ยกเลิก"}
                         onClick={() => inspection && setCancelTarget({ asset, inspection })}
                         className={`whitespace-nowrap rounded-md border px-3 py-1.5 text-xs font-semibold ${
                           inspection
@@ -447,7 +460,7 @@ function AuditPage({
                             : `cursor-not-allowed ${buttonColors.cancelDisabled}`
                         }`}
                       >
-                        ยกเลิก
+                        {t("audit.btnCancel")}
                       </button>
                     </div>
                   </td>
@@ -457,15 +470,15 @@ function AuditPage({
                 <tr>
                   <td colSpan={9} className="px-3 py-12 text-center">
                     <div className="mx-auto max-w-md">
-                      <p className="text-base font-bold text-ink">ไม่พบข้อมูลครุภัณฑ์</p>
-                      <p className="mt-2 text-sm leading-6 text-muted">ลองเปลี่ยนคำค้นหา หรือล้างตัวกรองที่เลือกอยู่</p>
+                      <p className="text-base font-bold text-ink">{t("c.noData")}</p>
+                      <p className="mt-2 text-sm leading-6 text-muted">{t("c.noDataSub")}</p>
                       {hasActiveAuditFilters && (
                         <button
                           type="button"
                           onClick={clearAuditFilters}
                           className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-hover"
                         >
-                          ล้างตัวกรองทั้งหมด
+                          {t("c.clearFilters")}
                         </button>
                       )}
                     </div>
@@ -478,33 +491,20 @@ function AuditPage({
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm text-ink">
           <span>{auditResultText}</span>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((v) => Math.max(1, v - 1))}
-              disabled={safePage === 1}
-              className="rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              ก่อนหน้า
-            </button>
-            <span className="rounded-md bg-surfaceSoft px-3 py-2 font-bold text-ink">
-              หน้า {safePage}/{pageCount}
-            </span>
-            <button
-              onClick={() => setPage((v) => Math.min(pageCount, v + 1))}
-              disabled={safePage === pageCount}
-              className="rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              ถัดไป
-            </button>
+            <button onClick={() => setPage((v) => Math.max(1, v - 1))} disabled={safePage === 1} className="rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40">{t("c.prev")}</button>
+            <span className="rounded-md bg-surfaceSoft px-3 py-2 font-bold text-ink">{t("c.page")} {safePage}/{pageCount}</span>
+            <button onClick={() => setPage((v) => Math.min(pageCount, v + 1))} disabled={safePage === pageCount} className="rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40">{t("c.next")}</button>
           </div>
         </div>
       </div>
 
+      {/* Inspection modal */}
       {selectedAsset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-2 sm:p-4">
           <div className="max-h-[96vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-line bg-surface p-4 shadow-2xl sm:max-h-[90vh] sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 className="text-xl font-bold text-ink">บันทึกผลตรวจสอบ</h3>
+                <h3 className="text-xl font-bold text-ink">{t("audit.modal.title")}</h3>
                 <p className="mt-3 text-base font-extrabold text-ink">{selectedAsset.assetName}</p>
                 <p className="mt-1 text-sm font-semibold text-primary">{selectedAsset.assetNumber}</p>
               </div>
@@ -513,22 +513,20 @@ function AuditPage({
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <label className="block min-w-0">
-                <span className="text-sm font-semibold text-ink">ปีที่ตรวจสอบ</span>
+                <span className="text-sm font-semibold text-ink">{t("audit.modal.year")}</span>
                 <div className="mt-2 min-h-12 w-full rounded-lg border border-lineStrong bg-surface px-4 py-3 text-sm font-semibold text-ink">
                   {inspectionYear}
                 </div>
               </label>
-              <ThaiDateField label="วันที่ตรวจสอบ" value={inspectionDate} onChange={setInspectionDate} />
-              <Field label="สถานที่ที่พบครุภัณฑ์" value={foundLocation} onChange={(event) => setFoundLocation(event.target.value)} placeholder="ระบุสถานที่ที่พบครุภัณฑ์" />
-              <Field label="ผู้ตรวจสอบ" value={inspectorName} onChange={(event) => setInspectorName(event.target.value)} placeholder="ชื่อผู้ตรวจสอบ" />
-              <SelectField label="สถานะครุภัณฑ์" value={modalResult} onChange={setModalResult} options={modalStatusOptions} />
+              <ThaiDateField label={t("audit.modal.date")} value={inspectionDate} onChange={setInspectionDate} />
+              <Field label={t("audit.modal.location")} value={foundLocation} onChange={(event) => setFoundLocation(event.target.value)} placeholder="ระบุสถานที่ที่พบครุภัณฑ์" />
+              <Field label={t("audit.modal.inspector")} value={inspectorName} onChange={(event) => setInspectorName(event.target.value)} placeholder="ชื่อผู้ตรวจสอบ" />
+              <SelectField label={t("audit.modal.status")} value={modalResult} onChange={setModalResult} options={modalStatusOptions} getOptionLabel={(v) => translateOption(v, lang)} />
               <div className="space-y-3 md:col-span-2">
                 <div>
                   <p className="text-sm font-semibold text-ink">
-                    รูปหลักฐาน{" "}
-                    <span className="font-normal text-muted">
-                      ({evidenceImages.length}/3 รูป)
-                    </span>
+                    {t("audit.modal.evidence")}{" "}
+                    <span className="font-normal text-muted">({evidenceImages.length}/3 รูป)</span>
                   </p>
                   <p className="mt-1 text-xs text-muted">
                     {isMobile
@@ -539,45 +537,18 @@ function AuditPage({
                     isMobile ? (
                       <div className="mt-2 flex gap-2">
                         <label className="flex flex-1 cursor-pointer items-center justify-center rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-3 py-3 hover:border-primary">
-                          <span className="text-sm font-semibold text-gold">ถ่ายรูป</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            className="sr-only"
-                            onChange={(event) => {
-                              void handleEvidenceImageChange(event.target.files);
-                              event.target.value = "";
-                            }}
-                          />
+                          <span className="text-sm font-semibold text-gold">{t("audit.modal.takePhoto")}</span>
+                          <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { void handleEvidenceImageChange(event.target.files); event.target.value = ""; }} />
                         </label>
                         <label className="flex flex-1 cursor-pointer items-center justify-center rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-3 py-3 hover:border-primary">
-                          <span className="text-sm font-semibold text-gold">เลือกรูปภาพ</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            className="sr-only"
-                            onChange={(event) => {
-                              void handleEvidenceImageChange(event.target.files);
-                              event.target.value = "";
-                            }}
-                          />
+                          <span className="text-sm font-semibold text-gold">{t("audit.modal.choosePhoto")}</span>
+                          <input type="file" accept="image/*" multiple className="sr-only" onChange={(event) => { void handleEvidenceImageChange(event.target.files); event.target.value = ""; }} />
                         </label>
                       </div>
                     ) : (
                       <label className="mt-2 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-4 py-3 hover:border-primary">
-                        <span className="text-sm font-semibold text-gold">เลือกรูปภาพ</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          className="sr-only"
-                          onChange={(event) => {
-                            void handleEvidenceImageChange(event.target.files);
-                            event.target.value = "";
-                          }}
-                        />
+                        <span className="text-sm font-semibold text-gold">{t("audit.modal.choosePhoto")}</span>
+                        <input type="file" accept="image/*" multiple className="sr-only" onChange={(event) => { void handleEvidenceImageChange(event.target.files); event.target.value = ""; }} />
                       </label>
                     )
                   ) : (
@@ -594,30 +565,13 @@ function AuditPage({
                 {evidenceImages.length > 0 && (
                   <div className="grid grid-cols-3 gap-2">
                     {evidenceImages.map((image, index) => (
-                      <figure
-                        key={image.url}
-                        className="relative overflow-hidden rounded-md border border-line bg-slate-950/40"
-                      >
+                      <figure key={image.url} className="relative overflow-hidden rounded-md border border-line bg-slate-950/40">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={image.url}
-                          alt={image.name}
-                          className="h-24 w-full cursor-pointer object-cover"
-                          onClick={() => setPreviewImage(image)}
-                        />
-                        <button
-                          type="button"
-                          onClick={(event) => { event.stopPropagation(); removeEvidenceImage(image.url); }}
-                          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-sm font-bold leading-none text-danger shadow hover:bg-red-100"
-                          aria-label="ลบรูปภาพ"
-                        >
-                          ×
-                        </button>
+                        <img src={image.url} alt={image.name} className="h-24 w-full cursor-pointer object-cover" onClick={() => setPreviewImage(image)} />
+                        <button type="button" onClick={(event) => { event.stopPropagation(); removeEvidenceImage(image.url); }} className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-sm font-bold leading-none text-danger shadow hover:bg-red-100" aria-label="ลบรูปภาพ">×</button>
                         <div className="p-2">
                           <p className="text-xs font-semibold text-muted">รูปที่ {index + 1}</p>
-                          <p className="truncate text-[11px] text-ink" title={image.name}>
-                            {image.name}
-                          </p>
+                          <p className="truncate text-[11px] text-ink" title={image.name}>{image.name}</p>
                         </div>
                       </figure>
                     ))}
@@ -625,81 +579,63 @@ function AuditPage({
                 )}
               </div>
               <div className="md:col-span-2">
-                <TextAreaField label="หมายเหตุ" value={inspectionNote} onChange={(event) => setInspectionNote(event.target.value)} placeholder="หมายเหตุการตรวจสอบ" />
+                <TextAreaField label={t("audit.modal.note")} value={inspectionNote} onChange={(event) => setInspectionNote(event.target.value)} placeholder="หมายเหตุการตรวจสอบ" />
               </div>
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:justify-end">
-              <button onClick={() => setSelectedAsset(null)} className="min-h-12 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">ยกเลิก</button>
+              <button onClick={() => setSelectedAsset(null)} className="min-h-12 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">{t("c.cancel")}</button>
               <button
                 onClick={saveInspection}
                 disabled={!canSaveInspection}
-                title={canSaveInspection ? "บันทึกผลตรวจสอบ" : "กรุณากรอกข้อมูลให้ครบและอัปโหลดรูปหลักฐานอย่างน้อย 1 รูป"}
                 className="min-h-12 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-gold"
               >
-                บันทึกผลตรวจสอบ
+                {t("audit.modal.save")}
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Image preview */}
       {previewImage && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setPreviewImage(null)}
-        >
-          <div
-            className="relative flex max-h-[90vh] max-w-[90vw] flex-col items-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setPreviewImage(null)}
-              className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink shadow hover:bg-slate-100"
-              aria-label="ปิด"
-            >
-              ×
-            </button>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4" onClick={() => setPreviewImage(null)}>
+          <div className="relative flex max-h-[90vh] max-w-[90vw] flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            <button type="button" onClick={() => setPreviewImage(null)} className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-ink shadow hover:bg-slate-100" aria-label="ปิด">×</button>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewImage.url}
-              alt={previewImage.name}
-              className="max-h-[80vh] max-w-[80vw] rounded-lg object-contain shadow-2xl"
-            />
+            <img src={previewImage.url} alt={previewImage.name} className="max-h-[80vh] max-w-[80vw] rounded-lg object-contain shadow-2xl" />
             <p className="mt-2 text-center text-sm text-white/80">{previewImage.name}</p>
           </div>
         </div>
       )}
 
+      {/* Cancel inspection modal */}
       {cancelTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4">
           <div className="w-full max-w-lg rounded-lg border border-rose-300/20 bg-surface p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
-              <h3 className="text-xl font-bold text-white">ยกเลิกผลตรวจสอบประจำปี</h3>
+              <h3 className="text-xl font-bold text-white">{t("audit.cancel.title")}</h3>
               <CloseIconButton onClick={() => setCancelTarget(null)} />
             </div>
             <p className="mt-3 text-sm leading-6 text-ink">
-              ต้องการยกเลิกผลตรวจสอบของครุภัณฑ์รายการนี้ในปี {inspectionYear} ใช่หรือไม่?
+              {lang === "th"
+                ? `ต้องการยกเลิกผลตรวจสอบของครุภัณฑ์รายการนี้ในปี ${inspectionYear} ใช่หรือไม่?`
+                : `Do you want to cancel the inspection result for ${inspectionYear}?`}
             </p>
             <div className="mt-4 rounded-lg border border-line bg-slate-950/30 p-4 text-sm">
-              <p className="text-muted">หมายเลขครุภัณฑ์</p>
+              <p className="text-muted">{t("col.number")}</p>
               <p className="mt-1 font-semibold text-primary">{cancelTarget.asset.assetNumber}</p>
-              <p className="mt-3 text-muted">ชื่อครุภัณฑ์</p>
+              <p className="mt-3 text-muted">{t("audit.col.assetName")}</p>
               <p className="mt-1 font-semibold text-white">{cancelTarget.asset.assetName}</p>
-              <p className="mt-3 text-muted">ปีที่ตรวจสอบ</p>
+              <p className="mt-3 text-muted">{t("audit.modal.year")}</p>
               <p className="mt-1 font-semibold text-white">{inspectionYear}</p>
             </div>
             <p className="mt-4 rounded-lg border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">
-              การยกเลิกนี้จะลบเฉพาะผลตรวจสอบประจำปี ไม่ได้ลบข้อมูลครุภัณฑ์หลัก
+              {t("audit.cancel.note")}
             </p>
             <div className="mt-5 flex flex-wrap justify-end gap-3">
-              <button
-                type="button"
-                onClick={confirmCancelInspection}
-                className="rounded-md bg-rose-500 px-4 py-2 text-sm font-extrabold text-white hover:bg-rose-400"
-              >
-                ยืนยัน
+              <button type="button" onClick={confirmCancelInspection} className="rounded-md bg-rose-500 px-4 py-2 text-sm font-extrabold text-white hover:bg-rose-400">
+                {t("audit.cancel.confirm")}
               </button>
             </div>
           </div>

@@ -2,17 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { useAppData } from "@/components/AppDataProvider";
 import { Icon, PageHeader } from "@/components/ui";
-import { menuItems, pageDescriptions } from "@/constants/options";
+import { menuItems } from "@/constants/options";
 import { menuHref, pageKeyFromPathname } from "@/lib/routes";
 import { getRoleDefinition } from "@/lib/permissions";
 import { PageKey } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const SELF_HEADER_PAGES: PageKey[] = ["list", "detail", "edit"];
-const SYSTEM_DESCRIPTION = "ระบบบริหารจัดการครุภัณฑ์ ฝ่าย/ชมรม มหาวิทยาลัยเชียงใหม่";
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -36,18 +36,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [lang, setLang] = useState<"TH" | "EN">("TH");
+  const { lang, setLang, t } = useLanguage();
 
-  useEffect(() => {
-    const saved = localStorage.getItem("appLang");
-    if (saved === "TH" || saved === "EN") setLang(saved);
-  }, []);
-
-  const toggleLang = () => {
-    const next = lang === "TH" ? "EN" : "TH";
-    setLang(next);
-    localStorage.setItem("appLang", next);
-  };
+  const toggleLang = () => setLang(lang === "th" ? "en" : "th");
 
   const activePage = pageKeyFromPathname(pathname);
 
@@ -60,13 +51,35 @@ export function AppShell({ children }: { children: ReactNode }) {
     return true;
   });
 
+  const navLabelMap: Record<string, string> = {
+    dashboard: t("nav.dashboard"),
+    list: t("nav.list"),
+    audit: t("nav.audit"),
+    record: t("nav.record"),
+    settings: t("nav.settings"),
+  };
+
   const activeItem = activePage === "detail"
-    ? { label: "รายละเอียดครุภัณฑ์" }
+    ? { label: t("det.title") }
     : activePage === "edit"
-      ? { label: "แก้ไขข้อมูลครุภัณฑ์" }
+      ? { label: t("det.editBtn") }
       : (menuItems.find((item) => item.key === activePage) ?? menuItems[0]);
 
   const roleName = getRoleDefinition(currentUser.role, roles).name;
+
+  const pageTitle =
+    activePage === "audit" ? t("page.audit.title") :
+    activePage === "record" ? t("page.record.title") :
+    activePage === "settings" ? t("page.settings.title") :
+    activePage === "dashboard" ? t("page.dashboard.title") :
+    activeItem.label;
+
+  const pageDesc =
+    activePage === "audit" ? t("page.audit.desc") :
+    activePage === "record" ? t("page.record.desc") :
+    activePage === "settings" ? t("page.settings.desc") :
+    activePage === "dashboard" ? t("page.dashboard.desc") :
+    "";
 
   return (
     <main className="asset-shell flex min-h-screen w-full max-w-full font-thai text-ink">
@@ -82,16 +95,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       {deleteTarget && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
           <div className="w-full max-w-md rounded-lg border border-line bg-surface p-5 shadow-2xl">
-            <h2 className="text-xl font-bold text-white">ยืนยันการลบข้อมูล</h2>
-            <p className="mt-3 text-sm leading-6 text-ink">
-              ต้องการลบครุภัณฑ์รายการนี้หรือไม่? ข้อมูลจะถูกเก็บไว้ในประวัติและสามารถตรวจสอบย้อนหลังได้
-            </p>
+            <h2 className="text-xl font-bold text-white">{t("app.delete.title")}</h2>
+            <p className="mt-3 text-sm leading-6 text-ink">{t("app.delete.body")}</p>
             <p className="mt-3 rounded-md border border-line bg-slate-950/30 px-3 py-2 text-sm font-semibold text-white">
               {deleteTarget.assetNumber} · {deleteTarget.assetName}
             </p>
             <div className="mt-5 flex justify-end gap-3">
-              <button onClick={cancelDelete} className="rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">ยกเลิก</button>
-              <button onClick={confirmDeleteAsset} className="rounded-md bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-400">ยืนยันลบ</button>
+              <button onClick={cancelDelete} className="rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">{t("app.delete.cancel")}</button>
+              <button onClick={confirmDeleteAsset} className="rounded-md bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-400">{t("app.delete.confirm")}</button>
             </div>
           </div>
         </div>
@@ -111,28 +122,23 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       {/* ── Left Sidebar ──────────────────────────────── */}
-      {/* Outer aside: page-background container with padding (creates the gutter around the card) */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-[#F0F8FF] p-3 lg:static lg:z-auto lg:min-h-screen lg:translate-x-0 lg:p-4 ${
           sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
       >
-        {/* Inner card panel: white rounded card with border and shadow */}
         <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-[#C3E3FD] bg-surface shadow-sm">
 
-          {/* Card header: logo + system name + close button (mobile) */}
           <div className="flex shrink-0 items-center gap-2.5 border-b border-[#C3E3FD] px-4 py-4">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold shadow-glow">
               <Icon path="M12 3l8 4v10l-8 4-8-4V7l8-4Zm0 0v18M4 7l8 4 8-4" />
             </div>
-            {/* System name — hover tooltip reveals the full description */}
             <div className="group relative min-w-0 flex-1">
-              <p className="truncate text-sm font-extrabold text-ink">ระบบครุภัณฑ์นักศึกษา</p>
+              <p className="truncate text-sm font-extrabold text-ink">{t("app.name")}</p>
               <div className="pointer-events-none absolute left-0 top-full z-20 mt-2 w-64 rounded-xl border border-line bg-surface px-3 py-2.5 text-xs text-ink opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
-                {SYSTEM_DESCRIPTION}
+                {t("app.desc")}
               </div>
             </div>
-            {/* Close — mobile only */}
             <button
               className="shrink-0 rounded-lg p-1.5 text-ink hover:bg-surfaceSoft lg:hidden"
               onClick={() => setSidebarOpen(false)}
@@ -142,7 +148,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
           </div>
 
-          {/* Navigation links */}
           <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
             {allowedMenuItems.map((item) => {
               const active = item.key === activePage || (item.key === "list" && (activePage === "detail" || activePage === "edit"));
@@ -158,7 +163,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   }`}
                 >
                   <Icon path={item.icon} />
-                  <span>{item.label}</span>
+                  <span>{navLabelMap[item.key] ?? item.label}</span>
                 </Link>
               );
             })}
@@ -170,12 +175,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* ── Right panel: Topbar + Content ─────────────── */}
       <div className="flex min-w-0 flex-1 flex-col">
 
-        {/* Topbar outer wrapper — sticky, page-background with outer padding matching sidebar gutter */}
         <div className="sticky top-0 z-30 shrink-0 bg-[#F0F8FF] px-3 pt-3 pb-2 lg:px-4 lg:pt-4 lg:pb-3">
-          {/* Framed topbar card — rounded card mirroring sidebar inner card style */}
           <header className="flex h-14 items-center gap-3 rounded-2xl border border-[#C3E3FD] bg-white px-4 shadow-sm sm:px-5">
 
-            {/* Hamburger — mobile only */}
             <button
               className="shrink-0 rounded-xl border border-[#C3E3FD] bg-[#F0F8FF] p-2 text-ink transition hover:border-[#044377] hover:text-[#044377] lg:hidden"
               onClick={() => setSidebarOpen(true)}
@@ -184,17 +186,15 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Icon path="M4 6h16M4 12h16M4 18h16" />
             </button>
 
-            {/* System name — mobile only (sidebar hidden on small screens) */}
-            <span className="truncate text-sm font-extrabold text-ink lg:hidden">ระบบครุภัณฑ์นักศึกษา</span>
+            <span className="truncate text-sm font-extrabold text-ink lg:hidden">{t("app.name")}</span>
 
-            {/* Search input — desktop; UI placeholder, not wired to page filter logic */}
             <div className="relative hidden flex-1 max-w-xs items-center lg:flex">
               <svg className="pointer-events-none absolute left-3 h-4 w-4 shrink-0 text-[#508ABA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" />
               </svg>
               <input
                 type="text"
-                placeholder="ค้นหา..."
+                placeholder={t("app.search")}
                 className="w-full rounded-xl border border-[#C3E3FD] bg-[#F0F8FF] py-2 pl-9 pr-4 text-sm"
                 readOnly
                 tabIndex={-1}
@@ -203,28 +203,17 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <div className="flex-1" />
 
-            {/* Right controls */}
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
 
-              {/* Language switch — UI placeholder stored in localStorage */}
               <button
                 onClick={toggleLang}
-                title={lang === "TH" ? "Switch to English" : "เปลี่ยนเป็นภาษาไทย"}
+                title={lang === "th" ? "Switch to English" : "เปลี่ยนเป็นภาษาไทย"}
                 className="flex items-center gap-1.5 rounded-xl border border-[#C3E3FD] bg-[#F0F8FF] px-3 py-2 text-xs font-semibold text-ink transition hover:border-[#044377] hover:text-[#044377]"
               >
                 <Icon path="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                <span>{lang}</span>
+                <span>{lang === "th" ? "TH" : "EN"}</span>
               </button>
 
-              {/* Notification bell — UI placeholder, no notification logic */}
-              <button
-                className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#C3E3FD] bg-[#F0F8FF] text-ink transition hover:border-[#044377] hover:text-[#044377]"
-                aria-label="การแจ้งเตือน"
-              >
-                <Icon path="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </button>
-
-              {/* User profile dropdown */}
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen((o) => !o)}
@@ -259,7 +248,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-ink transition hover:bg-[#F0F8FF] hover:text-[#044377]"
                       >
                         <Icon path="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        ออกจากระบบ
+                        {t("app.logout")}
                       </button>
                     </div>
                   </div>
@@ -269,16 +258,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           </header>
         </div>
 
-        {/* Main content area */}
         <section className="min-w-0 flex-1 px-3 py-4 md:px-4 lg:px-6 lg:py-6">
           {!SELF_HEADER_PAGES.includes(activePage) && (
             <div className="mx-auto mb-5 w-full max-w-screen-2xl">
               <PageHeader
-                title={activePage === "audit" ? "ตรวจสอบครุภัณฑ์ประจำปี" : activePage === "record" ? "บันทึกข้อมูลครุภัณฑ์" : activeItem.label}
-                description={pageDescriptions[activePage]}
+                title={pageTitle}
+                description={pageDesc}
                 actions={activePage !== "record" && activePage !== "settings" ? (
                   <>
-{activePage !== "dashboard" && activePage !== "audit" && permissions.canCreate && <button onClick={onGoToRecord} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 transition hover:bg-primary-hover">บันทึกใหม่</button>}
+                    {activePage !== "dashboard" && activePage !== "audit" && permissions.canCreate && (
+                      <button onClick={onGoToRecord} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 transition hover:bg-primary-hover">{t("app.newRecord")}</button>
+                    )}
                   </>
                 ) : undefined}
               />

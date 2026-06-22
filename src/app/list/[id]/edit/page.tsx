@@ -32,6 +32,8 @@ import { getOrganizationType, normalizeOrganizationName } from "@/lib/organizati
 import { Permissions } from "@/lib/permissions";
 import { AssetListRow, AssetSetItem, EvidenceImage, Organization } from "@/types";
 import { allowedAssetStatuses } from "@/constants/statuses";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translateOption } from "@/lib/i18n";
 
 // ── Inline Alert Dialog ───────────────────────────────────────────────────────
 type DialogConfig = {
@@ -51,6 +53,7 @@ function AlertDialog({
   onCancel: () => void;
   onConfirm: () => void | Promise<void>;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
       <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-2xl">
@@ -62,14 +65,14 @@ function AlertDialog({
             onClick={onCancel}
             className="rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary"
           >
-            ยกเลิก
+            {t("c.cancel")}
           </button>
           <button
             type="button"
             onClick={onConfirm}
             className="rounded-md bg-primary px-4 py-2 text-sm font-extrabold text-white hover:bg-primary-hover"
           >
-            ยืนยัน
+            {t("c.confirm")}
           </button>
         </div>
       </div>
@@ -97,6 +100,7 @@ function AssetEditPage({
   locationOptions: string[];
   existingAssets: AssetListRow[];
 }) {
+  const { lang, t } = useLanguage();
   // Admin = canManageUsers. Only admins can edit the asset number.
   const isAdmin = permissions.canManageUsers;
 
@@ -535,8 +539,8 @@ function AssetEditPage({
         {/* Section 1: fields 4-11 */}
         <RecordFormSection
           number={1}
-          title="ข้อมูลทั่วไปของครุภัณฑ์"
-          description="ระบุข้อมูลหลัก งบประมาณ โครงการ และวันที่ได้รับครุภัณฑ์"
+          title={t("rec.sec1")}
+          description={t("rec.sec1desc")}
         >
           <div className="grid gap-4 lg:grid-cols-2">
             <Field
@@ -613,8 +617,8 @@ function AssetEditPage({
         {/* Section 2: fields 12-13 */}
         <RecordFormSection
           number={2}
-          title="ข้อมูลสถานะ"
-          description="ระบุสถานะการใช้งานและหมายเหตุของครุภัณฑ์"
+          title={t("rec.sec2")}
+          description={t("rec.sec2desc")}
         >
           <div className="grid gap-4 lg:grid-cols-2">
             <SelectField
@@ -622,6 +626,7 @@ function AssetEditPage({
               value={status}
               onChange={setStatus}
               options={allowedAssetStatuses}
+              getOptionLabel={(v) => translateOption(v, lang)}
             />
             <TextAreaField
               label="หมายเหตุ"
@@ -636,8 +641,8 @@ function AssetEditPage({
         {/* Section 3: fields 14-17 */}
         <RecordFormSection
           number={3}
-          title="หน่วยงานที่ครอบครองและเก็บรักษา"
-          description="ระบุหน่วยงาน สถานที่จัดเก็บ และผู้รับผิดชอบครุภัณฑ์"
+          title={t("rec.sec3")}
+          description={t("rec.sec3desc")}
         >
           <div className="grid gap-4 lg:grid-cols-2">
             {permissions.canEditLimitedFields ? (
@@ -709,14 +714,14 @@ function AssetEditPage({
           onClick={onCancel}
           className="rounded-md border border-line bg-surfaceSoft px-5 py-2.5 text-sm font-semibold text-ink transition hover:border-primary hover:text-primary"
         >
-          ยกเลิก
+          {t("c.cancel")}
         </button>
         <button
           type="button"
           onClick={handleSaveClick}
           className="rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-slate-950 transition hover:bg-primary-hover"
         >
-          บันทึกการแก้ไข
+          {t("c.save")}
         </button>
       </div>
     </section>

@@ -7,6 +7,7 @@ import { PlaceholderPage } from "@/components/StatusPages";
 import { AppUser, Permissions, RoleDefinition, UserRole, getPermissionLabel, getPermissions, getRoleDefinition, noPermissions } from "@/lib/permissions";
 import { uniqueSorted } from "@/lib/utils";
 import { AssetListRow, MasterDataItem } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 function MasterDataPanel({ title, description, items, onChange, addLabel }: { title: string; description: string; items: MasterDataItem[]; onChange: (items: MasterDataItem[]) => void; addLabel: string }) {
   const [draft, setDraft] = useState("");
@@ -63,6 +64,7 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, roles, onRolesChan
   const [editingRole, setEditingRole] = useState<RoleDefinition | null>(null);
   const [roleModalMode, setRoleModalMode] = useState<"add" | "edit">("edit");
   const [activeTab, setActiveTab] = useState<"users" | "roles" | "organizations" | "locations" | "types" | "numbers">("users");
+  const { t } = useLanguage();
 
   if (!permissions.canManageUsers) {
     return (
@@ -102,9 +104,10 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, roles, onRolesChan
   const organizationOptions = ["กองพัฒนานักศึกษามหาวิทยาลัยเชียงใหม่", "-", ...organizationItems.map((item) => item.name)];
   const latestSequence = assets.reduce((highest, asset) => Math.max(highest, Number(asset.assetNumber.match(/(\d{1,6})\s*\/\s*\d{4}/)?.[1] ?? 0)), 143);
   const currentThaiYear = new Date().getFullYear() + 543;
-  const tabs = [
-    ["users", "จัดการผู้ใช้งาน"], ["roles", "จัดการบทบาท"], ["organizations", "หน่วยงาน"], ["locations", "สถานที่จัดเก็บ"], ["types", "ประเภทครุภัณฑ์"], ["numbers", "การออกเลขครุภัณฑ์"],
-  ] as const;
+  type TabKey = "users" | "roles" | "organizations" | "locations" | "types" | "numbers";
+  const tabs: [TabKey, string][] = [
+    ["users", t("set.tabUsers")], ["roles", t("set.tabRoles")], ["organizations", t("set.tabOrgs")], ["locations", t("set.tabLocations")], ["types", t("set.tabTypes")], ["numbers", t("set.tabNumbers")],
+  ];
 
   return (
     <>
@@ -113,7 +116,7 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, roles, onRolesChan
         <div className="mt-3 flex flex-wrap gap-2">{tabs.map(([key, label]) => <button key={key} type="button" onClick={() => setActiveTab(key)} className={`min-h-11 flex-1 rounded-md px-3 py-2 text-center text-sm font-semibold ${activeTab === key ? "bg-gold text-white" : "bg-surfaceSoft text-ink hover:text-primary"}`}>{label}</button>)}</div>
       </div>
       {activeTab === "users" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-white">จัดการผู้ใช้งาน</h2><p className="mt-2 text-sm text-muted">ตรวจสอบบัญชี บทบาท องค์กร และสิทธิ์การใช้งานของผู้ใช้ในระบบ</p></div><button type="button" onClick={openAddUser} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover">เพิ่มผู้ใช้งาน</button></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-white">{t("set.tabUsers")}</h2><p className="mt-2 text-sm text-muted">ตรวจสอบบัญชี บทบาท องค์กร และสิทธิ์การใช้งานของผู้ใช้ในระบบ</p></div><button type="button" onClick={openAddUser} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover">{t("set.addUser")}</button></div>
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
             <thead className="bg-surfaceSoft text-ink">
@@ -146,7 +149,7 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, roles, onRolesChan
         </div>
       </section>}
 
-      {activeTab === "roles" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-white">จัดการบทบาท</h2><p className="mt-2 text-sm text-muted">กำหนดบทบาทและสิทธิ์การใช้งานสำหรับผู้ใช้งานในระบบ</p></div><button type="button" onClick={openAddRole} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover">เพิ่มบทบาท</button></div><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[1000px] border-collapse text-left text-sm"><thead className="bg-surfaceSoft text-ink"><tr>{["ชื่อบทบาท", "คำอธิบาย", "สิทธิ์การใช้งาน", "อนุญาตส่งออก", "สถานะ", "จัดการ"].map((heading) => <th key={heading} className="border-b border-line px-3 py-2.5">{heading}</th>)}</tr></thead><tbody className="divide-y divide-line bg-slate-950/20 text-ink">{roles.map((role) => <tr key={role.key}><td className="px-3 py-3 font-semibold text-white">{role.name}</td><td className="px-3 py-3 text-ink">{role.description || "-"}</td><td className="max-w-[340px] px-3 py-3 text-ink">{getPermissionLabel(role.permissions)}</td><td className="px-3 py-3">{role.allowExport ? "อนุญาต" : "ไม่อนุญาต"}</td><td className="px-3 py-3">{role.active ? "ใช้งานอยู่" : "ปิดใช้งาน"}</td><td className="px-3 py-3"><div className="flex gap-2"><button type="button" onClick={() => { setRoleModalMode("edit"); setEditingRole({ ...role, permissions: { ...role.permissions } }); }} className="rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950">แก้ไข</button><button type="button" disabled={role.protected} onClick={() => onRolesChange(roles.map((item) => item.key === role.key ? { ...item, active: !item.active } : item))} className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40">{role.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button></div></td></tr>)}</tbody></table></div></section>}
+      {activeTab === "roles" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-white">{t("set.tabRoles")}</h2><p className="mt-2 text-sm text-muted">กำหนดบทบาทและสิทธิ์การใช้งานสำหรับผู้ใช้งานในระบบ</p></div><button type="button" onClick={openAddRole} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover">{t("set.addRole")}</button></div><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[1000px] border-collapse text-left text-sm"><thead className="bg-surfaceSoft text-ink"><tr>{["ชื่อบทบาท", "คำอธิบาย", "สิทธิ์การใช้งาน", "อนุญาตส่งออก", "สถานะ", "จัดการ"].map((heading) => <th key={heading} className="border-b border-line px-3 py-2.5">{heading}</th>)}</tr></thead><tbody className="divide-y divide-line bg-slate-950/20 text-ink">{roles.map((role) => <tr key={role.key}><td className="px-3 py-3 font-semibold text-white">{role.name}</td><td className="px-3 py-3 text-ink">{role.description || "-"}</td><td className="max-w-[340px] px-3 py-3 text-ink">{getPermissionLabel(role.permissions)}</td><td className="px-3 py-3">{role.allowExport ? "อนุญาต" : "ไม่อนุญาต"}</td><td className="px-3 py-3">{role.active ? "ใช้งานอยู่" : "ปิดใช้งาน"}</td><td className="px-3 py-3"><div className="flex gap-2"><button type="button" onClick={() => { setRoleModalMode("edit"); setEditingRole({ ...role, permissions: { ...role.permissions } }); }} className="rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950">แก้ไข</button><button type="button" disabled={role.protected} onClick={() => onRolesChange(roles.map((item) => item.key === role.key ? { ...item, active: !item.active } : item))} className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40">{role.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button></div></td></tr>)}</tbody></table></div></section>}
 
       {activeTab === "organizations" && <MasterDataPanel title="จัดการองค์กร/หน่วยงาน" description="จัดการรายชื่อองค์กร หน่วยงาน ฝ่าย และชมรมที่ใช้ในระบบ" items={organizationItems} onChange={onOrganizationItemsChange} addLabel="ระบุชื่อองค์กรหรือหน่วยงาน" />}
       {activeTab === "locations" && <MasterDataPanel title="จัดการสถานที่จัดเก็บ" description="จัดการสถานที่จัดเก็บครุภัณฑ์ที่ใช้ในฟอร์มบันทึกข้อมูลและการตรวจสอบ" items={locationItems} onChange={onLocationItemsChange} addLabel="ระบุสถานที่จัดเก็บ" />}
@@ -158,7 +161,7 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, roles, onRolesChan
           <div className="w-full max-w-lg overflow-hidden rounded-xl border border-line bg-surface shadow-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-line p-5">
               <div>
-                <h3 className="text-xl font-bold text-white">{userModalMode === "add" ? "เพิ่มผู้ใช้งาน" : "แก้ไขข้อมูลผู้ใช้งาน"}</h3>
+                <h3 className="text-xl font-bold text-white">{userModalMode === "add" ? t("set.addUser") : "แก้ไขข้อมูลผู้ใช้งาน"}</h3>
                 <p className="mt-1 text-sm text-muted">ระบุข้อมูลบัญชีและบทบาทของผู้ใช้งาน</p>
               </div>
               <CloseIconButton onClick={() => setEditingUser(null)} />

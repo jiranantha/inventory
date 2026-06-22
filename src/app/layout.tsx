@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Sans_Thai } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { AppDataProvider } from "@/components/AppDataProvider";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AppShell } from "@/components/AppShell";
 import "./globals.css";
 
@@ -26,9 +27,11 @@ export default function RootLayout({
     <html lang="th" className={ibmPlexSansThai.variable}>
       <body>
         <Providers>
-          <AppDataProvider>
-            <AppShell>{children}</AppShell>
-          </AppDataProvider>
+          <LanguageProvider>
+            <AppDataProvider>
+              <AppShell>{children}</AppShell>
+            </AppDataProvider>
+          </LanguageProvider>
         </Providers>
       </body>
     </html>

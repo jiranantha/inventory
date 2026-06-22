@@ -22,17 +22,21 @@ import { ChartCard, StatusBadge } from "@/components/ui";
 import { formatThaiDate, getCurrentInspectionYear, getDateSortTime } from "@/lib/dates";
 import { countBy } from "@/lib/utils";
 import { AnnualInspection, AssetListRow } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translateOption } from "@/lib/i18n";
 
 function DashboardTable({
   title,
   columns,
   rows,
   onViewAll,
+  viewAllLabel = "ดูรายการทั้งหมด",
 }: {
   title: string;
   columns: string[];
   rows: string[][];
   onViewAll?: () => void;
+  viewAllLabel?: string;
 }) {
   return (
     <article className="overflow-hidden rounded-lg border border-line bg-surface">
@@ -44,7 +48,7 @@ function DashboardTable({
             onClick={onViewAll}
             className="min-h-10 shrink-0 rounded-md border border-line bg-surface px-3 py-2 text-xs font-bold text-primary transition hover:border-primary hover:bg-surfaceSoft focus:outline-none"
           >
-            ดูรายการทั้งหมด
+            {viewAllLabel}
           </button>
         )}
       </div>
@@ -111,6 +115,7 @@ function DashboardPage({
   annualInspections: AnnualInspection[];
   onViewAllAssets: () => void;
 }) {
+  const { lang, t } = useLanguage();
   const [chartsReady, setChartsReady] = useState(false);
   const currentInspectionYear = String(getCurrentInspectionYear());
   const currentYearInspections = annualInspections.filter((inspection) => inspection.inspectionYear === currentInspectionYear);
@@ -133,8 +138,8 @@ function DashboardPage({
     .map(([name, value], index) => ({ name, value, color: PIE_BLUES[index % PIE_BLUES.length] }));
   const assetStatusTotal = assetsByStatus.reduce((total, item) => total + item.value, 0);
   const assetStatusDescription = assetsByStatus.length === 1
-    ? `ครุภัณฑ์ทั้งหมดอยู่ในสถานะ${assetsByStatus[0].name}`
-    : "แสดงสัดส่วนสถานะครุภัณฑ์ทั้งหมด";
+    ? `${translateOption(assetsByStatus[0].name, lang)}`
+    : t("dash.chartStatus");
   const inspectionResults = [
     { name: "ตรวจสอบแล้ว", value: assets.filter((asset) => currentYearInspectedAssetIds.has(asset.id)).length },
     { name: "ยังไม่ได้ตรวจสอบ", value: assets.filter((asset) => !currentYearInspectedAssetIds.has(asset.id)).length },
@@ -144,51 +149,51 @@ function DashboardPage({
   const uninspectedCount = assets.length - inspectedCount;
   const assetStatusSummary = [
     {
-      label: "จำนวนครุภัณฑ์ทั้งหมด",
+      label: t("dash.totalAssets"),
       value: assets.length,
-      note: "ข้อมูลครุภัณฑ์ทั้งหมดในระบบ",
+      note: t("dash.totalNote"),
       ...dashboardCardColors.total,
     },
     {
-      label: "จำนวนครุภัณฑ์ที่ยังไม่ได้ตรวจสอบประจำปี",
+      label: t("dash.unaudited"),
       value: uninspectedCount,
-      note: `ยังไม่มีผลตรวจสอบปี ${currentInspectionYear}`,
+      note: lang === "th" ? `ยังไม่มีผลตรวจสอบปี ${currentInspectionYear}` : `No inspection record for ${currentInspectionYear}`,
       ...dashboardCardColors.pending,
     },
     {
-      label: "จำนวนครุภัณฑ์ที่ตรวจสอบแล้ว",
+      label: t("dash.audited"),
       value: inspectedCount,
-      note: "มีข้อมูลผลตรวจสอบล่าสุด",
+      note: t("dash.auditedNote"),
       ...dashboardCardColors.inspected,
     },
     {
-      label: "จำนวนครุภัณฑ์ที่ใช้งานได้",
+      label: t("dash.active"),
       value: countByStatus("ใช้งานได้"),
-      note: "สถานะพร้อมใช้งาน",
+      note: t("dash.activeNote"),
       ...dashboardCardColors.active,
     },
     {
-      label: "จำนวนครุภัณฑ์ที่ชำรุด",
+      label: t("dash.damaged"),
       value: countByStatus("ชำรุด"),
-      note: "รายการที่มีสถานะชำรุด",
+      note: t("dash.damagedNote"),
       ...dashboardCardColors.broken,
     },
     {
-      label: "จำนวนครุภัณฑ์ที่รอซ่อม",
+      label: t("dash.repair"),
       value: countByStatus("รอซ่อม"),
-      note: "อยู่ระหว่างรอดำเนินการซ่อม",
+      note: t("dash.repairNote"),
       ...dashboardCardColors.repair,
     },
     {
-      label: "จำนวนครุภัณฑ์ที่สูญหาย",
+      label: t("dash.lost"),
       value: countByStatus("สูญหาย"),
-      note: "รายการที่ระบุว่าสูญหาย",
+      note: t("dash.lostNote"),
       ...dashboardCardColors.missing,
     },
     {
-      label: "จำนวนครุภัณฑ์ที่จำหน่ายแล้ว",
+      label: t("dash.disposed"),
       value: countByStatus("จำหน่ายแล้ว"),
-      note: "รายการที่ดำเนินการจำหน่ายแล้ว",
+      note: t("dash.disposedNote"),
       ...dashboardCardColors.disposed,
     },
   ];
@@ -213,19 +218,17 @@ function DashboardPage({
 
   const chartFallback = (
     <div className="flex h-full items-center justify-center rounded-lg border border-line bg-surfaceSoft text-sm text-muted">
-      กำลังเตรียมกราฟ
+      {t("dash.preparingChart")}
     </div>
   );
   const organizationChartEmptyState = (
     <div className="flex h-full flex-col items-center justify-center rounded-lg border border-dashed border-line bg-surfaceSoft px-4 text-center">
-      <p className="text-sm font-bold text-ink">ไม่มีข้อมูลสำหรับแสดงกราฟ</p>
-      <p className="mt-2 max-w-sm text-xs text-muted">ยังไม่มีข้อมูลครุภัณฑ์ที่สามารถนำมาสรุปตามฝ่าย/ชมรมได้</p>
+      <p className="text-sm font-bold text-ink">{t("dash.noChartData")}</p>
     </div>
   );
   const fiscalYearChartEmptyState = (
     <div className="flex h-full flex-col items-center justify-center rounded-lg border border-dashed border-line bg-surfaceSoft px-4 text-center">
-      <p className="text-sm font-bold text-ink">ไม่มีข้อมูลสำหรับแสดงกราฟ</p>
-      <p className="mt-2 max-w-sm text-xs text-muted">ยังไม่มีข้อมูลครุภัณฑ์ที่สามารถสรุปตามปีงบประมาณได้</p>
+      <p className="text-sm font-bold text-ink">{t("dash.noChartData")}</p>
     </div>
   );
 
@@ -244,7 +247,7 @@ function DashboardPage({
       </div>
 
       <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2 [&>*]:min-w-0">
-        <ChartCard title="จำนวนครุภัณฑ์แยกตามปีงบประมาณล่าสุด 6 ปี">
+        <ChartCard title={t("dash.chartByYear")}>
           {chartsReady ? (
             assetsByFiscalYear.length > 0 ? (
               <div className="flex h-full flex-col">
@@ -257,27 +260,40 @@ function DashboardPage({
                       <Tooltip
                         contentStyle={tooltipStyle}
                         cursor={{ fill: "#E1F1FE" }}
-                        formatter={(value) => [`${Number(value).toLocaleString("th-TH")} รายการ`, "จำนวนครุภัณฑ์"]}
-                        labelFormatter={(label) => `ปีงบประมาณ: ${label}`}
+                        formatter={(value) => [`${Number(value).toLocaleString("th-TH")} ${t("dash.itemCount")}`, t("dash.assetCount")]}
+                        labelFormatter={(label) => `${t("col.year")}: ${label}`}
                       />
-                      <Bar dataKey="value" name="จำนวนครุภัณฑ์" fill={chartColors.fiscalYearBar} radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="value" name={t("dash.assetCount")} fill={chartColors.fiscalYearBar} radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-                <p className="mt-3 text-center text-xs leading-5 text-muted">แสดงเฉพาะปีงบประมาณที่มีข้อมูลล่าสุด</p>
+                <p className="mt-3 text-center text-xs leading-5 text-muted">{t("dash.onlyRecent")}</p>
               </div>
             ) : fiscalYearChartEmptyState
           ) : chartFallback}
         </ChartCard>
 
-        <ChartCard title={`ผลการตรวจสอบครุภัณฑ์ประจำปี ${currentInspectionYear}`}>
+        <ChartCard title={lang === "th" ? `ผลการตรวจสอบครุภัณฑ์ประจำปี ${currentInspectionYear}` : `Annual Inspection Results ${currentInspectionYear}`}>
           {chartsReady ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={inspectionResults} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid stroke={chartColors.grid} vertical={false} />
-                <XAxis dataKey="name" stroke={chartColors.axis} tickLine={false} axisLine={false} fontSize={11} interval={0} />
+                <XAxis
+                  dataKey="name"
+                  stroke={chartColors.axis}
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  interval={0}
+                  tickFormatter={(v: string) => translateOption(v, lang)}
+                />
                 <YAxis stroke={chartColors.axis} tickLine={false} axisLine={false} fontSize={12} />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "#E1F1FE" }} />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  cursor={{ fill: "#E1F1FE" }}
+                  formatter={(value, name) => [`${Number(value).toLocaleString("th-TH")} ${t("dash.itemCount")}`, translateOption(String(name), lang)]}
+                  labelFormatter={(label) => translateOption(label, lang)}
+                />
                 <Bar dataKey="value" name="จำนวนรายการ" radius={[6, 6, 0, 0]}>
                   {inspectionResults.map((item) => (
                     <Cell key={item.name} fill={item.name === "ตรวจสอบแล้ว" ? chartColors.inspectionCompleted : chartColors.inspectionPending} />
@@ -288,7 +304,7 @@ function DashboardPage({
           ) : chartFallback}
         </ChartCard>
 
-        <ChartCard title="สถานะครุภัณฑ์">
+        <ChartCard title={t("dash.chartStatus")}>
           {chartsReady ? (
             <div className="flex h-full flex-col">
               <div className="relative min-h-0 flex-1">
@@ -301,20 +317,20 @@ function DashboardPage({
                     </Pie>
                     <Tooltip
                       contentStyle={tooltipStyle}
-                      formatter={(value, name) => [`${Number(value).toLocaleString("th-TH")} รายการ`, name]}
+                      formatter={(value, name) => [`${Number(value).toLocaleString("th-TH")} ${t("dash.itemCount")}`, translateOption(String(name), lang)]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center" aria-hidden="true">
                   <strong className="text-3xl font-extrabold leading-none text-ink">{assetStatusTotal.toLocaleString("th-TH")}</strong>
-                  <span className="mt-1 text-xs font-semibold text-muted">รายการ</span>
+                  <span className="mt-1 text-xs font-semibold text-muted">{t("dash.itemCount")}</span>
                 </div>
               </div>
               <div className="flex flex-wrap justify-center gap-x-3 gap-y-2 text-xs text-ink">
                 {assetsByStatus.map((item) => (
                   <span key={item.name} className="inline-flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                    {item.name}
+                    {translateOption(item.name, lang)}
                   </span>
                 ))}
               </div>
@@ -323,7 +339,7 @@ function DashboardPage({
           ) : chartFallback}
         </ChartCard>
 
-        <ChartCard title="จำนวนครุภัณฑ์แยกตามหน่วยงาน">
+        <ChartCard title={t("dash.chartByOrg")}>
           {chartsReady ? (
             assetsByOrganization.length > 0 ? (
               <div className="flex h-full flex-col">
@@ -346,10 +362,9 @@ function DashboardPage({
                       <Tooltip
                         contentStyle={tooltipStyle}
                         cursor={{ fill: "#E1F1FE" }}
-                        formatter={(value) => [`${Number(value).toLocaleString("th-TH")} รายการ`, "จำนวนครุภัณฑ์"]}
-                        labelFormatter={(label) => `องค์กร/ฝ่าย/ชมรม: ${label}`}
+                        formatter={(value) => [`${Number(value).toLocaleString("th-TH")} ${t("dash.itemCount")}`, t("dash.assetCount")]}
                       />
-                      <Bar dataKey="value" name="จำนวนครุภัณฑ์" fill={chartColors.organizationBar} radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="value" name={t("dash.assetCount")} fill={chartColors.organizationBar} radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -361,10 +376,11 @@ function DashboardPage({
 
       <div className="grid gap-4">
         <DashboardTable
-          title="รายการครุภัณฑ์ล่าสุดที่เพิ่มเข้าสู่ระบบ"
-          columns={["หมายเลขครุภัณฑ์", "ชื่อรายการ", "ฝ่าย/ชมรม", "วันที่บันทึกเข้าระบบ", "สถานะ"]}
+          title={t("dash.recentlyAdded")}
+          columns={[t("col.number"), t("col.name"), t("col.org"), t("dash.recordDate"), t("col.status")]}
           rows={latestRows}
           onViewAll={onViewAllAssets}
+          viewAllLabel={t("dash.viewAll")}
         />
       </div>
     </section>

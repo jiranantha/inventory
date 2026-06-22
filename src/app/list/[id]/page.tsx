@@ -10,6 +10,7 @@ import { getAssetDerivedValues, getNumberPlacementValue, getPurchaseProjectValue
 import { formatThaiDateTime } from "@/lib/dates";
 import { Permissions } from "@/lib/permissions";
 import { ActivityLog, AssetListRow, HistoryFieldRow } from "@/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 function AssetDetailPage({
   asset,
@@ -26,6 +27,7 @@ function AssetDetailPage({
   onDelete: (asset: AssetListRow) => void;
   onBack: () => void;
 }) {
+  const { t } = useLanguage();
   const safeText = (value: string | undefined | null) =>
     value && value !== "-" ? value : "-";
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -124,9 +126,9 @@ function AssetDetailPage({
   return (
     <section className="mx-auto w-full max-w-screen-2xl space-y-5">
       <PageHeader
-        title="รายละเอียดครุภัณฑ์"
-        description="อ่านข้อมูลสำคัญของครุภัณฑ์และประวัติการเปลี่ยนแปลง"
-        leading={<BackIconButton onClick={onBack} label="กลับไปหน้ารายการ" />}
+        title={t("det.title")}
+        description={t("det.desc")}
+        leading={<BackIconButton onClick={onBack} label={t("c.back")} />}
         actions={(
           <>
             {(permissions.canEdit || permissions.canEditLimitedFields) && (
@@ -134,7 +136,7 @@ function AssetDetailPage({
                 onClick={() => onEdit(asset)}
                 className="min-h-11 rounded-md bg-gold px-4 py-2 text-sm font-bold text-white hover:bg-primary-hover"
               >
-                แก้ไขข้อมูล
+                {t("det.editBtn")}
               </button>
             )}
             {permissions.canDelete && (
@@ -142,7 +144,7 @@ function AssetDetailPage({
                 onClick={() => onDelete(asset)}
                 className="min-h-11 rounded-md border border-danger/30 px-4 py-2 text-sm font-semibold text-danger hover:bg-danger/10"
               >
-                ลบ
+                {t("c.delete")}
               </button>
             )}
             <button
@@ -150,7 +152,7 @@ function AssetDetailPage({
               onClick={() => setHistoryOpen(true)}
               className="min-h-11 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary"
             >
-              ประวัติ
+              {t("det.historyBtn")}
             </button>
           </>
         )}
@@ -211,7 +213,7 @@ function AssetDetailPage({
             </div>
           ) : (
             <p className="mt-3 rounded-md border border-dashed border-line bg-surfaceSoft px-3 py-8 text-center text-sm text-muted">
-              ยังไม่มีรูปภาพครุภัณฑ์
+              {t("det.noImages")}
             </p>
           )}
         </div>
@@ -221,8 +223,8 @@ function AssetDetailPage({
         {/* Section 1: fields 4-11 */}
         <RecordFormSection
           number={1}
-          title="ข้อมูลทั่วไปของครุภัณฑ์"
-          description="ข้อมูลหลัก งบประมาณ โครงการ และวันที่ได้รับครุภัณฑ์"
+          title={t("det.sec1")}
+          description={t("det.sec1desc")}
         >
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             <DetailInfoItem label="ชื่อรายการครุภัณฑ์" value={safeText(asset.assetName)} />
@@ -306,8 +308,8 @@ function AssetDetailPage({
         {/* Section 2: fields 12-13 */}
         <RecordFormSection
           number={2}
-          title="ข้อมูลสถานะ"
-          description="สถานะการใช้งานและหมายเหตุของครุภัณฑ์"
+          title={t("det.sec2")}
+          description={t("det.sec2desc")}
         >
           <div className="grid gap-3 md:grid-cols-2">
             <div className="min-w-0 border-b border-line py-2">
@@ -323,8 +325,8 @@ function AssetDetailPage({
         {/* Section 3: fields 14-17 */}
         <RecordFormSection
           number={3}
-          title="หน่วยงานที่ครอบครองและเก็บรักษา"
-          description="หน่วยงาน สถานที่จัดเก็บ และผู้รับผิดชอบครุภัณฑ์"
+          title={t("det.sec3")}
+          description={t("det.sec3desc")}
         >
           <div className="grid gap-3 md:grid-cols-2">
             <DetailInfoItem
@@ -350,7 +352,7 @@ function AssetDetailPage({
           <div className="max-h-[88vh] w-full max-w-3xl overflow-hidden rounded-lg border border-line bg-surface shadow-2xl">
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line p-5">
               <div>
-                <h3 className="text-xl font-extrabold text-ink">ประวัติการแก้ไขและลบข้อมูล</h3>
+                <h3 className="text-xl font-extrabold text-ink">{t("det.history.title")}</h3>
                 <p className="mt-2 text-sm font-bold text-ink">{asset.assetName}</p>
                 <p className="mt-1 text-sm text-primary">{asset.assetNumber}</p>
               </div>
