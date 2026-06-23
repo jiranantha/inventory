@@ -53,6 +53,7 @@ type AppData = {
   cancelDelete: () => void;
   onAddUser: (user: AppUser) => void;
   onUpdateUser: (user: AppUser) => void;
+  onDeleteUser: (userId: string) => void;
   onBackToList: () => void;
   onViewAllAssets: () => void;
   onDashboardExport: () => void;
@@ -448,6 +449,17 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     }
   };
 
+  const handleDeleteUser = async (userId: string) => {
+    if (!permissions.canManageUsers) return;
+    try {
+      await api.deleteUser(userId);
+      setUsers((items) => items.filter((item) => item.id !== userId));
+      showToast("ลบผู้ใช้งานออกจากระบบแล้ว");
+    } catch (error) {
+      showToast(`ลบผู้ใช้งานไม่สำเร็จ: ${(error as Error).message}`);
+    }
+  };
+
   const handleRolesChange = async (nextRoles: RoleDefinition[]) => {
     try {
       const saved = await api.saveRoles(nextRoles);
@@ -524,6 +536,7 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     cancelDelete: () => setDeleteTarget(null),
     onAddUser: handleAddUser,
     onUpdateUser: handleUpdateUser,
+    onDeleteUser: handleDeleteUser,
     onBackToList: handleBackToList,
     onViewAllAssets: () => router.push(ROUTES.list),
     onDashboardExport: handleDashboardExport,

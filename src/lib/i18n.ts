@@ -152,6 +152,11 @@ const th = {
   "set.tabNumbers": "การออกเลขครุภัณฑ์",
   "set.addUser": "เพิ่มผู้ใช้งาน",
   "set.addRole": "เพิ่มบทบาท",
+  "set.deleteUser": "ลบผู้ใช้งาน",
+  "set.deleteUser.confirm": "ต้องการลบผู้ใช้งานนี้ออกจากระบบใช่หรือไม่?",
+  "set.deleteUser.confirmBtn": "ยืนยันลบ",
+  "set.errSelfDelete": "ไม่สามารถลบผู้ใช้งานที่กำลังเข้าสู่ระบบอยู่ได้",
+  "set.errLastAdmin": "ไม่สามารถลบผู้ดูแลระบบคนสุดท้ายได้",
 } as const;
 
 export type TranslationKey = keyof typeof th;
@@ -308,6 +313,11 @@ const en: Record<TranslationKey, string> = {
   "set.tabNumbers": "Asset Numbering",
   "set.addUser": "Add User",
   "set.addRole": "Add Role",
+  "set.deleteUser": "Delete User",
+  "set.deleteUser.confirm": "Are you sure you want to remove this user from the system?",
+  "set.deleteUser.confirmBtn": "Confirm Delete",
+  "set.errSelfDelete": "You cannot delete the currently logged-in user.",
+  "set.errLastAdmin": "You cannot delete the last administrator.",
 };
 
 export const translations: Record<Lang, Record<TranslationKey, string>> = { th, en };

@@ -44,10 +44,12 @@ function MasterDataPanel({ title, description, items, onChange, addLabel }: { ti
   );
 }
 
-function UserManagementPage({ users, onAddUser, onUpdateUser, roles, onRolesChange, permissions, organizationItems, onOrganizationItemsChange, locationItems, onLocationItemsChange, equipmentTypeItems, onEquipmentTypeItemsChange, assets }: {
+function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, currentUser, roles, onRolesChange, permissions, organizationItems, onOrganizationItemsChange, locationItems, onLocationItemsChange, equipmentTypeItems, onEquipmentTypeItemsChange, assets }: {
   users: AppUser[];
   onAddUser: (user: AppUser) => void;
   onUpdateUser: (user: AppUser) => void;
+  onDeleteUser: (userId: string) => void;
+  currentUser: AppUser;
   roles: RoleDefinition[];
   onRolesChange: (roles: RoleDefinition[]) => void;
   permissions: Permissions;
@@ -64,7 +66,18 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, roles, onRolesChan
   const [editingRole, setEditingRole] = useState<RoleDefinition | null>(null);
   const [roleModalMode, setRoleModalMode] = useState<"add" | "edit">("edit");
   const [activeTab, setActiveTab] = useState<"users" | "roles" | "organizations" | "locations" | "types" | "numbers">("users");
+  const [deleteCandidate, setDeleteCandidate] = useState<AppUser | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const { t } = useLanguage();
+
+  const closeDeleteDialog = () => { setDeleteCandidate(null); setDeleteError(""); };
+  const handleConfirmDelete = () => {
+    if (!deleteCandidate) return;
+    if (deleteCandidate.id === currentUser.id) { setDeleteError(t("set.errSelfDelete")); return; }
+    if (deleteCandidate.role === "Admin" && users.filter((u) => u.role === "Admin").length <= 1) { setDeleteError(t("set.errLastAdmin")); return; }
+    onDeleteUser(deleteCandidate.id);
+    closeDeleteDialog();
+  };
 
   if (!permissions.canManageUsers) {
     return (
@@ -131,7 +144,20 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, roles, onRolesChan
                 <tr key={user.id}>
                   <td className="px-3 py-3 font-semibold text-white">{user.name}</td>
                   <td className="px-3 py-3 text-ink">{user.email}</td>
-                  <td className="px-3 py-3"><span className="inline-flex rounded-full border border-sky-300/25 bg-sky-400/10 px-2.5 py-1 text-xs font-bold text-sky-200">{getRoleDefinition(user.role, roles).name}</span></td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex rounded-full border border-sky-300/25 bg-sky-400/10 px-2.5 py-1 text-xs font-bold text-sky-200">{getRoleDefinition(user.role, roles).name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteCandidate(user)}
+                        title={t("set.deleteUser")}
+                        aria-label={t("set.deleteUser")}
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-red-400 transition hover:bg-red-400/15 hover:text-red-300"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  </td>
                   <td className="max-w-[240px] px-3 py-3 text-ink" title={user.organization}>{user.organization || "-"}</td>
                   <td className="max-w-[280px] px-3 py-3 text-ink">{getPermissionLabel(getPermissions(user, roles))}</td>
                   <td className="px-3 py-3">
@@ -193,12 +219,39 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, roles, onRolesChan
         </div>
       )}
       {editingRole && <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4"><div className="w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"><div className="flex items-start justify-between gap-3 border-b border-line p-5"><div><h3 className="text-xl font-bold text-white">{roleModalMode === "add" ? "เพิ่มบทบาท" : "แก้ไขบทบาท"}</h3><p className="mt-1 text-sm text-muted">กำหนดชื่อ คำอธิบาย และสิทธิ์การใช้งาน</p></div><CloseIconButton onClick={() => setEditingRole(null)} /></div><div className="space-y-4 p-5"><Field label="ชื่อบทบาท" value={editingRole.name} onChange={(event) => setEditingRole({ ...editingRole, name: event.target.value })} /><Field label="คำอธิบายบทบาท" value={editingRole.description} onChange={(event) => setEditingRole({ ...editingRole, description: event.target.value })} /><div><p className="text-sm font-semibold text-white">สิทธิ์การใช้งาน</p><div className="mt-2 grid gap-2 sm:grid-cols-2">{([{ key: "canViewDashboard", label: "หน้าภาพรวม" }, { key: "canViewList", label: "แสดงรายการ" }, { key: "canInspect", label: "ตรวจสอบประจำปี" }, { key: "canCreate", label: "บันทึกข้อมูล" }, { key: "canViewReports", label: "รายงาน" }, { key: "canManageUsers", label: "ตั้งค่า" }, { key: "canEdit", label: "แก้ไขข้อมูลครุภัณฑ์" }, { key: "canDelete", label: "ลบข้อมูลครุภัณฑ์" }] as { key: keyof Permissions; label: string }[]).map((option) => <label key={option.key} className="flex items-center gap-3 rounded-lg border border-line bg-slate-950/30 px-3 py-2 text-sm text-ink"><input type="checkbox" checked={Boolean(editingRole.permissions[option.key])} onChange={(event) => setEditingRole({ ...editingRole, permissions: { ...editingRole.permissions, [option.key]: event.target.checked } })} className="h-4 w-4 accent-yellow-400" />{option.label}</label>)}</div></div><label className="flex items-center justify-between gap-4 rounded-lg border border-line bg-slate-950/30 px-4 py-3"><span className="text-sm font-semibold text-white">อนุญาตส่งออก</span><input type="checkbox" checked={editingRole.allowExport} onChange={(event) => setEditingRole({ ...editingRole, allowExport: event.target.checked, permissions: { ...editingRole.permissions, canExport: event.target.checked } })} className="h-5 w-5 accent-yellow-400" /></label><div className="flex justify-end gap-3 border-t border-line pt-4"><button type="button" onClick={() => setEditingRole(null)} className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink">ยกเลิก</button><button type="button" onClick={saveRole} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950">บันทึก</button></div></div></div></div>}
+
+      {deleteCandidate && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-xl border border-line bg-surface shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-line p-5">
+              <h3 className="text-xl font-bold text-white">{t("set.deleteUser")}</h3>
+              <CloseIconButton onClick={closeDeleteDialog} />
+            </div>
+            <div className="p-5">
+              <p className="text-sm text-muted">{t("set.deleteUser.confirm")}</p>
+              <div className="mt-4 space-y-0.5 rounded-lg border border-line bg-slate-950/30 px-4 py-3 text-sm">
+                <p className="font-semibold text-white">{deleteCandidate.name}</p>
+                <p className="text-muted">{deleteCandidate.email}</p>
+                <p className="text-muted">{getRoleDefinition(deleteCandidate.role, roles).name}</p>
+              </div>
+              {deleteError && (
+                <p className="mt-3 rounded-md border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-semibold text-red-300">{deleteError}</p>
+              )}
+              <div className="mt-5 flex justify-end gap-3 border-t border-line pt-4">
+                <button type="button" onClick={closeDeleteDialog} className="rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">{t("c.cancel")}</button>
+                <button type="button" onClick={handleConfirmDelete} className="rounded-md bg-red-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-400">{t("set.deleteUser.confirmBtn")}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
 export default function SettingRoute() {
   const {
+    currentUser,
     permissions,
     users,
     roles,
@@ -208,6 +261,7 @@ export default function SettingRoute() {
     equipmentTypeItems,
     onAddUser,
     onUpdateUser,
+    onDeleteUser,
     onRolesChange,
     onOrganizationItemsChange,
     onLocationItemsChange,
@@ -220,6 +274,8 @@ export default function SettingRoute() {
       onAddUser={onAddUser}
       permissions={permissions}
       onUpdateUser={onUpdateUser}
+      onDeleteUser={onDeleteUser}
+      currentUser={currentUser}
       roles={roles}
       onRolesChange={onRolesChange}
       organizationItems={organizationItems}

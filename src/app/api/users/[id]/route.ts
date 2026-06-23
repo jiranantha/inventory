@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { rowToAppUser } from "@/db/mappers";
@@ -28,6 +28,34 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!updated) return NextResponse.json({ error: "ไม่พบผู้ใช้งาน" }, { status: 404 });
 
     return NextResponse.json({ user: rowToAppUser(updated) });
+  } catch (error) {
+    return jsonError(error);
+  }
+}
+
+// DELETE /api/users/:id — remove an app-level user record (Admin only).
+// Cascades to accounts/sessions. Does NOT touch Supabase Auth directly.
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { user: sessionUser } = await requirePermission("manageUsers");
+    const { id } = await params;
+
+    if (id === sessionUser.id) {
+      return NextResponse.json({ error: "ไม่สามารถลบผู้ใช้งานที่กำลังเข้าสู่ระบบอยู่ได้" }, { status: 400 });
+    }
+
+    const [target] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    if (!target) return NextResponse.json({ error: "ไม่พบผู้ใช้งาน" }, { status: 404 });
+
+    if (target.role === "Admin") {
+      const [{ adminCount }] = await db.select({ adminCount: count() }).from(users).where(eq(users.role, "Admin"));
+      if (adminCount <= 1) {
+        return NextResponse.json({ error: "ไม่สามารถลบผู้ดูแลระบบคนสุดท้ายได้" }, { status: 400 });
+      }
+    }
+
+    await db.delete(users).where(eq(users.id, id));
+    return NextResponse.json({ ok: true });
   } catch (error) {
     return jsonError(error);
   }

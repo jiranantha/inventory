@@ -69,6 +69,8 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(patch),
     }).then((r) => r.user),
+  deleteUser: (id: string) =>
+    req<{ ok: true }>(`/api/users/${id}`, { method: "DELETE" }),
 
   // roles
   getRoles: () => req<{ roles: RoleDefinition[] }>("/api/roles").then((r) => r.roles),
