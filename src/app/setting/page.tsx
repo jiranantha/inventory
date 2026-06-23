@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CloseIconButton, DetailInfoItem, Field, SelectField } from "@/components/ui";
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
-import { AppUser, Permissions, RoleDefinition, UserRole, getPermissionLabel, getPermissions, getRoleDefinition, noPermissions } from "@/lib/permissions";
+import { AppUser, Permissions, RoleDefinition, UserRole, getPermissionLabel, getRoleDefinition, noPermissions } from "@/lib/permissions";
 import { uniqueSorted } from "@/lib/utils";
 import { AssetListRow, MasterDataItem } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -131,10 +131,10 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
       {activeTab === "users" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-5">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-white">{t("set.tabUsers")}</h2><p className="mt-2 text-sm text-muted">ตรวจสอบบัญชี บทบาท องค์กร และสิทธิ์การใช้งานของผู้ใช้ในระบบ</p></div><button type="button" onClick={openAddUser} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover">{t("set.addUser")}</button></div>
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[820px] border-collapse text-left text-sm">
             <thead className="bg-surfaceSoft text-ink">
               <tr>
-                {["ชื่อ", "อีเมล", "บทบาท", "องค์กร", "สิทธิ์การใช้งาน", "อนุญาตส่งออก", "จัดการ"].map((heading) => (
+                {["ชื่อ", "อีเมล", "บทบาท", "องค์กร", "อนุญาตส่งออก", "จัดการ"].map((heading) => (
                   <th key={heading} className="border-b border-line px-3 py-2.5">{heading}</th>
                 ))}
               </tr>
@@ -145,28 +145,22 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
                   <td className="px-3 py-3 font-semibold text-white">{user.name}</td>
                   <td className="px-3 py-3 text-ink">{user.email}</td>
                   <td className="px-3 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex rounded-full border border-sky-300/25 bg-sky-400/10 px-2.5 py-1 text-xs font-bold text-sky-200">{getRoleDefinition(user.role, roles).name}</span>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteCandidate(user)}
-                        title={t("set.deleteUser")}
-                        aria-label={t("set.deleteUser")}
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-red-400 transition hover:bg-red-400/15 hover:text-red-300"
-                      >
-                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                      </button>
-                    </div>
+                    <span className="inline-flex rounded-full border border-sky-300/25 bg-sky-400/10 px-2.5 py-1 text-xs font-bold text-sky-200">{getRoleDefinition(user.role, roles).name}</span>
                   </td>
                   <td className="max-w-[240px] px-3 py-3 text-ink" title={user.organization}>{user.organization || "-"}</td>
-                  <td className="max-w-[280px] px-3 py-3 text-ink">{getPermissionLabel(getPermissions(user, roles))}</td>
                   <td className="px-3 py-3">
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${user.viewerCanExport ? "bg-emerald-400/10 text-emerald-200" : "bg-slate-700/60 text-ink"}`}>
                       {user.viewerCanExport ? "อนุญาต" : "ไม่อนุญาต"}
                     </span>
                   </td>
                   <td className="px-3 py-3">
-                    <div className="flex gap-2"><button type="button" onClick={() => { setUserModalMode("edit"); setEditingUser({ ...user }); }} className="rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-primary-hover">แก้ไข</button><button type="button" disabled={user.role === "Admin"} onClick={() => onUpdateUser({ ...user, active: !user.active })} className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40">{user.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button></div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => { setUserModalMode("edit"); setEditingUser({ ...user }); }} className="rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-primary-hover">แก้ไข</button>
+                      <button type="button" disabled={user.role === "Admin"} onClick={() => onUpdateUser({ ...user, active: !user.active })} className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40">{user.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button>
+                      <button type="button" onClick={() => setDeleteCandidate(user)} title={t("set.deleteUser")} aria-label={t("set.deleteUser")} className="rounded-md border border-red-400/40 px-2 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-400/10 hover:text-red-300">
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
