@@ -14,11 +14,6 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 const SELF_HEADER_PAGES: PageKey[] = ["list", "detail", "edit"];
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "");
-  return name.slice(0, 2);
-}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -208,15 +203,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
               {userMenuOpen && (
                 <div className="absolute right-0 top-full z-40 mt-2 w-64 overflow-hidden rounded-2xl border border-[#C3E3FD] bg-white shadow-xl">
-                  <div className="flex items-center gap-3 border-b border-[#E1F1FE] bg-[#F0F8FF] px-4 py-3.5">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#044377] text-sm font-extrabold text-white">
-                      {getInitials(currentUser.name)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-ink">{currentUser.name}</p>
-                      <p className="text-xs text-[#508ABA]">{roleName}</p>
-                      <p className="truncate text-xs text-[#508ABA]">{currentUser.organization}</p>
-                    </div>
+                  <div className="border-b border-[#E1F1FE] bg-[#F0F8FF] px-4 py-4">
+                    <p className="truncate text-sm font-bold text-ink">{currentUser.name}</p>
+                    <p className="mt-0.5 text-xs text-[#508ABA]">{roleName}</p>
+                    <p className="mt-0.5 truncate text-xs text-[#508ABA]">{currentUser.organization}</p>
                   </div>
                   <div className="p-1.5">
                     <button
