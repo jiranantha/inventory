@@ -23,9 +23,9 @@ function ActiveToggle({ checked, onChange, disabled, ariaLabel }: {
       aria-label={ariaLabel ?? "Toggle active status"}
       disabled={disabled}
       onClick={onChange}
-      className={`relative inline-flex h-6 w-14 shrink-0 cursor-pointer rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 ${checked ? "bg-emerald-500" : "bg-slate-500"}`}
+      className={`relative inline-flex h-6 w-14 shrink-0 cursor-pointer rounded-full border transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 ${checked ? "border-primary bg-primary-soft" : "border-line bg-transparent"}`}
     >
-      <span className={`pointer-events-none absolute inset-0 flex items-center text-[9px] font-extrabold text-white ${checked ? "justify-start pl-1.5" : "justify-end pr-1.5"}`}>
+      <span className={`pointer-events-none absolute inset-0 flex items-center text-[9px] font-extrabold ${checked ? "justify-start pl-1.5 text-primary" : "justify-end pr-1.5 text-muted"}`}>
         {checked ? "ON" : "OFF"}
       </span>
       <span className={`pointer-events-none absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? "translate-x-8" : "translate-x-0"}`} />
