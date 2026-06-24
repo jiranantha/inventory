@@ -45,7 +45,7 @@ function MasterDataPanel({ title, description, items, onChange, addLabel }: { ti
     setEditingId(null);
   };
   return (
-    <section className="rounded-lg border border-line bg-surface p-5">
+    <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-6">
       <h2 className="text-xl font-bold text-ink">{title}</h2>
       <p className="mt-2 text-sm text-muted">{description}</p>
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
@@ -55,9 +55,9 @@ function MasterDataPanel({ title, description, items, onChange, addLabel }: { ti
       </div>
       <div className="mt-5 divide-y divide-line overflow-hidden rounded-lg border border-line">
         {items.map((item) => (
-          <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 bg-surfaceSoft px-4 py-3">
+          <div key={item.id} className="flex flex-wrap items-center justify-between gap-4 bg-surfaceSoft px-5 py-4">
             <div className="min-w-0"><p className={`break-words font-semibold ${item.active ? "text-ink" : "text-muted"}`}>{item.name}</p><p className="mt-1 text-xs text-muted">{item.active ? "ใช้งานอยู่" : "ปิดใช้งาน"}</p></div>
-            <div className="flex gap-2">
+            <div className="flex shrink-0 items-center gap-3">
               <button type="button" onClick={() => { setEditingId(item.id); setDraft(item.name); }} className="min-h-11 rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-ink hover:border-primary hover:text-primary">แก้ไข</button>
               <ActiveToggle checked={item.active} onChange={() => onChange(items.map((entry) => entry.id === item.id ? { ...entry, active: !entry.active } : entry))} ariaLabel="Toggle item active status" />
             </div>
@@ -148,37 +148,44 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
 
   return (
     <>
-      <div className="mx-auto mb-4 w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-3">
+      <div className="mx-auto mb-4 w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-4">
         <p className="px-2 text-sm text-muted">จัดการข้อมูลกลาง ผู้ใช้งาน และสิทธิ์การใช้งานระบบ</p>
         <div className="mt-3 flex flex-wrap gap-2">{tabs.map(([key, label]) => <button key={key} type="button" onClick={() => setActiveTab(key)} className={`min-h-11 flex-1 rounded-md px-3 py-2 text-center text-sm font-semibold ${activeTab === key ? "bg-gold text-white" : "bg-surfaceSoft text-ink hover:text-primary"}`}>{label}</button>)}</div>
       </div>
-      {activeTab === "users" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-5">
+      {activeTab === "users" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-6">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-white">{t("set.tabUsers")}</h2><p className="mt-2 text-sm text-muted">ตรวจสอบบัญชี บทบาท องค์กร และสิทธิ์การใช้งานของผู้ใช้ในระบบ</p></div><button type="button" onClick={openAddUser} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover">{t("set.addUser")}</button></div>
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[860px] border-collapse text-left text-sm">
             <thead className="bg-surfaceSoft text-ink">
               <tr>
-                {["ชื่อ", "อีเมล", "บทบาท", "องค์กร", "อนุญาตส่งออก", "จัดการ"].map((heading) => (
-                  <th key={heading} className="border-b border-line px-3 py-2.5">{heading}</th>
-                ))}
+                {[
+                    { label: "ชื่อ" },
+                    { label: "อีเมล" },
+                    { label: "บทบาท" },
+                    { label: "องค์กร" },
+                    { label: "อนุญาตส่งออก" },
+                    { label: "จัดการ", cls: "w-px whitespace-nowrap" },
+                  ].map(({ label, cls = "" }) => (
+                    <th key={label} className={`border-b border-line px-4 py-3 ${cls}`.trim()}>{label}</th>
+                  ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-line bg-slate-950/20 text-ink">
               {users.map((user) => (
                 <tr key={user.id}>
-                  <td className="px-3 py-3 font-semibold text-white">{user.name}</td>
-                  <td className="px-3 py-3 text-ink">{user.email}</td>
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-3 font-semibold text-white">{user.name}</td>
+                  <td className="px-4 py-3 text-ink">{user.email}</td>
+                  <td className="px-4 py-3">
                     <span className="inline-flex rounded-full border border-sky-300/25 bg-sky-400/10 px-2.5 py-1 text-xs font-bold text-sky-200">{getRoleDefinition(user.role, roles).name}</span>
                   </td>
-                  <td className="max-w-[240px] px-3 py-3 text-ink" title={user.organization}>{user.organization || "-"}</td>
-                  <td className="px-3 py-3">
+                  <td className="max-w-[200px] truncate px-4 py-3 text-ink" title={user.organization}>{user.organization || "-"}</td>
+                  <td className="px-4 py-3">
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${user.viewerCanExport ? "bg-emerald-400/10 text-emerald-200" : "bg-slate-700/60 text-ink"}`}>
                       {user.viewerCanExport ? "อนุญาต" : "ไม่อนุญาต"}
                     </span>
                   </td>
-                  <td className="px-3 py-3">
-                    <div className="flex gap-2">
+                  <td className="w-px whitespace-nowrap px-4 py-3">
+                    <div className="flex items-center gap-2">
                       <button type="button" onClick={() => { setUserModalMode("edit"); setEditingUser({ ...user }); }} className="rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-primary-hover">แก้ไข</button>
                       <ActiveToggle checked={user.active} onChange={() => onUpdateUser({ ...user, active: !user.active })} disabled={user.role === "Admin"} ariaLabel="Toggle user active status" />
                       <button type="button" onClick={() => setDeleteCandidate(user)} title={t("set.deleteUser")} aria-label={t("set.deleteUser")} className="rounded-md border border-red-400/40 px-2 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-400/10 hover:text-red-300">
@@ -193,12 +200,57 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
         </div>
       </section>}
 
-      {activeTab === "roles" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-white">{t("set.tabRoles")}</h2><p className="mt-2 text-sm text-muted">กำหนดบทบาทและสิทธิ์การใช้งานสำหรับผู้ใช้งานในระบบ</p></div><button type="button" onClick={openAddRole} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover">{t("set.addRole")}</button></div><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[1000px] border-collapse text-left text-sm"><thead className="bg-surfaceSoft text-ink"><tr>{["ชื่อบทบาท", "คำอธิบาย", "สิทธิ์การใช้งาน", "อนุญาตส่งออก", "สถานะ", "จัดการ"].map((heading) => <th key={heading} className="border-b border-line px-3 py-2.5">{heading}</th>)}</tr></thead><tbody className="divide-y divide-line bg-slate-950/20 text-ink">{roles.map((role) => <tr key={role.key}><td className="px-3 py-3 font-semibold text-white">{role.name}</td><td className="px-3 py-3 text-ink">{role.description || "-"}</td><td className="max-w-[340px] px-3 py-3 text-ink">{getPermissionLabel(role.permissions)}</td><td className="px-3 py-3">{role.allowExport ? "อนุญาต" : "ไม่อนุญาต"}</td><td className="px-3 py-3">{role.active ? "ใช้งานอยู่" : "ปิดใช้งาน"}</td><td className="px-3 py-3"><div className="flex gap-2"><button type="button" onClick={() => { setRoleModalMode("edit"); setEditingRole({ ...role, permissions: { ...role.permissions } }); }} className="rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950">แก้ไข</button><ActiveToggle checked={role.active} onChange={() => onRolesChange(roles.map((item) => item.key === role.key ? { ...item, active: !item.active } : item))} disabled={role.protected} ariaLabel="Toggle role active status" /></div></td></tr>)}</tbody></table></div></section>}
+      {activeTab === "roles" && (
+        <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-white">{t("set.tabRoles")}</h2>
+              <p className="mt-2 text-sm text-muted">กำหนดบทบาทและสิทธิ์การใช้งานสำหรับผู้ใช้งานในระบบ</p>
+            </div>
+            <button type="button" onClick={openAddRole} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover">{t("set.addRole")}</button>
+          </div>
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full min-w-[960px] border-collapse text-left text-sm">
+              <thead className="bg-surfaceSoft text-ink">
+                <tr>
+                  {[
+                    { label: "ชื่อบทบาท" },
+                    { label: "คำอธิบาย" },
+                    { label: "สิทธิ์การใช้งาน" },
+                    { label: "อนุญาตส่งออก" },
+                    { label: "สถานะ", cls: "w-[110px]" },
+                    { label: "จัดการ", cls: "w-px whitespace-nowrap" },
+                  ].map(({ label, cls = "" }) => (
+                    <th key={label} className={`border-b border-line px-4 py-3 ${cls}`.trim()}>{label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line bg-slate-950/20 text-ink">
+                {roles.map((role) => (
+                  <tr key={role.key}>
+                    <td className="px-4 py-3 font-semibold text-white">{role.name}</td>
+                    <td className="px-4 py-3 text-ink">{role.description || "-"}</td>
+                    <td className="max-w-[300px] px-4 py-3 text-ink">{getPermissionLabel(role.permissions)}</td>
+                    <td className="px-4 py-3">{role.allowExport ? "อนุญาต" : "ไม่อนุญาต"}</td>
+                    <td className="px-4 py-3">{role.active ? "ใช้งานอยู่" : "ปิดใช้งาน"}</td>
+                    <td className="w-px whitespace-nowrap px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => { setRoleModalMode("edit"); setEditingRole({ ...role, permissions: { ...role.permissions } }); }} className="rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950">แก้ไข</button>
+                        <ActiveToggle checked={role.active} onChange={() => onRolesChange(roles.map((item) => item.key === role.key ? { ...item, active: !item.active } : item))} disabled={role.protected} ariaLabel="Toggle role active status" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {activeTab === "organizations" && <MasterDataPanel title="จัดการองค์กร/หน่วยงาน" description="จัดการรายชื่อองค์กร หน่วยงาน ฝ่าย และชมรมที่ใช้ในระบบ" items={organizationItems} onChange={onOrganizationItemsChange} addLabel="ระบุชื่อองค์กรหรือหน่วยงาน" />}
       {activeTab === "locations" && <MasterDataPanel title="จัดการสถานที่จัดเก็บ" description="จัดการสถานที่จัดเก็บครุภัณฑ์ที่ใช้ในฟอร์มบันทึกข้อมูลและการตรวจสอบ" items={locationItems} onChange={onLocationItemsChange} addLabel="ระบุสถานที่จัดเก็บ" />}
       {activeTab === "types" && <MasterDataPanel title="จัดการประเภทครุภัณฑ์" description="จัดการหมวดหมู่ครุภัณฑ์ที่ใช้ในฟอร์ม ตาราง รายงาน และตัวกรองข้อมูล" items={equipmentTypeItems} onChange={onEquipmentTypeItemsChange} addLabel="ระบุประเภทครุภัณฑ์" />}
-      {activeTab === "numbers" && <section className="rounded-lg border border-line bg-surface p-5"><h2 className="text-xl font-bold text-white">ตั้งค่าการออกเลขครุภัณฑ์</h2><p className="mt-2 text-sm text-muted">กำหนดรูปแบบและเลขลำดับล่าสุดสำหรับการออกหมายเลขครุภัณฑ์อัตโนมัติ</p><div className="mt-5 grid gap-4 md:grid-cols-3"><DetailInfoItem label="คำนำหน้าเลขครุภัณฑ์" value="ค.อ.มช." /><DetailInfoItem label="เลขลำดับล่าสุด" value={String(latestSequence).padStart(4, "0")} /><DetailInfoItem label="ตัวอย่างรูปแบบหมายเลขครุภัณฑ์" value={`ค.อ.มช.${String(latestSequence + 1).padStart(4, "0")}/${currentThaiYear}`} /></div><p className="mt-4 rounded-lg border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">ข้อมูลส่วนนี้เป็นแบบอ่านอย่างเดียว เพื่อป้องกันหมายเลขครุภัณฑ์ซ้ำหรือผิดลำดับ</p></section>}
+      {activeTab === "numbers" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-6"><h2 className="text-xl font-bold text-white">ตั้งค่าการออกเลขครุภัณฑ์</h2><p className="mt-2 text-sm text-muted">กำหนดรูปแบบและเลขลำดับล่าสุดสำหรับการออกหมายเลขครุภัณฑ์อัตโนมัติ</p><div className="mt-5 grid gap-4 md:grid-cols-3"><DetailInfoItem label="คำนำหน้าเลขครุภัณฑ์" value="ค.อ.มช." /><DetailInfoItem label="เลขลำดับล่าสุด" value={String(latestSequence).padStart(4, "0")} /><DetailInfoItem label="ตัวอย่างรูปแบบหมายเลขครุภัณฑ์" value={`ค.อ.มช.${String(latestSequence + 1).padStart(4, "0")}/${currentThaiYear}`} /></div><p className="mt-4 rounded-lg border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">ข้อมูลส่วนนี้เป็นแบบอ่านอย่างเดียว เพื่อป้องกันหมายเลขครุภัณฑ์ซ้ำหรือผิดลำดับ</p></section>}
 
       {editingUser && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
