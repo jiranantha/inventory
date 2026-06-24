@@ -58,7 +58,7 @@ function MasterDataPanel({ title, description, items, onChange, addLabel }: { ti
           <div key={item.id} className="flex flex-wrap items-center justify-between gap-4 bg-surfaceSoft px-5 py-4">
             <div className="min-w-0"><p className={`break-words font-semibold ${item.active ? "text-ink" : "text-muted"}`}>{item.name}</p><p className="mt-1 text-xs text-muted">{item.active ? "ใช้งานอยู่" : "ปิดใช้งาน"}</p></div>
             <div className="flex shrink-0 items-center gap-3">
-              <button type="button" onClick={() => { setEditingId(item.id); setDraft(item.name); }} className="min-h-11 rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-ink hover:border-primary hover:text-primary">แก้ไข</button>
+              <button type="button" onClick={() => { setEditingId(item.id); setDraft(item.name); }} className="rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950">แก้ไข</button>
               <ActiveToggle checked={item.active} onChange={() => onChange(items.map((entry) => entry.id === item.id ? { ...entry, active: !entry.active } : entry))} ariaLabel="Toggle item active status" />
             </div>
           </div>
