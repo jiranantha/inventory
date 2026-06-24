@@ -9,6 +9,30 @@ import { uniqueSorted } from "@/lib/utils";
 import { AssetListRow, MasterDataItem } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 
+function ActiveToggle({ checked, onChange, disabled, ariaLabel }: {
+  checked: boolean;
+  onChange: () => void;
+  disabled?: boolean;
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel ?? "Toggle active status"}
+      disabled={disabled}
+      onClick={onChange}
+      className={`relative inline-flex h-6 w-14 shrink-0 cursor-pointer rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 ${checked ? "bg-emerald-500" : "bg-slate-500"}`}
+    >
+      <span className={`pointer-events-none absolute inset-0 flex items-center text-[9px] font-extrabold text-white ${checked ? "justify-start pl-1.5" : "justify-end pr-1.5"}`}>
+        {checked ? "ON" : "OFF"}
+      </span>
+      <span className={`pointer-events-none absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? "translate-x-8" : "translate-x-0"}`} />
+    </button>
+  );
+}
+
 function MasterDataPanel({ title, description, items, onChange, addLabel }: { title: string; description: string; items: MasterDataItem[]; onChange: (items: MasterDataItem[]) => void; addLabel: string }) {
   const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -35,7 +59,7 @@ function MasterDataPanel({ title, description, items, onChange, addLabel }: { ti
             <div className="min-w-0"><p className={`break-words font-semibold ${item.active ? "text-ink" : "text-muted"}`}>{item.name}</p><p className="mt-1 text-xs text-muted">{item.active ? "ใช้งานอยู่" : "ปิดใช้งาน"}</p></div>
             <div className="flex gap-2">
               <button type="button" onClick={() => { setEditingId(item.id); setDraft(item.name); }} className="min-h-11 rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-ink hover:border-primary hover:text-primary">แก้ไข</button>
-              <button type="button" onClick={() => onChange(items.map((entry) => entry.id === item.id ? { ...entry, active: !entry.active } : entry))} className="min-h-11 rounded-md border border-lineStrong px-3 py-1.5 text-xs font-semibold text-ink hover:bg-surfaceMuted">{item.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button>
+              <ActiveToggle checked={item.active} onChange={() => onChange(items.map((entry) => entry.id === item.id ? { ...entry, active: !entry.active } : entry))} ariaLabel="Toggle item active status" />
             </div>
           </div>
         ))}
@@ -156,7 +180,7 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
                   <td className="px-3 py-3">
                     <div className="flex gap-2">
                       <button type="button" onClick={() => { setUserModalMode("edit"); setEditingUser({ ...user }); }} className="rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-primary-hover">แก้ไข</button>
-                      <button type="button" disabled={user.role === "Admin"} onClick={() => onUpdateUser({ ...user, active: !user.active })} className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40">{user.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button>
+                      <ActiveToggle checked={user.active} onChange={() => onUpdateUser({ ...user, active: !user.active })} disabled={user.role === "Admin"} ariaLabel="Toggle user active status" />
                       <button type="button" onClick={() => setDeleteCandidate(user)} title={t("set.deleteUser")} aria-label={t("set.deleteUser")} className="rounded-md border border-red-400/40 px-2 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-400/10 hover:text-red-300">
                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                       </button>
@@ -169,7 +193,7 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
         </div>
       </section>}
 
-      {activeTab === "roles" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-white">{t("set.tabRoles")}</h2><p className="mt-2 text-sm text-muted">กำหนดบทบาทและสิทธิ์การใช้งานสำหรับผู้ใช้งานในระบบ</p></div><button type="button" onClick={openAddRole} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover">{t("set.addRole")}</button></div><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[1000px] border-collapse text-left text-sm"><thead className="bg-surfaceSoft text-ink"><tr>{["ชื่อบทบาท", "คำอธิบาย", "สิทธิ์การใช้งาน", "อนุญาตส่งออก", "สถานะ", "จัดการ"].map((heading) => <th key={heading} className="border-b border-line px-3 py-2.5">{heading}</th>)}</tr></thead><tbody className="divide-y divide-line bg-slate-950/20 text-ink">{roles.map((role) => <tr key={role.key}><td className="px-3 py-3 font-semibold text-white">{role.name}</td><td className="px-3 py-3 text-ink">{role.description || "-"}</td><td className="max-w-[340px] px-3 py-3 text-ink">{getPermissionLabel(role.permissions)}</td><td className="px-3 py-3">{role.allowExport ? "อนุญาต" : "ไม่อนุญาต"}</td><td className="px-3 py-3">{role.active ? "ใช้งานอยู่" : "ปิดใช้งาน"}</td><td className="px-3 py-3"><div className="flex gap-2"><button type="button" onClick={() => { setRoleModalMode("edit"); setEditingRole({ ...role, permissions: { ...role.permissions } }); }} className="rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950">แก้ไข</button><button type="button" disabled={role.protected} onClick={() => onRolesChange(roles.map((item) => item.key === role.key ? { ...item, active: !item.active } : item))} className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-40">{role.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}</button></div></td></tr>)}</tbody></table></div></section>}
+      {activeTab === "roles" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-white">{t("set.tabRoles")}</h2><p className="mt-2 text-sm text-muted">กำหนดบทบาทและสิทธิ์การใช้งานสำหรับผู้ใช้งานในระบบ</p></div><button type="button" onClick={openAddRole} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover">{t("set.addRole")}</button></div><div className="mt-5 overflow-x-auto"><table className="w-full min-w-[1000px] border-collapse text-left text-sm"><thead className="bg-surfaceSoft text-ink"><tr>{["ชื่อบทบาท", "คำอธิบาย", "สิทธิ์การใช้งาน", "อนุญาตส่งออก", "สถานะ", "จัดการ"].map((heading) => <th key={heading} className="border-b border-line px-3 py-2.5">{heading}</th>)}</tr></thead><tbody className="divide-y divide-line bg-slate-950/20 text-ink">{roles.map((role) => <tr key={role.key}><td className="px-3 py-3 font-semibold text-white">{role.name}</td><td className="px-3 py-3 text-ink">{role.description || "-"}</td><td className="max-w-[340px] px-3 py-3 text-ink">{getPermissionLabel(role.permissions)}</td><td className="px-3 py-3">{role.allowExport ? "อนุญาต" : "ไม่อนุญาต"}</td><td className="px-3 py-3">{role.active ? "ใช้งานอยู่" : "ปิดใช้งาน"}</td><td className="px-3 py-3"><div className="flex gap-2"><button type="button" onClick={() => { setRoleModalMode("edit"); setEditingRole({ ...role, permissions: { ...role.permissions } }); }} className="rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950">แก้ไข</button><ActiveToggle checked={role.active} onChange={() => onRolesChange(roles.map((item) => item.key === role.key ? { ...item, active: !item.active } : item))} disabled={role.protected} ariaLabel="Toggle role active status" /></div></td></tr>)}</tbody></table></div></section>}
 
       {activeTab === "organizations" && <MasterDataPanel title="จัดการองค์กร/หน่วยงาน" description="จัดการรายชื่อองค์กร หน่วยงาน ฝ่าย และชมรมที่ใช้ในระบบ" items={organizationItems} onChange={onOrganizationItemsChange} addLabel="ระบุชื่อองค์กรหรือหน่วยงาน" />}
       {activeTab === "locations" && <MasterDataPanel title="จัดการสถานที่จัดเก็บ" description="จัดการสถานที่จัดเก็บครุภัณฑ์ที่ใช้ในฟอร์มบันทึกข้อมูลและการตรวจสอบ" items={locationItems} onChange={onLocationItemsChange} addLabel="ระบุสถานที่จัดเก็บ" />}
