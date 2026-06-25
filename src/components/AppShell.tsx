@@ -128,11 +128,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold shadow-glow">
               <Icon path="M12 3l8 4v10l-8 4-8-4V7l8-4Zm0 0v18M4 7l8 4 8-4" />
             </div>
-            <div className="group relative min-w-0 flex-1">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-extrabold text-ink">{t("app.name")}</p>
-              <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 w-64 -translate-y-1/2 rounded-xl border border-[#C3E3FD] bg-white px-3.5 py-3 text-xs text-ink opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100">
-                {t("app.desc")}
-              </div>
             </div>
             <button
               className="shrink-0 rounded-lg p-1.5 text-ink hover:bg-surfaceSoft lg:hidden"
