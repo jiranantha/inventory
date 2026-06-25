@@ -122,7 +122,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
       >
-        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-[#C3E3FD] bg-surface shadow-sm">
+        <div className="flex flex-1 flex-col rounded-2xl border border-[#C3E3FD] bg-surface shadow-sm">
 
           <div className="flex shrink-0 items-center gap-2.5 border-b border-[#C3E3FD] px-4 py-4">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold shadow-glow">
@@ -130,7 +130,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div className="group relative min-w-0 flex-1">
               <p className="truncate text-sm font-extrabold text-ink">{t("app.name")}</p>
-              <div className="pointer-events-none absolute left-0 top-full z-20 mt-2 w-64 rounded-xl border border-line bg-surface px-3 py-2.5 text-xs text-ink opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+              <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 w-64 -translate-y-1/2 rounded-xl border border-[#C3E3FD] bg-white px-3.5 py-3 text-xs text-ink opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100">
                 {t("app.desc")}
               </div>
             </div>
