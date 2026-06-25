@@ -14,8 +14,8 @@ const ibmPlexSansThai = IBM_Plex_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: "ระบบจัดเก็บและตรวจสอบครุภัณฑ์องค์กรนักศึกษา",
-  description: "ระบบบริหารจัดการครุภัณฑ์ ฝ่าย/ชมรม มหาวิทยาลัยเชียงใหม่",
+  title: "ระบบครุภัณฑ์กิจกรรม — มหาวิทยาลัยเชียงใหม่",
+  description: "ระบบบริหารจัดการครุภัณฑ์กิจกรรม ฝ่าย/ชมรม มหาวิทยาลัยเชียงใหม่",
 };
 
 export default function RootLayout({
