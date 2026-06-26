@@ -237,10 +237,10 @@ function DashboardPage({
       <div className="grid auto-rows-fr grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {assetStatusSummary.map((item) => {
           return (
-            <article key={item.label} className={`flex min-h-[152px] flex-col rounded-lg border ${item.border} bg-surface bg-gradient-to-br ${item.glow} to-transparent p-4 shadow-glow`}>
+            <article key={item.label} className={`flex min-h-[152px] flex-col justify-center gap-2 rounded-lg border ${item.border} bg-surface bg-gradient-to-br ${item.glow} to-transparent px-4 py-5 shadow-glow`}>
               <p className="text-sm font-semibold text-ink">{item.label}</p>
-              <strong className={`mt-1.5 block text-5xl font-extrabold leading-none ${item.accent}`}>{item.value.toLocaleString("th-TH")}</strong>
-              <p className="mt-3 text-xs text-ink">{item.note}</p>
+              <strong className={`block text-5xl font-extrabold leading-none ${item.accent}`}>{item.value.toLocaleString("th-TH")}</strong>
+              <p className="text-xs text-ink">{item.note}</p>
             </article>
           );
         })}
