@@ -238,7 +238,7 @@ function DashboardPage({
         {assetStatusSummary.map((item) => {
           return (
             <article key={item.label} className={`flex min-h-[138px] flex-col rounded-lg border ${item.border} bg-surface bg-gradient-to-br ${item.glow} to-transparent p-4 shadow-glow`}>
-              <p className="text-xs font-semibold text-ink">{item.label}</p>
+              <p className="text-sm font-semibold text-ink">{item.label}</p>
               <strong className={`mt-2 block text-4xl font-extrabold leading-none ${item.accent}`}>{item.value.toLocaleString("th-TH")}</strong>
               <p className="mt-2 text-xs text-ink">{item.note}</p>
             </article>
