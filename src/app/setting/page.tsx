@@ -122,7 +122,7 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
 
   const openAddUser = () => {
     setUserModalMode("add");
-    setEditingUser({ id: `new-${Date.now()}`, name: "", email: "", role: roles.find((role) => role.active && role.key !== "Admin")?.key ?? "Inspector", organization: "-", viewerCanExport: false, active: true });
+    setEditingUser({ id: `new-${Date.now()}`, name: "", email: "", role: roles.find((role) => role.active && role.key !== "Admin")?.key ?? "Staff", organization: "-", viewerCanExport: false, active: true });
   };
 
   const openAddRole = () => {

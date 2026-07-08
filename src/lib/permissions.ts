@@ -97,9 +97,6 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canViewAllOrganizations: true,
       canEditLimitedFields: false,
   } },
-  { key: "Inspector", name: "ผู้ตรวจสอบ", description: "ดูรายการและบันทึกผลตรวจสอบประจำปี", allowExport: false, active: true, permissions: {
-      ...noPermissions, canViewList: true, canInspect: true, canViewAllOrganizations: true,
-  } },
   { key: "Viewer", name: "ผู้ดูรายงาน", description: "ดูหน้าภาพรวมและรายการครุภัณฑ์", allowExport: false, active: true, permissions: {
       ...noPermissions, canViewDashboard: true, canViewList: true, canViewAllOrganizations: false,
   } },
@@ -113,7 +110,6 @@ export const initialUsers: AppUser[] = [
   { id: "seed-staff", name: "เจ้าหน้าที่พัสดุ", email: "staff@cmu.ac.th", role: "Staff", organization: "กองพัฒนานักศึกษามหาวิทยาลัยเชียงใหม่", viewerCanExport: true, active: true },
   { id: "seed-committee", name: "คณะกรรมการนักศึกษา", email: "committee@cmu.ac.th", role: "Committee", organization: "-", viewerCanExport: false, active: true },
   { id: "seed-viewer", name: "ผู้ดูรายงาน", email: "viewer@cmu.ac.th", role: "Viewer", organization: "-", viewerCanExport: false, active: true },
-  { id: "seed-inspector", name: "ผู้ตรวจสอบ 1", email: "inspector1@cmu.ac.th", role: "Inspector", organization: "-", viewerCanExport: false, active: true },
 ];
 
 export function getRoleDefinition(role: UserRole, roles: RoleDefinition[]) {

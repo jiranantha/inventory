@@ -193,7 +193,8 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
         if (cancelled) return;
         setAssets(assetsData);
         setAnnualInspections(inspectionsData);
-        setRoles(rolesData.length ? rolesData : initialRoleDefinitions);
+        const filteredRoles = (rolesData.length ? rolesData : initialRoleDefinitions).filter((r) => r.key !== "Inspector");
+        setRoles(filteredRoles);
         setOrganizationItems(masterData.organizations);
         setLocationItems(masterData.locations);
         setEquipmentTypeItems(masterData.equipmentTypes);
