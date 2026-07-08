@@ -38,7 +38,13 @@ function ListPage({
     [annualInspections],
   );
   const fiscalYearOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((item) => item.fiscalYear)).sort((a, b) => Number(b) - Number(a))];
-  const organizationOptions = ["ทั้งหมด", ...uniqueSorted(activeOrganizations.map((o) => o.name))];
+  const organizationOptions = [
+    "ทั้งหมด",
+    ...uniqueSorted([
+      ...activeOrganizations.map((o) => o.name),
+      ...assets.map((a) => a.organization),
+    ]),
+  ];
   const assetTypeOptions = ["ทั้งหมด", "ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"];
   const statusOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((item) => item.status))];
 
