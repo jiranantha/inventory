@@ -47,10 +47,18 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
 // Role definitions come from the DB (single source of truth) and fall back to
 // the built-in defaults if the table is empty / unreachable.
+// Viewer's canViewAllOrganizations is always forced true so the API query
+// never scopes assets to the user's own organization for that role.
 export async function loadRoleDefinitions(): Promise<RoleDefinition[]> {
   try {
     const rows = await db.select().from(rolesTable);
-    if (rows.length) return rows.map(rowToRole);
+    if (rows.length) {
+      return rows.map(rowToRole).map((r) =>
+        r.key === "Viewer"
+          ? { ...r, permissions: { ...r.permissions, canViewAllOrganizations: true } }
+          : r,
+      );
+    }
   } catch {
     // fall through to defaults
   }
