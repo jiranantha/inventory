@@ -1,5 +1,5 @@
 import { getReportRowValue } from "@/lib/assets";
-import { formatExportDate, formatThaiDateTime, getCurrentInspectionYear } from "@/lib/dates";
+import { formatThaiDateTime, getCurrentInspectionYear } from "@/lib/dates";
 import { padDatePart } from "@/lib/utils";
 import { AssetImportRow, ReportColumn, ReportFormat } from "@/types";
 
@@ -96,49 +96,104 @@ export async function readAssetRowsFromFile(file: File): Promise<AssetImportRow[
   return dataRows.filter((row) => row.some(Boolean)).map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])));
 }
 
-export function buildReportHtml(title: string, columns: ReportColumn[], rows: Array<Record<string, string | number>>, subtitle: string) {
-  const headerCells = columns.map((column) => `<th>${column.label}</th>`).join("");
-  const bodyRows = rows.map((row, index) => `
-    <tr>
-      <td>${index + 1}</td>
-      ${columns.map((column) => `<td>${getReportRowValue(row, column.key)}</td>`).join("")}
-    </tr>
-  `).join("");
+function formatExportDateTh() {
+  const now = new Date();
+  const months = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+  const thaiYear = now.getFullYear() + 543;
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  return `${now.getDate()} ${months[now.getMonth()]} ${thaiYear} เวลา ${hh}:${mm} น.`;
+}
 
-  return `
-    <!doctype html>
-    <html lang="th">
-      <head>
-        <meta charset="utf-8" />
-        <title>${title}</title>
-        <style>
-          body { font-family: "Noto Sans Thai", Tahoma, sans-serif; color: #0F172A; margin: 24px; }
-          h1 { font-size: 22px; margin: 0 0 6px; }
-          p { margin: 0 0 14px; color: #64748B; font-size: 13px; }
-          table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          th { background: #DBEAFE; color: #0F172A; text-align: left; }
-          th, td { border: 1px solid #E2E8F0; padding: 8px; vertical-align: top; }
-          tr:nth-child(even) td { background: #F5F7FA; }
-          .meta { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
-          @media print { body { margin: 12mm; } }
-        </style>
-      </head>
-      <body>
-        <h1>${title}</h1>
-        <div class="meta">
-          <p>${subtitle}</p>
-          <p>วันที่ Export: ${formatExportDate()}</p>
-        </div>
-        <p>จำนวนข้อมูลทั้งหมด: ${rows.length.toLocaleString("th-TH")} รายการ</p>
-        <table>
-          <thead>
-            <tr><th>ลำดับ</th>${headerCells}</tr>
-          </thead>
-          <tbody>${bodyRows || `<tr><td colspan="${columns.length + 1}">ไม่พบข้อมูล</td></tr>`}</tbody>
-        </table>
-      </body>
-    </html>
-  `;
+function formatExportDateEn() {
+  const now = new Date();
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  return `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}, ${hh}:${mm}`;
+}
+
+const COL_WIDTHS: Record<string, string> = {
+  fiscalYear: "46px", recordDate: "76px", assetNumber: "148px",
+  assetName: "175px", budgetSource: "85px", purchaseProject: "135px",
+  numberPlacement: "88px", assetStructureLabel: "66px", price: "66px",
+  organization: "118px", location: "84px", responsiblePerson: "88px",
+  responsiblePhone: "76px", status: "66px", note: "96px",
+};
+
+export function buildReportHtml(
+  title: string,
+  columns: ReportColumn[],
+  rows: Array<Record<string, string | number>>,
+  filterSummary: string,
+  lang: "th" | "en" = "th",
+) {
+  const isEn = lang === "en";
+  const systemName    = isEn ? "Activity Inventory Management System" : "ระบบครุภัณฑ์กิจกรรม";
+  const exportedLabel = isEn ? "Exported on" : "วันที่ส่งออก";
+  const totalLabel    = isEn ? "Total records" : "จำนวนข้อมูลทั้งหมด";
+  const filterLabel   = isEn ? "Filters" : "เงื่อนไขตัวกรอง";
+  const allLabel      = isEn ? "All records" : "ข้อมูลทั้งหมด";
+  const noDataLabel   = isEn ? "No records found for the selected filters." : "ไม่พบรายการตามเงื่อนไขที่เลือก";
+  const footerText    = isEn ? "Activity Inventory Management System · Auto-generated report" : "ระบบครุภัณฑ์กิจกรรม · รายงานสร้างจากระบบอัตโนมัติ";
+  const unitLabel     = isEn ? "items" : "รายการ";
+  const exportDate    = isEn ? formatExportDateEn() : formatExportDateTh();
+  const filterDisplay = filterSummary.trim() || allLabel;
+
+  const colGroup = [
+    '<col style="width:34px" />',
+    ...columns.map((c) => `<col style="width:${COL_WIDTHS[c.key] ?? "100px"}" />`),
+  ].join("");
+  const headerCells = columns.map((c) => `<th>${c.label}</th>`).join("");
+  const bodyRows = rows.map((row, i) =>
+    `<tr><td class="n">${i + 1}</td>${columns.map((c) => `<td>${getReportRowValue(row, c.key)}</td>`).join("")}</tr>`,
+  ).join("");
+
+  return `<!doctype html>
+<html lang="${lang}">
+<head>
+<meta charset="utf-8" />
+<title>${title}</title>
+<style>
+@page { size: A4 landscape; margin: 10mm 12mm; }
+*{box-sizing:border-box}
+body{font-family:"Noto Sans Thai","TH Sarabun New",Tahoma,sans-serif;color:#0F172A;margin:0;padding:0;font-size:10px}
+.hdr{margin-bottom:12px;padding-bottom:9px;border-bottom:2.5px solid #1E40AF}
+.sys{font-size:11px;font-weight:700;color:#1E40AF;margin:0 0 3px}
+.ttl{font-size:17px;font-weight:800;color:#0F172A;margin:0 0 8px;line-height:1.25}
+.meta{display:flex;flex-wrap:wrap;gap:4px 20px;font-size:9.5px}
+.mi{display:flex;gap:4px}
+.ml{font-weight:700;color:#0F172A}
+.mv{color:#475569}
+table{width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed;line-height:1.45}
+thead{display:table-header-group}
+th{background:#1E40AF;color:#fff;text-align:left;font-weight:700;padding:5px 6px;border:1px solid #1E3A8A;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td{border:1px solid #CBD5E1;padding:4px 6px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
+td.n{text-align:center;color:#64748B;font-size:9px;width:34px}
+tr{page-break-inside:avoid}
+tr:nth-child(even) td{background:#F0F8FF}
+.ftr{margin-top:10px;padding-top:7px;border-top:1px solid #CBD5E1;font-size:9px;color:#64748B;text-align:center}
+.nd{text-align:center;padding:20px;color:#64748B;font-style:italic}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <p class="sys">${systemName}</p>
+  <h1 class="ttl">${title}</h1>
+  <div class="meta">
+    <div class="mi"><span class="ml">${exportedLabel}:</span><span class="mv">${exportDate}</span></div>
+    <div class="mi"><span class="ml">${totalLabel}:</span><span class="mv">${rows.length.toLocaleString("th-TH")} ${unitLabel}</span></div>
+    <div class="mi"><span class="ml">${filterLabel}:</span><span class="mv">${filterDisplay}</span></div>
+  </div>
+</div>
+<table>
+  <colgroup>${colGroup}</colgroup>
+  <thead><tr><th style="width:34px">#</th>${headerCells}</tr></thead>
+  <tbody>${bodyRows || `<tr><td class="nd" colspan="${columns.length + 1}">${noDataLabel}</td></tr>`}</tbody>
+</table>
+<div class="ftr">${footerText}</div>
+</body>
+</html>`;
 }
 
 export function downloadReportFile(fileName: string, mimeType: string, content: string) {
@@ -332,9 +387,9 @@ export async function exportDashboardToPDF() {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function exportAssetReport(format: ReportFormat, title: string, columns: ReportColumn[], rows: Array<Record<string, string | number>>, subtitle: string) {
+export function exportAssetReport(format: ReportFormat, title: string, columns: ReportColumn[], rows: Array<Record<string, string | number>>, filterSummary: string, options?: { lang?: "th" | "en" }) {
   const safeName = title.replace(/\s+/g, "-");
-  const html = buildReportHtml(title, columns, rows, subtitle);
+  const html = buildReportHtml(title, columns, rows, filterSummary, options?.lang ?? "th");
 
   if (format === "pdf") {
     const reportWindow = window.open("", "_blank", "width=1200,height=800");

@@ -106,7 +106,14 @@ function ListPage({
                           key={fmt}
                           type="button"
                           onClick={() => {
-                            exportAssetReport(fmt, "รายงานครุภัณฑ์ทั้งหมด", assetReportExportColumns, filteredRows.map(assetToReportRow), "ข้อมูลตามเงื่อนไขตัวกรองปัจจุบัน");
+                            const fp: string[] = [];
+                            if (search.trim()) fp.push(lang === "th" ? `ค้นหา: ${search.trim()}` : `Search: ${search.trim()}`);
+                            if (fiscalYear !== "ทั้งหมด") fp.push(lang === "th" ? `ปีงบประมาณ: ${fiscalYear}` : `Fiscal Year: ${fiscalYear}`);
+                            if (organization !== "ทั้งหมด") fp.push(lang === "th" ? `หน่วยงาน: ${organization}` : `Department: ${organization}`);
+                            if (assetType !== "ทั้งหมด") fp.push(lang === "th" ? `ลักษณะ: ${translateOption(assetType, lang)}` : `Type: ${translateOption(assetType, lang)}`);
+                            if (status !== "ทั้งหมด") fp.push(lang === "th" ? `สถานะ: ${translateOption(status, lang)}` : `Status: ${translateOption(status, lang)}`);
+                            const reportTitle = lang === "th" ? "รายงานครุภัณฑ์ทั้งหมด" : "All Asset Report";
+                            exportAssetReport(fmt, reportTitle, assetReportExportColumns, filteredRows.map(assetToReportRow), fp.join("  |  "), { lang });
                             setExportOpen(false);
                           }}
                           className="w-full px-4 py-2.5 text-left text-xs font-semibold text-ink hover:bg-surfaceSoft"
