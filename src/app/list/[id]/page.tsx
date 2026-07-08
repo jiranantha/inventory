@@ -147,13 +147,15 @@ function AssetDetailPage({
                 {t("c.delete")}
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setHistoryOpen(true)}
-              className="min-h-11 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary"
-            >
-              {t("det.historyBtn")}
-            </button>
+            {permissions.canEdit && (
+              <button
+                type="button"
+                onClick={() => { if (permissions.canEdit) setHistoryOpen(true); }}
+                className="min-h-11 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary"
+              >
+                {t("det.historyBtn")}
+              </button>
+            )}
           </>
         )}
       />
