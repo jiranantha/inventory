@@ -9,7 +9,7 @@ import { assetReportExportColumns, assetToReportRow } from "@/lib/assets";
 import { exportAssetReport } from "@/lib/import-export";
 import { Permissions } from "@/lib/permissions";
 import { uniqueSorted } from "@/lib/utils";
-import { AnnualInspection, AssetListRow } from "@/types";
+import { AnnualInspection, AssetListRow, Organization } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateOption } from "@/lib/i18n";
 
@@ -17,6 +17,7 @@ function ListPage({
   assets,
   annualInspections,
   permissions,
+  activeOrganizations,
   onAddAsset,
   onViewDetails,
   onEditAsset,
@@ -25,6 +26,7 @@ function ListPage({
   assets: AssetListRow[];
   annualInspections: AnnualInspection[];
   permissions: Permissions;
+  activeOrganizations: Organization[];
   onAddAsset: () => void;
   onViewDetails: (asset: AssetListRow) => void;
   onEditAsset: (asset: AssetListRow) => void;
@@ -36,7 +38,7 @@ function ListPage({
     [annualInspections],
   );
   const fiscalYearOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((item) => item.fiscalYear)).sort((a, b) => Number(b) - Number(a))];
-  const organizationOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((item) => item.organization))];
+  const organizationOptions = ["ทั้งหมด", ...uniqueSorted(activeOrganizations.map((o) => o.name))];
   const assetTypeOptions = ["ทั้งหมด", "ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"];
   const statusOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((item) => item.status))];
 
@@ -333,13 +335,14 @@ function ListPage({
 
 
 export default function ListRoute() {
-  const { permissions, assets, annualInspections, onGoToRecord, onViewDetails, onEditAsset, onDeleteAsset } = useAppData();
+  const { permissions, assets, annualInspections, activeOrganizations, onGoToRecord, onViewDetails, onEditAsset, onDeleteAsset } = useAppData();
   if (!permissions.canViewList) return <PlaceholderPage title="ไม่มีสิทธิ์ดูรายการครุภัณฑ์" />;
   return (
     <ListPage
       assets={assets}
       annualInspections={annualInspections}
       permissions={permissions}
+      activeOrganizations={activeOrganizations}
       onAddAsset={onGoToRecord}
       onViewDetails={onViewDetails}
       onEditAsset={onEditAsset}

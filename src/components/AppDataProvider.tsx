@@ -193,7 +193,13 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
         if (cancelled) return;
         setAssets(assetsData);
         setAnnualInspections(inspectionsData);
-        const filteredRoles = (rolesData.length ? rolesData : initialRoleDefinitions).filter((r) => r.key !== "Inspector");
+        const filteredRoles = (rolesData.length ? rolesData : initialRoleDefinitions)
+          .filter((r) => r.key !== "Inspector")
+          .map((r) =>
+            r.key === "Viewer"
+              ? { ...r, permissions: { ...r.permissions, canViewAllOrganizations: true } }
+              : r,
+          );
         setRoles(filteredRoles);
         setOrganizationItems(masterData.organizations);
         setLocationItems(masterData.locations);

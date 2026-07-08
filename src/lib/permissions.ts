@@ -98,7 +98,7 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canEditLimitedFields: false,
   } },
   { key: "Viewer", name: "ผู้ดูรายงาน", description: "ดูหน้าภาพรวมและรายการครุภัณฑ์", allowExport: false, active: true, permissions: {
-      ...noPermissions, canViewDashboard: true, canViewList: true, canViewAllOrganizations: false,
+      ...noPermissions, canViewDashboard: true, canViewList: true, canViewAllOrganizations: true,
   } },
 ];
 
