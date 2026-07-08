@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { assetToColumns, rowToActivityLog, rowToAsset } from "@/db/mappers";
 import { activityLogs, assets, type AssetRow } from "@/db/schema";
 import { AuthError, jsonError, requirePermission, type SessionUser } from "@/lib/auth-helpers";
-import { getPermissions, type RoleDefinition } from "@/lib/permissions";
+import { getPermissions, type RoleDefinition, type Permissions } from "@/lib/permissions";
 import type { ActivityLog, AssetListRow } from "@/types";
 
 type ActivityLogInput = Omit<ActivityLog, "id" | "createdAt">;
@@ -12,6 +12,29 @@ type ActivityLogInput = Omit<ActivityLog, "id" | "createdAt">;
 // Backstop: surface an error within 30s instead of burning Vercel's 300s max
 // when a DB query stalls (statement_timeout in src/db bounds the query itself).
 export const maxDuration = 30;
+
+// Fields locked for roles with canEditLimitedFields (e.g. Staff).
+// The client disables them in the UI; the API also enforces them so a direct
+// request bypassing the UI cannot change these values.
+function applyLockedFields(columns: ReturnType<typeof assetToColumns>, existing: AssetRow, permissions: Permissions) {
+  if (!permissions.canEditLimitedFields) return columns;
+  return {
+    ...columns,
+    assetNumber: existing.assetNumber,
+    numberPlacement: existing.numberPlacement,
+    assetImages: existing.assetImages,
+    imageCount: existing.imageCount,
+    assetName: existing.assetName,
+    assetStructureType: existing.assetStructureType,
+    assetSetItems: existing.assetSetItems,
+    assetType: existing.assetType,
+    assetDescription: existing.assetDescription,
+    fiscalYear: existing.fiscalYear,
+    budgetSource: existing.budgetSource,
+    purchaseProject: existing.purchaseProject,
+    purchaseMonth: existing.purchaseMonth,
+  };
+}
 
 // Enforces the same organization scope the UI applies via canAccessAsset.
 function assertOrgAccess(user: SessionUser, roles: RoleDefinition[], asset: AssetRow) {
@@ -59,10 +82,16 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (!existing) return NextResponse.json({ error: "ไม่พบครุภัณฑ์" }, { status: 404 });
     assertOrgAccess(user, roles, existing);
 
+    const permissions = getPermissions(
+      { role: user.role as string, viewerCanExport: Boolean(user.viewerCanExport) },
+      roles,
+    );
+    const columns = applyLockedFields(assetToColumns(body.asset), existing, permissions);
+
     const result = await db.transaction(async (tx) => {
       const [updated] = await tx
         .update(assets)
-        .set({ ...assetToColumns(body.asset), updatedAt: new Date() })
+        .set({ ...columns, updatedAt: new Date() })
         .where(eq(assets.id, assetId))
         .returning();
       const log = await insertLog(tx, body.log, user.name, assetId);

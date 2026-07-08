@@ -83,7 +83,7 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canInspect: true,
       canManageUsers: false,
       canViewAllOrganizations: true,
-      canEditLimitedFields: false,
+      canEditLimitedFields: true,
   } },
   { key: "Committee", name: "คณะกรรมการนักศึกษา", description: "ดูรายการและช่วยตรวจสอบครุภัณฑ์ประจำปี", allowExport: false, active: true, permissions: {
       canViewDashboard: false,

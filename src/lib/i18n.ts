@@ -157,6 +157,9 @@ const th = {
   "set.deleteUser.confirmBtn": "ยืนยันลบ",
   "set.errSelfDelete": "ไม่สามารถลบผู้ใช้งานที่กำลังเข้าสู่ระบบอยู่ได้",
   "set.errLastAdmin": "ไม่สามารถลบผู้ดูแลระบบคนสุดท้ายได้",
+  "error.noAccess": "ไม่มีสิทธิ์เข้าถึงหน้านี้",
+  "error.noEdit": "คุณไม่มีสิทธิ์แก้ไขข้อมูลนี้",
+  "error.noDelete": "คุณไม่มีสิทธิ์ลบข้อมูลนี้",
 } as const;
 
 export type TranslationKey = keyof typeof th;
@@ -318,6 +321,9 @@ const en: Record<TranslationKey, string> = {
   "set.deleteUser.confirmBtn": "Confirm Delete",
   "set.errSelfDelete": "You cannot delete the currently logged-in user.",
   "set.errLastAdmin": "You cannot delete the last administrator.",
+  "error.noAccess": "You do not have permission to access this page.",
+  "error.noEdit": "You do not have permission to edit this record.",
+  "error.noDelete": "You do not have permission to delete this record.",
 };
 
 export const translations: Record<Lang, Record<TranslationKey, string>> = { th, en };

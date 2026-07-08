@@ -354,12 +354,14 @@ export function FiscalYearField({
   error,
   onInvalidInput,
   onBlur,
+  disabled,
 }: {
   value: string;
   onChange: (value: string) => void;
   error: string;
   onInvalidInput: () => void;
   onBlur: () => void;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -377,6 +379,7 @@ export function FiscalYearField({
           onChange(digitsOnly.slice(0, 4));
         }}
         onBlur={onBlur}
+        disabled={disabled}
         placeholder="เช่น 2569"
         aria-invalid={Boolean(error)}
         aria-describedby={error ? "fiscal-year-error" : undefined}
@@ -433,6 +436,7 @@ export function SelectField({
   options,
   placeholder,
   getOptionLabel,
+  disabled,
 }: {
   label: string;
   value: string;
@@ -440,6 +444,7 @@ export function SelectField({
   options: string[];
   placeholder?: string;
   getOptionLabel?: (value: string) => string;
+  disabled?: boolean;
 }) {
   return (
     <label className="block min-w-0">
@@ -447,7 +452,8 @@ export function SelectField({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-2 min-h-12 w-full min-w-0 truncate rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink outline-none focus:border-primary"
+        disabled={disabled}
+        className="mt-2 min-h-12 w-full min-w-0 truncate rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink outline-none focus:border-primary disabled:cursor-not-allowed disabled:text-muted"
       >
         {placeholder && (
           <option value="" disabled className="bg-surface text-muted">

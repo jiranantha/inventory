@@ -465,6 +465,7 @@ function AssetEditPage({
             label="ตำแหน่งที่ประทับหมายเลขครุภัณฑ์"
             value={numberPlacement}
             onChange={(event) => setNumberPlacement(event.target.value)}
+            disabled={permissions.canEditLimitedFields}
             placeholder="เช่น ด้านหลังเครื่อง / ใต้โต๊ะ / ข้างกล่อง / บริเวณขาตั้ง"
           />
         </div>
@@ -490,29 +491,33 @@ function AssetEditPage({
                     className="h-24 w-full bg-cover bg-center"
                     style={{ backgroundImage: `url(${image.url})` }}
                   />
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteImage(index)}
-                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-sm font-bold leading-none text-danger shadow hover:bg-red-100"
-                    aria-label="ลบรูปภาพ"
-                  >
-                    ×
-                  </button>
+                  {!permissions.canEditLimitedFields && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteImage(index)}
+                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-sm font-bold leading-none text-danger shadow hover:bg-red-100"
+                      aria-label="ลบรูปภาพ"
+                    >
+                      ×
+                    </button>
+                  )}
                   <div className="p-2">
                     <p className="truncate text-xs text-ink" title={image.name}>
                       {image.name}
                     </p>
-                    <label className="mt-1.5 block cursor-pointer rounded border border-line bg-surfaceSoft px-2 py-1 text-center text-xs font-semibold text-ink hover:border-primary hover:text-primary">
-                      เปลี่ยน
-                      <input
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                        className="sr-only"
-                        onChange={(event) =>
-                          handleReplaceImage(index, event.target.files)
-                        }
-                      />
-                    </label>
+                    {!permissions.canEditLimitedFields && (
+                      <label className="mt-1.5 block cursor-pointer rounded border border-line bg-surfaceSoft px-2 py-1 text-center text-xs font-semibold text-ink hover:border-primary hover:text-primary">
+                        เปลี่ยน
+                        <input
+                          type="file"
+                          accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                          className="sr-only"
+                          onChange={(event) =>
+                            handleReplaceImage(index, event.target.files)
+                          }
+                        />
+                      </label>
+                    )}
                   </div>
                 </div>
               ))}
@@ -520,17 +525,19 @@ function AssetEditPage({
           ) : (
             <p className="text-sm text-muted">ยังไม่มีรูปภาพครุภัณฑ์</p>
           )}
-          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-primary/40 bg-surfaceSoft px-4 py-3 hover:border-primary">
-            <span className="text-sm font-semibold text-ink">+ เพิ่มรูปภาพ</span>
-            <span className="text-xs text-muted">(.jpg, .png, .webp)</span>
-            <input
-              type="file"
-              accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-              multiple
-              className="sr-only"
-              onChange={(event) => handleAddImages(event.target.files)}
-            />
-          </label>
+          {!permissions.canEditLimitedFields && (
+            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-primary/40 bg-surfaceSoft px-4 py-3 hover:border-primary">
+              <span className="text-sm font-semibold text-ink">+ เพิ่มรูปภาพ</span>
+              <span className="text-xs text-muted">(.jpg, .png, .webp)</span>
+              <input
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                multiple
+                className="sr-only"
+                onChange={(event) => handleAddImages(event.target.files)}
+              />
+            </label>
+          )}
         </div>
       </div>
 
@@ -554,12 +561,14 @@ function AssetEditPage({
               value={assetStructureType === "set" ? "ครุภัณฑ์แบบชุด" : "ครุภัณฑ์เดี่ยว"}
               onChange={handleStructureTypeChange}
               options={["ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"]}
+              disabled={permissions.canEditLimitedFields}
             />
             <SelectField
               label="ประเภทครุภัณฑ์"
               value={assetType}
               onChange={setAssetType}
               options={equipmentTypeOptions}
+              disabled={permissions.canEditLimitedFields}
             />
             <TextAreaField
               label="ข้อมูลจำเพาะ / คุณลักษณะของครุภัณฑ์"
@@ -567,6 +576,7 @@ function AssetEditPage({
               onChange={(event) => setAssetDescription(event.target.value)}
               placeholder="ระบุรุ่น สี ขนาด ยี่ห้อ หรือข้อมูลจำเพาะ"
               autoResize
+              disabled={permissions.canEditLimitedFields}
             />
             <div>
               <FiscalYearField
@@ -583,6 +593,7 @@ function AssetEditPage({
                   if (!/^[0-9]{4}$/.test(fiscalYear))
                     setFiscalYearError("กรุณากรอกปีงบประมาณเป็นตัวเลข 4 หลัก");
                 }}
+                disabled={permissions.canEditLimitedFields}
               />
               <FieldError message={fiscalYearError} />
             </div>
@@ -592,6 +603,7 @@ function AssetEditPage({
               onChange={setBudgetSource}
               options={budgetSourceOptions}
               placeholder="เลือกแหล่งงบประมาณ"
+              disabled={permissions.canEditLimitedFields}
             />
             <TextAreaField
               label="จัดซื้อในโครงการ"
@@ -599,6 +611,7 @@ function AssetEditPage({
               onChange={(event) => setPurchaseProject(event.target.value)}
               placeholder="เช่น โครงการจัดซื้อครุภัณฑ์และอุปกรณ์"
               autoResize
+              disabled={permissions.canEditLimitedFields}
             />
             <ThaiDateField
               label="วันที่ได้รับครุภัณฑ์"
@@ -608,7 +621,22 @@ function AssetEditPage({
             />
             {assetStructureType === "set" && (
               <div className="lg:col-span-2">
-                <AssetSetItemsEditor items={assetSetItems} onChange={setAssetSetItems} />
+                {permissions.canEditLimitedFields ? (
+                  <div className="rounded-xl border border-sky-300/20 bg-sky-400/5 p-4">
+                    <h4 className="text-sm font-bold text-ink">รายการย่อยในชุดครุภัณฑ์</h4>
+                    <div className="mt-3 space-y-2">
+                      {assetSetItems.map((item, idx) => (
+                        <div key={item.id} className="rounded-md border border-line bg-surfaceSoft px-3 py-2 text-sm">
+                          <p className="font-semibold text-ink">{idx + 1}. {item.itemName}</p>
+                          {item.description && <p className="mt-0.5 text-muted">{item.description}</p>}
+                        </div>
+                      ))}
+                      {assetSetItems.length === 0 && <p className="text-sm text-muted">-</p>}
+                    </div>
+                  </div>
+                ) : (
+                  <AssetSetItemsEditor items={assetSetItems} onChange={setAssetSetItems} />
+                )}
               </div>
             )}
           </div>
@@ -732,6 +760,7 @@ function AssetEditPage({
 export default function AssetEditRoute() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useLanguage();
   const {
     permissions,
     assets,
@@ -741,7 +770,7 @@ export default function AssetEditRoute() {
     activeLocations,
   } = useAppData();
   if (!(permissions.canEdit || permissions.canEditLimitedFields))
-    return <PlaceholderPage title="ไม่มีสิทธิ์แก้ไขข้อมูล" />;
+    return <PlaceholderPage title={t("error.noEdit")} />;
   const asset = assets.find((item: AssetListRow) => String(item.id) === params.id);
   if (!asset) return <PlaceholderPage title="ไม่พบครุภัณฑ์รายการนี้" />;
   return (
