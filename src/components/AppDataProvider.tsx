@@ -195,11 +195,11 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
         setAnnualInspections(inspectionsData);
         const filteredRoles = (rolesData.length ? rolesData : initialRoleDefinitions)
           .filter((r) => r.key !== "Inspector")
-          .map((r) =>
-            r.key === "Viewer"
-              ? { ...r, permissions: { ...r.permissions, canViewAllOrganizations: true } }
-              : r,
-          );
+          .map((r) => {
+            const overrides: Partial<Permissions> = { canViewAllOrganizations: true };
+            if (r.key === "Committee") overrides.canInspect = false;
+            return { ...r, permissions: { ...r.permissions, ...overrides } };
+          });
         setRoles(filteredRoles);
         setOrganizationItems(masterData.organizations);
         setLocationItems(masterData.locations);

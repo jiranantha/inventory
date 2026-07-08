@@ -8,6 +8,7 @@ import {
   initialRoleDefinitions,
   type ApiAssetScope,
   type PermissionAction,
+  type Permissions,
   type RoleDefinition,
 } from "@/lib/permissions";
 
@@ -47,17 +48,18 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
 // Role definitions come from the DB (single source of truth) and fall back to
 // the built-in defaults if the table is empty / unreachable.
-// Viewer's canViewAllOrganizations is always forced true so the API query
-// never scopes assets to the user's own organization for that role.
+// All roles are forced to canViewAllOrganizations: true — data visibility is
+// controlled by action permissions (canEdit, canDelete, etc.), not org scope.
+// Committee is forced to canInspect: false so the audit route is always blocked.
 export async function loadRoleDefinitions(): Promise<RoleDefinition[]> {
   try {
     const rows = await db.select().from(rolesTable);
     if (rows.length) {
-      return rows.map(rowToRole).map((r) =>
-        r.key === "Viewer"
-          ? { ...r, permissions: { ...r.permissions, canViewAllOrganizations: true } }
-          : r,
-      );
+      return rows.map(rowToRole).map((r) => {
+        const overrides: Partial<Permissions> = { canViewAllOrganizations: true };
+        if (r.key === "Committee") overrides.canInspect = false;
+        return { ...r, permissions: { ...r.permissions, ...overrides } };
+      });
     }
   } catch {
     // fall through to defaults
