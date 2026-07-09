@@ -8,7 +8,7 @@ import { LoginPage, PendingApprovalPage } from "@/components/StatusPages";
 import { api, type ActivityLogInput } from "@/lib/api-client";
 import { formatThaiDateTimeWithSeconds } from "@/lib/dates";
 import { exportDashboardToPDF } from "@/lib/import-export";
-import { getOrganizationType } from "@/lib/organizations";
+import { getOrganizationType, mergeOrganizationItems } from "@/lib/organizations";
 import { assetDetailHref, assetEditHref, ROUTES } from "@/lib/routes";
 import {
   AppUser,
@@ -197,7 +197,7 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
           .filter((r) => r.key !== "Inspector")
           .map((r) => ({ ...r, permissions: { ...r.permissions, canViewAllOrganizations: true } }));
         setRoles(filteredRoles);
-        setOrganizationItems(masterData.organizations);
+        setOrganizationItems(mergeOrganizationItems(masterData.organizations));
         setLocationItems(masterData.locations);
         setEquipmentTypeItems(masterData.equipmentTypes);
         setActivityLogs(logsData);

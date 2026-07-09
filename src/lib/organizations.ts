@@ -1,5 +1,6 @@
 import { realAssets2561To2567 } from "@/data/real-assets-2561-2567";
 import { uniqueSorted } from "@/lib/utils";
+import type { MasterDataItem } from "@/types";
 import { Organization } from "@/types";
 
 export const CENTRAL_UNITS = [
@@ -130,3 +131,18 @@ export const organizations: Organization[] = uniqueSorted([
   name,
   type: getOrganizationType(name),
 }));
+
+/**
+ * Merges DB-loaded organization items with CENTRAL_UNITS so the /setting page
+ * always displays all 101 central units. DB items are kept as-is (preserving
+ * id, active status). Units in CENTRAL_UNITS that are absent from the DB get a
+ * temporary negative id and active:true — they will be persisted to the DB the
+ * next time the admin saves any change on the organizations panel.
+ */
+export function mergeOrganizationItems(dbItems: MasterDataItem[]): MasterDataItem[] {
+  const existingNames = new Set(dbItems.map((item) => item.name.trim()));
+  const extras: MasterDataItem[] = CENTRAL_UNITS
+    .filter((name) => !existingNames.has(name.trim()))
+    .map((name, i) => ({ id: -(i + 1), name, active: true }));
+  return [...dbItems, ...extras];
+}
