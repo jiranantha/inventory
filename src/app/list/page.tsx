@@ -12,6 +12,7 @@ import { uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow, Organization } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateOption } from "@/lib/i18n";
+import { ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
 
 function ListPage({
   assets,
@@ -46,7 +47,6 @@ function ListPage({
     ]),
   ];
   const assetTypeOptions = ["ทั้งหมด", "ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"];
-  const statusOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((item) => item.status))];
 
   const [search, setSearch] = useState("");
   const [fiscalYear, setFiscalYear] = useState("ทั้งหมด");
@@ -174,7 +174,7 @@ function ListPage({
           <SelectField label={t("list.filterYear")} value={fiscalYear} onChange={(value) => { setFiscalYear(value); setPage(1); }} options={fiscalYearOptions} getOptionLabel={(v) => translateOption(v, lang)} />
           <SearchableFilterField label={t("list.filterOrg")} value={organization} onChange={(value) => { setOrganization(value); setPage(1); }} options={organizationOptions} getOptionLabel={(v) => translateOption(v, lang)} />
           <SelectField label={t("list.filterType")} value={assetType} onChange={(value) => { setAssetType(value); setPage(1); }} options={assetTypeOptions} getOptionLabel={(v) => translateOption(v, lang)} />
-          <SelectField label={t("list.filterStatus")} value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={statusOptions} getOptionLabel={(v) => translateOption(v, lang)} />
+          <SelectField label={t("list.filterStatus")} value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={ASSET_STATUS_FILTER_OPTIONS} getOptionLabel={(v) => translateOption(v, lang)} />
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           <p className="text-sm font-normal text-muted">
