@@ -500,7 +500,7 @@ export function SearchableFilterField({
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
-        className="mt-2 flex min-h-12 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-line bg-surface px-4 py-3 text-left text-sm text-ink outline-none transition hover:border-primary focus:border-primary"
+        className="mt-2 flex min-h-12 w-full min-w-0 cursor-pointer appearance-none items-center justify-between gap-2 rounded-lg border border-line bg-surface px-4 py-3 text-left text-sm text-ink outline-none focus:border-primary"
       >
         <span className="min-w-0 truncate">{displayValue}</span>
         <svg className="h-4 w-4 shrink-0 text-muted" viewBox="0 0 20 20" fill="none" aria-hidden="true">
