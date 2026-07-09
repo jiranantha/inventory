@@ -470,6 +470,88 @@ export function SelectField({
   );
 }
 
+export function SearchableFilterField({
+  label,
+  value,
+  onChange,
+  options,
+  getOptionLabel,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  getOptionLabel?: (value: string) => string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const filteredOptions = useMemo(() => {
+    const clean = query.trim().toLowerCase();
+    if (!clean) return options;
+    return options.filter((opt) => opt === "ทั้งหมด" || opt.toLowerCase().includes(clean));
+  }, [options, query]);
+
+  const displayValue = getOptionLabel ? getOptionLabel(value) : value;
+
+  return (
+    <div className="relative block min-w-0">
+      <span className="text-sm font-semibold text-ink">{label}</span>
+      <button
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
+        className="mt-2 flex min-h-12 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-line bg-surface px-4 py-3 text-left text-sm text-ink outline-none transition hover:border-primary focus:border-primary"
+      >
+        <span className="min-w-0 truncate">{displayValue}</span>
+        <svg className="h-4 w-4 shrink-0 text-muted" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => { setIsOpen(false); setQuery(""); }} />
+          <div className="absolute left-0 z-40 mt-1 w-full min-w-[180px] overflow-hidden rounded-lg border border-line bg-surface shadow-2xl">
+            <div className="border-b border-line p-2">
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="ค้นหาหน่วยงาน..."
+                className="w-full rounded-md border border-line bg-surfaceSoft px-3 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
+              />
+            </div>
+            <div className="max-h-64 overflow-y-auto p-1">
+              {filteredOptions.length === 0 ? (
+                <p className="px-3 py-5 text-center text-sm text-muted">ไม่พบหน่วยงาน</p>
+              ) : (
+                filteredOptions.map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => {
+                      onChange(opt);
+                      setQuery("");
+                      setIsOpen(false);
+                    }}
+                    className={`flex w-full items-center rounded-md px-3 py-2 text-left text-sm transition ${
+                      opt === value
+                        ? "bg-primary/10 font-semibold text-primary"
+                        : "text-ink hover:bg-primary hover:text-white"
+                    }`}
+                  >
+                    <span className="truncate">{getOptionLabel ? getOptionLabel(opt) : opt}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function RecordFormSection({
   number,
   title,

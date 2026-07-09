@@ -5,9 +5,10 @@ import { PlaceholderPage } from "@/components/StatusPages";
 
 import { useState, useMemo } from "react";
 import { buttonColors, inspectionStatusColors } from "@/constants/colors";
-import { CloseIconButton, Field, FilterChip, SelectField, StatusBadge, TextAreaField, ThaiDateField } from "@/components/ui";
+import { CloseIconButton, Field, FilterChip, SearchableFilterField, SelectField, StatusBadge, TextAreaField, ThaiDateField } from "@/components/ui";
 import { formatThaiDate, getCurrentInspectionYear } from "@/lib/dates";
 import { uploadImage } from "@/lib/image-upload";
+import { CENTRAL_UNITS } from "@/lib/organizations";
 import { uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow, EvidenceImage } from "@/types";
 import { allowedAssetStatuses, ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
@@ -31,7 +32,13 @@ function AuditPage({
   const currentInspectionYear = getCurrentInspectionYear();
   const today = new Date().toISOString().slice(0, 10);
   const assetFiscalYearOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((row) => row.fiscalYear)).sort((a, b) => Number(a) - Number(b))];
-  const organizationOptions = ["ทั้งหมด", ...uniqueSorted(assets.map((item) => item.organization))];
+  const organizationOptions = [
+    "ทั้งหมด",
+    ...uniqueSorted([
+      ...CENTRAL_UNITS,
+      ...assets.map((item) => item.organization),
+    ]),
+  ];
   const statusOptions = ASSET_STATUS_FILTER_OPTIONS;
   const inspectionStateOptions = ["ทั้งหมด", "ตรวจสอบแล้ว", "ยังไม่ได้ตรวจสอบ"];
   const modalStatusOptions = allowedAssetStatuses.filter((value) => value !== "รอตรวจสอบ");
@@ -325,7 +332,7 @@ function AuditPage({
             </div>
           </label>
           <SelectField label={t("audit.filterYear")} value={assetFiscalYear} onChange={(v) => { setAssetFiscalYear(v); setPage(1); }} options={assetFiscalYearOptions} getOptionLabel={(v) => translateOption(v, lang)} />
-          <SelectField label={t("audit.filterOrg")} value={organization} onChange={(v) => { setOrganization(v); setPage(1); }} options={organizationOptions} getOptionLabel={(v) => translateOption(v, lang)} />
+          <SearchableFilterField label={t("audit.filterOrg")} value={organization} onChange={(v) => { setOrganization(v); setPage(1); }} options={organizationOptions} getOptionLabel={(v) => translateOption(v, lang)} />
           <SelectField label={t("audit.filterStatus")} value={assetStatus} onChange={(v) => { setAssetStatus(v); setPage(1); }} options={statusOptions} getOptionLabel={(v) => translateOption(v, lang)} />
           <SelectField label={t("audit.filterInspection")} value={inspectionResult} onChange={(v) => { setInspectionResult(v); setPage(1); }} options={inspectionStateOptions} getOptionLabel={(v) => translateOption(v, lang)} />
         </div>

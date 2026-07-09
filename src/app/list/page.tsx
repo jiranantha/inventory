@@ -4,10 +4,11 @@ import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 
 import { useState, useMemo } from "react";
-import { AssetStructureBadge, FilterChip, InspectionResultBadge, PageHeader, SelectField, StatusBadge, getAssetStructureFilterLabel } from "@/components/ui";
+import { AssetStructureBadge, FilterChip, InspectionResultBadge, PageHeader, SearchableFilterField, SelectField, StatusBadge, getAssetStructureFilterLabel } from "@/components/ui";
 import { assetReportExportColumns, assetToReportRow } from "@/lib/assets";
 import { exportAssetReport } from "@/lib/import-export";
 import { Permissions } from "@/lib/permissions";
+import { CENTRAL_UNITS } from "@/lib/organizations";
 import { uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow, Organization } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -41,6 +42,7 @@ function ListPage({
   const organizationOptions = [
     "ทั้งหมด",
     ...uniqueSorted([
+      ...CENTRAL_UNITS,
       ...activeOrganizations.map((o) => o.name),
       ...assets.map((a) => a.organization),
     ]),
@@ -172,7 +174,7 @@ function ListPage({
             </div>
           </label>
           <SelectField label={t("list.filterYear")} value={fiscalYear} onChange={(value) => { setFiscalYear(value); setPage(1); }} options={fiscalYearOptions} getOptionLabel={(v) => translateOption(v, lang)} />
-          <SelectField label={t("list.filterOrg")} value={organization} onChange={(value) => { setOrganization(value); setPage(1); }} options={organizationOptions} getOptionLabel={(v) => translateOption(v, lang)} />
+          <SearchableFilterField label={t("list.filterOrg")} value={organization} onChange={(value) => { setOrganization(value); setPage(1); }} options={organizationOptions} getOptionLabel={(v) => translateOption(v, lang)} />
           <SelectField label={t("list.filterType")} value={assetType} onChange={(value) => { setAssetType(value); setPage(1); }} options={assetTypeOptions} getOptionLabel={(v) => translateOption(v, lang)} />
           <SelectField label={t("list.filterStatus")} value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={statusOptions} getOptionLabel={(v) => translateOption(v, lang)} />
         </div>
