@@ -473,28 +473,37 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
   };
 
   const handleOrganizationItemsChange = async (items: MasterDataItem[]) => {
+    const previousItems = organizationItems;
+    setOrganizationItems(items);
     try {
       const data = await api.saveMasterData("organization", items);
-      setOrganizationItems(data.organizations);
+      setOrganizationItems(mergeOrganizationItems(data.organizations));
     } catch (error) {
+      setOrganizationItems(previousItems);
       showToast(`บันทึกองค์กรไม่สำเร็จ: ${(error as Error).message}`);
     }
   };
 
   const handleLocationItemsChange = async (items: MasterDataItem[]) => {
+    const previousItems = locationItems;
+    setLocationItems(items);
     try {
       const data = await api.saveMasterData("location", items);
       setLocationItems(data.locations);
     } catch (error) {
+      setLocationItems(previousItems);
       showToast(`บันทึกสถานที่จัดเก็บไม่สำเร็จ: ${(error as Error).message}`);
     }
   };
 
   const handleEquipmentTypeItemsChange = async (items: MasterDataItem[]) => {
+    const previousItems = equipmentTypeItems;
+    setEquipmentTypeItems(items);
     try {
       const data = await api.saveMasterData("equipment_type", items);
       setEquipmentTypeItems(data.equipmentTypes);
     } catch (error) {
+      setEquipmentTypeItems(previousItems);
       showToast(`บันทึกประเภทครุภัณฑ์ไม่สำเร็จ: ${(error as Error).message}`);
     }
   };
