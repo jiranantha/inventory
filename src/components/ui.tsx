@@ -492,21 +492,34 @@ export function SearchableFilterField({
     return options.filter((opt) => opt === "ทั้งหมด" || opt.toLowerCase().includes(clean));
   }, [options, query]);
 
-  const displayValue = getOptionLabel ? getOptionLabel(value) : value;
-
   return (
-    <div className="relative block min-w-0">
+    <label className="relative block min-w-0">
       <span className="text-sm font-semibold text-ink">{label}</span>
-      <button
-        type="button"
-        onClick={() => setIsOpen((v) => !v)}
-        className="mt-2 flex min-h-12 w-full min-w-0 cursor-pointer appearance-none items-center justify-between gap-2 rounded-lg border border-lineStrong bg-surface px-4 py-3 text-left text-sm text-ink outline-none focus:border-info focus:ring focus:ring-primary-soft"
+      {/* Real <select> as trigger — identical rendering and .asset-shell CSS rules as SelectField */}
+      <select
+        value={value}
+        onChange={() => {}}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          setIsOpen((v) => !v);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault();
+            setIsOpen((v) => !v);
+          } else if (e.key === "Escape" || e.key === "Tab") {
+            setIsOpen(false);
+            setQuery("");
+          }
+        }}
+        className="mt-2 min-h-12 w-full min-w-0 truncate rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink outline-none focus:border-primary"
       >
-        <span className="min-w-0 truncate">{displayValue}</span>
-        <svg className="h-4 w-4 shrink-0 text-muted" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
+        {options.map((opt) => (
+          <option key={opt} value={opt} className="bg-surface text-ink">
+            {getOptionLabel ? getOptionLabel(opt) : opt}
+          </option>
+        ))}
+      </select>
 
       {isOpen && (
         <>
@@ -548,7 +561,7 @@ export function SearchableFilterField({
           </div>
         </>
       )}
-    </div>
+    </label>
   );
 }
 
