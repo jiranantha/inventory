@@ -8,7 +8,6 @@ import { AssetStructureBadge, FilterChip, InspectionResultBadge, PageHeader, Sea
 import { assetReportExportColumns, assetToReportRow } from "@/lib/assets";
 import { exportAssetReport } from "@/lib/import-export";
 import { Permissions } from "@/lib/permissions";
-import { CENTRAL_UNITS } from "@/lib/organizations";
 import { uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow, Organization } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -42,7 +41,6 @@ function ListPage({
   const organizationOptions = [
     "ทั้งหมด",
     ...uniqueSorted([
-      ...CENTRAL_UNITS,
       ...activeOrganizations.map((o) => o.name),
       ...assets.map((a) => a.organization),
     ]),

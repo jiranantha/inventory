@@ -8,9 +8,8 @@ import { buttonColors, inspectionStatusColors } from "@/constants/colors";
 import { CloseIconButton, Field, FilterChip, SearchableFilterField, SelectField, StatusBadge, TextAreaField, ThaiDateField } from "@/components/ui";
 import { formatThaiDate, getCurrentInspectionYear } from "@/lib/dates";
 import { uploadImage } from "@/lib/image-upload";
-import { CENTRAL_UNITS } from "@/lib/organizations";
 import { uniqueSorted } from "@/lib/utils";
-import { AnnualInspection, AssetListRow, EvidenceImage } from "@/types";
+import { AnnualInspection, AssetListRow, EvidenceImage, Organization } from "@/types";
 import { allowedAssetStatuses, ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateOption } from "@/lib/i18n";
@@ -18,12 +17,14 @@ import { translateOption } from "@/lib/i18n";
 function AuditPage({
   assets,
   annualInspections,
+  activeOrganizations,
   onSaveAnnualInspection,
   onCancelAnnualInspection,
   onSaveInspectionStatus,
 }: {
   assets: AssetListRow[];
   annualInspections: AnnualInspection[];
+  activeOrganizations: Organization[];
   onSaveAnnualInspection: (inspection: AnnualInspection) => void;
   onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => void;
   onSaveInspectionStatus: (asset: AssetListRow, status: string, inspectionDate: string, note: string) => void;
@@ -35,7 +36,7 @@ function AuditPage({
   const organizationOptions = [
     "ทั้งหมด",
     ...uniqueSorted([
-      ...CENTRAL_UNITS,
+      ...activeOrganizations.map((o) => o.name),
       ...assets.map((item) => item.organization),
     ]),
   ];
@@ -654,12 +655,13 @@ function AuditPage({
 
 
 export default function AuditRoute() {
-  const { permissions, assets, annualInspections, onSaveAnnualInspection, onCancelAnnualInspection, onSaveInspectionStatus } = useAppData();
+  const { permissions, assets, annualInspections, activeOrganizations, onSaveAnnualInspection, onCancelAnnualInspection, onSaveInspectionStatus } = useAppData();
   if (!permissions.canInspect) return <PlaceholderPage title="ไม่มีสิทธิ์ตรวจสอบประจำปี" />;
   return (
     <AuditPage
       assets={assets}
       annualInspections={annualInspections}
+      activeOrganizations={activeOrganizations}
       onSaveAnnualInspection={onSaveAnnualInspection}
       onCancelAnnualInspection={onCancelAnnualInspection}
       onSaveInspectionStatus={onSaveInspectionStatus}

@@ -567,7 +567,8 @@ function AssetEditPage({
               label="ประเภทครุภัณฑ์"
               value={assetType}
               onChange={setAssetType}
-              options={equipmentTypeOptions}
+              options={equipmentTypeOptions.includes(assetType) ? equipmentTypeOptions : [assetType, ...equipmentTypeOptions]}
+              getOptionLabel={(v) => equipmentTypeOptions.includes(v) ? v : `${v} (ปิดใช้งาน)`}
               disabled={permissions.canEditLimitedFields}
             />
             <TextAreaField
@@ -691,11 +692,8 @@ function AssetEditPage({
                 label="สถานที่จัดเก็บ"
                 value={location}
                 onChange={setLocation}
-                options={
-                  locationOptions.includes(location)
-                    ? locationOptions
-                    : [location, ...locationOptions]
-                }
+                options={locationOptions.includes(location) ? locationOptions : [location, ...locationOptions]}
+                getOptionLabel={(v) => locationOptions.includes(v) ? v : `${v} (ปิดใช้งาน)`}
                 placeholder="เลือกสถานที่จัดเก็บ"
               />
               <p className="mt-2 text-xs leading-5 text-muted">
