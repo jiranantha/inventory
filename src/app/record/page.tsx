@@ -442,12 +442,12 @@ function RecordPage({
         <RecordFormSection number={1} title={t("rec.sec1")} description={t("rec.sec1desc")}>
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
-              <Field label="ชื่อรายการครุภัณฑ์" value={assetName} onChange={(event) => { setAssetName(event.target.value); setMainFormErrors((errors) => ({ ...errors, assetName: "" })); }} placeholder="เช่น กล้องถ่ายภาพ โต๊ะพับ ลำโพง" />
+              <Field label={t("rec.label.assetName")} value={assetName} onChange={(event) => { setAssetName(event.target.value); setMainFormErrors((errors) => ({ ...errors, assetName: "" })); }} placeholder={t("rec.ph.assetName")} />
               <FieldError message={mainFormErrors.assetName} />
             </div>
             <div>
               <SelectField
-                label="ลักษณะครุภัณฑ์"
+                label={t("rec.label.assetNature")}
                 value={assetStructureType === "set" ? "ครุภัณฑ์แบบชุด" : "ครุภัณฑ์เดี่ยว"}
                 onChange={(value) => { handleStructureTypeChange(value); setMainFormErrors((errors) => ({ ...errors, assetStructureType: "" })); }}
                 options={["ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"]}
@@ -455,14 +455,14 @@ function RecordPage({
               <FieldError message={mainFormErrors.assetStructureType} />
             </div>
             <div>
-              <SelectField label="ประเภทครุภัณฑ์" value={assetType} onChange={(value) => { setAssetType(value); setMainFormErrors((errors) => ({ ...errors, assetType: "" })); }} options={equipmentTypeOptions} />
+              <SelectField label={t("rec.label.assetCategory")} value={assetType} onChange={(value) => { setAssetType(value); setMainFormErrors((errors) => ({ ...errors, assetType: "" })); }} options={equipmentTypeOptions} />
               <FieldError message={mainFormErrors.assetType} />
             </div>
             <TextAreaField
-              label="ข้อมูลจำเพาะ / คุณลักษณะของครุภัณฑ์"
+              label={t("rec.label.specs")}
               value={assetDescription}
               onChange={(event) => setAssetDescription(event.target.value)}
-              placeholder="ระบุรุ่น สี ขนาด ยี่ห้อ หรือข้อมูลจำเพาะ"
+              placeholder={t("rec.ph.specs")}
               autoResize
             />
             <FiscalYearField
@@ -481,21 +481,21 @@ function RecordPage({
               }}
             />
             <div>
-              <SelectField label="แหล่งงบประมาณที่ใช้" value={budgetSource} onChange={(value) => { setBudgetSource(value); setMainFormErrors((errors) => ({ ...errors, budgetSource: "" })); }} options={budgetSourceOptions} placeholder="เลือกแหล่งงบประมาณ" />
+              <SelectField label={t("rec.label.budgetSource")} value={budgetSource} onChange={(value) => { setBudgetSource(value); setMainFormErrors((errors) => ({ ...errors, budgetSource: "" })); }} options={budgetSourceOptions} placeholder={t("rec.ph.budgetSource")} />
               <FieldError message={mainFormErrors.budgetSource} />
             </div>
             <div>
               <TextAreaField
-                label="จัดซื้อในโครงการ"
+                label={t("rec.label.project")}
                 value={purchaseProject}
                 onChange={(event) => { setPurchaseProject(event.target.value); setMainFormErrors((errors) => ({ ...errors, purchaseProject: "" })); }}
-                placeholder="เช่น โครงการจัดซื้อครุภัณฑ์และอุปกรณ์"
+                placeholder={t("rec.ph.project")}
                 autoResize
               />
               <FieldError message={mainFormErrors.purchaseProject} />
             </div>
             <div>
-              <ThaiDateField label="วันที่ได้รับครุภัณฑ์" value={receivedDate} onChange={(value) => { setReceivedDate(value); setMainFormErrors((errors) => ({ ...errors, receivedDate: "" })); }} />
+              <ThaiDateField label={t("rec.label.receivedDate")} value={receivedDate} onChange={(value) => { setReceivedDate(value); setMainFormErrors((errors) => ({ ...errors, receivedDate: "" })); }} />
               <FieldError message={mainFormErrors.receivedDate} />
             </div>
             {assetStructureType === "set" && (
@@ -510,7 +510,7 @@ function RecordPage({
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
               <SelectField
-                label="สถานะการใช้งาน"
+                label={t("rec.label.status")}
                 value={status}
                 onChange={(value) => { setStatus(value); setMainFormErrors((errors) => ({ ...errors, status: "" })); }}
                 options={allowedAssetStatuses}
@@ -518,7 +518,7 @@ function RecordPage({
               />
               <FieldError message={mainFormErrors.status} />
             </div>
-            <TextAreaField value={note} onChange={(event) => setNote(event.target.value)} label="หมายเหตุ" placeholder="ระบุหมายเหตุเพิ่มเติม" autoResize />
+            <TextAreaField value={note} onChange={(event) => setNote(event.target.value)} label={t("rec.label.notes")} placeholder={t("rec.ph.notes")} autoResize />
           </div>
         </RecordFormSection>
 
@@ -529,16 +529,16 @@ function RecordPage({
                 selected={selectedOrganization}
                 onSelect={(organization) => { setSelectedOrganization(organization); setMainFormErrors((errors) => ({ ...errors, organization: "" })); }}
                 options={organizationOptions}
-                label="องค์กรนักศึกษา/หน่วยงานที่รับผิดชอบ"
+                label={t("rec.label.org")}
               />
               <FieldError message={mainFormErrors.organization} />
             </div>
             <div>
-              <SelectField label="สถานที่จัดเก็บ" value={location} onChange={(value) => { setLocation(value); setMainFormErrors((errors) => ({ ...errors, location: "" })); }} options={locationOptions} placeholder="เลือกสถานที่จัดเก็บ" />
+              <SelectField label={t("rec.label.location")} value={location} onChange={(value) => { setLocation(value); setMainFormErrors((errors) => ({ ...errors, location: "" })); }} options={locationOptions} placeholder={t("rec.ph.location")} />
               <FieldError message={mainFormErrors.location} />
             </div>
             <div>
-              <Field label="ผู้รับผิดชอบ" value={responsiblePerson} onChange={(event) => { setResponsiblePerson(event.target.value); setMainFormErrors((errors) => ({ ...errors, responsiblePerson: "" })); }} placeholder="ชื่อ-นามสกุล" />
+              <Field label={t("rec.label.responsible")} value={responsiblePerson} onChange={(event) => { setResponsiblePerson(event.target.value); setMainFormErrors((errors) => ({ ...errors, responsiblePerson: "" })); }} placeholder={t("rec.ph.responsible")} />
               <FieldError message={mainFormErrors.responsiblePerson} />
             </div>
             <PhoneField
@@ -581,24 +581,24 @@ function RecordPage({
             </div>
             <div className="max-h-[calc(90vh-88px)] space-y-4 overflow-y-auto p-5">
               <div>
-                <Field label="ชื่อครุภัณฑ์" value={issueAssetName} onChange={(event) => { setIssueAssetName(event.target.value); setIssueFormErrors((errors) => ({ ...errors, assetName: "" })); }} />
+                <Field label={t("rec.modal.assetName")} value={issueAssetName} onChange={(event) => { setIssueAssetName(event.target.value); setIssueFormErrors((errors) => ({ ...errors, assetName: "" })); }} />
                 <FieldError message={issueFormErrors.assetName} />
               </div>
               <div>
-                <Field label="หมายเลขครุภัณฑ์" value={assetNumber} readOnly />
+                <Field label={t("rec.modal.assetNumber")} value={assetNumber} readOnly />
                 <FieldError message={issueFormErrors.assetNumber} />
               </div>
               <div>
                 <Field
-                  label="ระบุตำแหน่งที่ประทับหมายเลขครุภัณฑ์"
+                  label={t("rec.modal.numberLocation")}
                   value={assetNumberLocation}
                   onChange={(event) => { setAssetNumberLocation(event.target.value); setIssueFormErrors((errors) => ({ ...errors, assetNumberLocation: "" })); }}
-                  placeholder="เช่น ด้านหลังเครื่อง ใต้โต๊ะ ด้านข้างกล่อง หรือบริเวณขาตั้ง"
+                  placeholder={t("rec.ph.numberLocation")}
                 />
                 <FieldError message={issueFormErrors.assetNumberLocation} />
               </div>
               <label className="block">
-                <span className="text-sm font-semibold text-ink">รูปถ่ายครุภัณฑ์</span>
+                <span className="text-sm font-semibold text-ink">{t("rec.modal.photos")}</span>
                 <input
                   type="file"
                   accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
@@ -606,7 +606,7 @@ function RecordPage({
                   onChange={(event) => handleImageChange(event.target.files)}
                   className="mt-2 w-full rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-4 py-6 text-sm text-ink file:mr-4 file:rounded-md file:border-0 file:bg-gold file:px-4 file:py-2 file:font-bold file:text-slate-950 hover:border-primary"
                 />
-                <span className="mt-2 block text-xs text-muted">แนบรูปภาพประกอบได้หลายรูป {imagePreviews.length > 0 ? `(${imagePreviews.length} รูป)` : ""}</span>
+                <span className="mt-2 block text-xs text-muted">{t("rec.modal.multiPhoto")}{imagePreviews.length > 0 ? ` (${imagePreviews.length} ${t("rec.modal.photoUnit")})` : ""}</span>
                 <FieldError message={issueFormErrors.images} />
               </label>
               {imagePreviews.length > 0 && (

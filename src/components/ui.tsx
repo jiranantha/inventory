@@ -309,7 +309,7 @@ export function PhoneField({
   error,
   onInvalidInput,
   onBlur,
-  label = "หมายเลขโทรศัพท์",
+  label,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -318,10 +318,11 @@ export function PhoneField({
   onBlur: () => void;
   label?: string;
 }) {
+  const { t } = useLanguage();
   return (
     <div>
       <Field
-        label={label}
+        label={label ?? t("rec.label.phone")}
         type="tel"
         inputMode="numeric"
         pattern="[0-9]*"
@@ -334,7 +335,7 @@ export function PhoneField({
           onChange(digitsOnly.slice(0, 10));
         }}
         onBlur={onBlur}
-        placeholder="เช่น 0812345678"
+        placeholder={t("rec.ph.phone")}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? "responsible-phone-error" : undefined}
         className={error ? "border-red-400 focus:border-red-400" : ""}
@@ -363,10 +364,11 @@ export function FiscalYearField({
   onBlur: () => void;
   disabled?: boolean;
 }) {
+  const { t } = useLanguage();
   return (
     <div>
       <Field
-        label="ปีงบประมาณที่จัดซื้อ"
+        label={t("rec.label.fiscalYear")}
         type="text"
         inputMode="numeric"
         pattern="[0-9]*"
@@ -380,7 +382,7 @@ export function FiscalYearField({
         }}
         onBlur={onBlur}
         disabled={disabled}
-        placeholder="เช่น 2569"
+        placeholder={t("rec.ph.fiscalYear")}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? "fiscal-year-error" : undefined}
         className={error ? "border-red-400 focus:border-red-400" : ""}
