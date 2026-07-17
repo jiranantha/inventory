@@ -47,7 +47,7 @@ function ListPage({
     ...uniqueSorted([
       ...activeOrganizations.map((o) => o.name),
       ...assets.map((a) => a.organization),
-    ]),
+    ]).filter((name) => name !== "สภานักศึกษา มหาวิทยาลัยเชียงใหม่"),
   ];
   const assetTypeOptions = ["ทั้งหมด", "ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"];
 

@@ -38,7 +38,7 @@ function AuditPage({
     ...uniqueSorted([
       ...activeOrganizations.map((o) => o.name),
       ...assets.map((item) => item.organization),
-    ]),
+    ]).filter((name) => name !== "สภานักศึกษา มหาวิทยาลัยเชียงใหม่"),
   ];
   const statusOptions = ASSET_STATUS_FILTER_OPTIONS;
   const inspectionStateOptions = ["ทั้งหมด", "ตรวจสอบแล้ว", "ยังไม่ได้ตรวจสอบ"];
