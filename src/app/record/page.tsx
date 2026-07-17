@@ -78,17 +78,18 @@ function RecordPage({
 
   const validateMainForm = () => {
     const errors: Record<string, string> = {};
-    if (!assetName.trim()) errors.assetName = "กรุณากรอกชื่อรายการครุภัณฑ์";
-    if (!assetStructureType) errors.assetStructureType = "กรุณาเลือกลักษณะครุภัณฑ์";
-    if (!assetType) errors.assetType = "กรุณาเลือกประเภทครุภัณฑ์";
+    const required = t("rec.err.required");
+    if (!assetName.trim()) errors.assetName = required;
+    if (!assetStructureType) errors.assetStructureType = required;
+    if (!assetType) errors.assetType = required;
     if (!/^[0-9]{4}$/.test(fiscalYear)) errors.fiscalYear = "กรุณากรอกปีงบประมาณเป็นตัวเลข 4 หลัก";
-    if (!budgetSource) errors.budgetSource = "กรุณาเลือกแหล่งงบประมาณที่ใช้";
-    if (!purchaseProject.trim()) errors.purchaseProject = "กรุณากรอกโครงการที่จัดซื้อ";
-    if (!isValidDateInput(receivedDate)) errors.receivedDate = "กรุณาเลือกวันที่ได้รับครุภัณฑ์";
-    if (!status) errors.status = "กรุณาเลือกสถานะการใช้งาน";
-    if (!selectedOrganization) errors.organization = "กรุณาเลือกองค์กรนักศึกษา/หน่วยงานที่รับผิดชอบ";
-    if (!location) errors.location = "กรุณาเลือกสถานที่จัดเก็บ";
-    if (!responsiblePerson.trim()) errors.responsiblePerson = "กรุณากรอกผู้รับผิดชอบ";
+    if (!budgetSource) errors.budgetSource = required;
+    if (!purchaseProject.trim()) errors.purchaseProject = required;
+    if (!isValidDateInput(receivedDate)) errors.receivedDate = required;
+    if (!status) errors.status = required;
+    if (!selectedOrganization) errors.organization = required;
+    if (!location) errors.location = required;
+    if (!responsiblePerson.trim()) errors.responsiblePerson = required;
     if (!/^[0-9]{9,10}$/.test(responsiblePhone)) errors.responsiblePhone = "กรุณากรอกหมายเลขโทรศัพท์ให้ถูกต้อง 9-10 หลัก";
 
     setMainFormErrors(errors);
@@ -124,10 +125,11 @@ function RecordPage({
     const cleanAssetNumber = assetNumber.trim();
     const organization = selectedOrganization;
     const errors: Record<string, string> = {};
-    if (!cleanAssetName) errors.assetName = "กรุณากรอกชื่อครุภัณฑ์";
+    const requiredMsg = t("rec.err.required");
+    if (!cleanAssetName) errors.assetName = requiredMsg;
     if (!cleanAssetNumber) errors.assetNumber = "ไม่สามารถออกหมายเลขครุภัณฑ์ได้ กรุณาลองใหม่อีกครั้ง";
-    if (!assetNumberLocation.trim()) errors.assetNumberLocation = "กรุณาระบุตำแหน่งที่ประทับหมายเลขครุภัณฑ์";
-    if (imagePreviews.length === 0) errors.images = "กรุณาอัปโหลดรูปถ่ายครุภัณฑ์อย่างน้อย 1 รูป";
+    if (!assetNumberLocation.trim()) errors.assetNumberLocation = requiredMsg;
+    if (imagePreviews.length === 0) errors.images = requiredMsg;
     setIssueFormErrors(errors);
     if (!organization || Object.keys(errors).length > 0) {
       return;
@@ -442,20 +444,22 @@ function RecordPage({
         <RecordFormSection number={1} title={t("rec.sec1")} description={t("rec.sec1desc")}>
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
-              <Field label={t("rec.label.assetName")} value={assetName} onChange={(event) => { setAssetName(event.target.value); setMainFormErrors((errors) => ({ ...errors, assetName: "" })); }} placeholder={t("rec.ph.assetName")} />
+              <Field label={t("rec.label.assetName")} required value={assetName} onChange={(event) => { setAssetName(event.target.value); setMainFormErrors((errors) => ({ ...errors, assetName: "" })); }} placeholder={t("rec.ph.assetName")} className={mainFormErrors.assetName ? "border-red-400 focus:border-red-400" : ""} />
               <FieldError message={mainFormErrors.assetName} />
             </div>
             <div>
               <SelectField
                 label={t("rec.label.assetNature")}
+                required
                 value={assetStructureType === "set" ? "ครุภัณฑ์แบบชุด" : "ครุภัณฑ์เดี่ยว"}
                 onChange={(value) => { handleStructureTypeChange(value); setMainFormErrors((errors) => ({ ...errors, assetStructureType: "" })); }}
                 options={["ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"]}
+                error={mainFormErrors.assetStructureType}
               />
               <FieldError message={mainFormErrors.assetStructureType} />
             </div>
             <div>
-              <SelectField label={t("rec.label.assetCategory")} value={assetType} onChange={(value) => { setAssetType(value); setMainFormErrors((errors) => ({ ...errors, assetType: "" })); }} options={equipmentTypeOptions} />
+              <SelectField label={t("rec.label.assetCategory")} required value={assetType} onChange={(value) => { setAssetType(value); setMainFormErrors((errors) => ({ ...errors, assetType: "" })); }} options={equipmentTypeOptions} error={mainFormErrors.assetType} />
               <FieldError message={mainFormErrors.assetType} />
             </div>
             <TextAreaField
@@ -466,6 +470,7 @@ function RecordPage({
               autoResize
             />
             <FiscalYearField
+              required
               value={fiscalYear}
               onChange={(value) => {
                 setFiscalYear(value);
@@ -481,7 +486,7 @@ function RecordPage({
               }}
             />
             <div>
-              <SelectField label={t("rec.label.budgetSource")} value={budgetSource} onChange={(value) => { setBudgetSource(value); setMainFormErrors((errors) => ({ ...errors, budgetSource: "" })); }} options={budgetSourceOptions} placeholder={t("rec.ph.budgetSource")} />
+              <SelectField label={t("rec.label.budgetSource")} value={budgetSource} onChange={(value) => { setBudgetSource(value); setMainFormErrors((errors) => ({ ...errors, budgetSource: "" })); }} options={budgetSourceOptions} placeholder={t("rec.ph.budgetSource")} error={mainFormErrors.budgetSource} />
               <FieldError message={mainFormErrors.budgetSource} />
             </div>
             <div>
@@ -491,11 +496,12 @@ function RecordPage({
                 onChange={(event) => { setPurchaseProject(event.target.value); setMainFormErrors((errors) => ({ ...errors, purchaseProject: "" })); }}
                 placeholder={t("rec.ph.project")}
                 autoResize
+                error={mainFormErrors.purchaseProject}
               />
               <FieldError message={mainFormErrors.purchaseProject} />
             </div>
             <div>
-              <ThaiDateField label={t("rec.label.receivedDate")} value={receivedDate} onChange={(value) => { setReceivedDate(value); setMainFormErrors((errors) => ({ ...errors, receivedDate: "" })); }} />
+              <ThaiDateField label={t("rec.label.receivedDate")} value={receivedDate} onChange={(value) => { setReceivedDate(value); setMainFormErrors((errors) => ({ ...errors, receivedDate: "" })); }} error={mainFormErrors.receivedDate} />
               <FieldError message={mainFormErrors.receivedDate} />
             </div>
             {assetStructureType === "set" && (
@@ -511,10 +517,12 @@ function RecordPage({
             <div>
               <SelectField
                 label={t("rec.label.status")}
+                required
                 value={status}
                 onChange={(value) => { setStatus(value); setMainFormErrors((errors) => ({ ...errors, status: "" })); }}
                 options={allowedAssetStatuses}
                 getOptionLabel={(v) => translateOption(v, lang)}
+                error={mainFormErrors.status}
               />
               <FieldError message={mainFormErrors.status} />
             </div>
@@ -530,15 +538,17 @@ function RecordPage({
                 onSelect={(organization) => { setSelectedOrganization(organization); setMainFormErrors((errors) => ({ ...errors, organization: "" })); }}
                 options={organizationOptions}
                 label={t("rec.label.org")}
+                required
+                error={mainFormErrors.organization}
               />
               <FieldError message={mainFormErrors.organization} />
             </div>
             <div>
-              <SelectField label={t("rec.label.location")} value={location} onChange={(value) => { setLocation(value); setMainFormErrors((errors) => ({ ...errors, location: "" })); }} options={locationOptions} placeholder={t("rec.ph.location")} />
+              <SelectField label={t("rec.label.location")} required value={location} onChange={(value) => { setLocation(value); setMainFormErrors((errors) => ({ ...errors, location: "" })); }} options={locationOptions} placeholder={t("rec.ph.location")} error={mainFormErrors.location} />
               <FieldError message={mainFormErrors.location} />
             </div>
             <div>
-              <Field label={t("rec.label.responsible")} value={responsiblePerson} onChange={(event) => { setResponsiblePerson(event.target.value); setMainFormErrors((errors) => ({ ...errors, responsiblePerson: "" })); }} placeholder={t("rec.ph.responsible")} />
+              <Field label={t("rec.label.responsible")} value={responsiblePerson} onChange={(event) => { setResponsiblePerson(event.target.value); setMainFormErrors((errors) => ({ ...errors, responsiblePerson: "" })); }} placeholder={t("rec.ph.responsible")} className={mainFormErrors.responsiblePerson ? "border-red-400 focus:border-red-400" : ""} />
               <FieldError message={mainFormErrors.responsiblePerson} />
             </div>
             <PhoneField
@@ -591,20 +601,25 @@ function RecordPage({
               <div>
                 <Field
                   label={t("rec.modal.numberLocation")}
+                  required
                   value={assetNumberLocation}
                   onChange={(event) => { setAssetNumberLocation(event.target.value); setIssueFormErrors((errors) => ({ ...errors, assetNumberLocation: "" })); }}
                   placeholder={t("rec.ph.numberLocation")}
+                  className={issueFormErrors.assetNumberLocation ? "border-red-400 focus:border-red-400" : ""}
                 />
                 <FieldError message={issueFormErrors.assetNumberLocation} />
               </div>
               <label className="block">
-                <span className="text-sm font-semibold text-ink">{t("rec.modal.photos")}</span>
+                <span className="text-sm font-semibold text-ink">
+                  {t("rec.modal.photos")}
+                  <span className="ml-0.5 text-danger">*</span>
+                </span>
                 <input
                   type="file"
                   accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                   multiple
                   onChange={(event) => handleImageChange(event.target.files)}
-                  className="mt-2 w-full rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-4 py-6 text-sm text-ink file:mr-4 file:rounded-md file:border-0 file:bg-gold file:px-4 file:py-2 file:font-bold file:text-slate-950 hover:border-primary"
+                  className={`mt-2 w-full rounded-lg border border-dashed bg-slate-950/40 px-4 py-6 text-sm text-ink file:mr-4 file:rounded-md file:border-0 file:bg-gold file:px-4 file:py-2 file:font-bold file:text-slate-950 hover:border-primary ${issueFormErrors.images ? "border-red-400" : "border-primary/40"}`}
                 />
                 <span className="mt-2 block text-xs text-muted">{t("rec.modal.multiPhoto")}{imagePreviews.length > 0 ? ` (${imagePreviews.length} ${t("rec.modal.photoUnit")})` : ""}</span>
                 <FieldError message={issueFormErrors.images} />

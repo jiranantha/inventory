@@ -119,11 +119,15 @@ export function SearchableOrganizationSelect({
   onSelect,
   options = organizations,
   label = "ฝ่าย/ชมรมที่รับผิดชอบ",
+  required,
+  error,
 }: {
   selected: Organization | null;
   onSelect: (organization: Organization) => void;
   options?: Organization[];
   label?: string;
+  required?: boolean;
+  error?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -140,11 +144,12 @@ export function SearchableOrganizationSelect({
     <div className="relative">
       <label className="text-sm font-semibold text-ink" htmlFor="organization-search">
         {label}
+        {required && <span className="ml-0.5 text-danger">*</span>}
       </label>
       <button
         type="button"
         onClick={() => setIsOpen((value) => !value)}
-        className="mt-2 flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3 text-left text-sm text-ink ring-1 ring-transparent transition hover:border-primary/60 focus:outline-none focus:ring-info"
+        className={`mt-2 flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border bg-surface px-4 py-3 text-left text-sm text-ink ring-1 ring-transparent transition hover:border-primary/60 focus:outline-none focus:ring-info ${error ? "border-red-400" : "border-line"}`}
       >
         <span className="min-w-0">
           <span className="block truncate font-semibold">{selected?.name ?? "เลือกฝ่าย/ชมรม"}</span>
@@ -191,6 +196,7 @@ export function SearchableOrganizationSelect({
 
 export function Field({
   label,
+  required,
   className = "",
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
@@ -212,7 +218,10 @@ export function Field({
 
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-ink">{label}</span>
+      <span className="text-sm font-semibold text-ink">
+        {label}
+        {required && <span className="ml-0.5 text-danger">*</span>}
+      </span>
       <div className={isDateInput ? "relative mt-2" : ""}>
         <input
           {...props}
@@ -243,11 +252,15 @@ export function ThaiDateField({
   value,
   onChange,
   disabled = false,
+  required,
+  error,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  required?: boolean;
+  error?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const openDatePicker = () => {
@@ -262,13 +275,16 @@ export function ThaiDateField({
 
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-ink">{label}</span>
+      <span className="text-sm font-semibold text-ink">
+        {label}
+        {required && <span className="ml-0.5 text-danger">*</span>}
+      </span>
       <div className="relative mt-2">
         <button
           type="button"
           onClick={openDatePicker}
           disabled={disabled}
-          className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3 text-left text-sm text-ink outline-none transition hover:border-primary/60 focus:border-primary focus:ring-2 focus:ring-info/30 disabled:cursor-not-allowed disabled:text-muted"
+          className={`flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border bg-surface px-4 py-3 text-left text-sm text-ink outline-none transition hover:border-primary/60 focus:border-primary focus:ring-2 focus:ring-info/30 disabled:cursor-not-allowed disabled:text-muted ${error ? "border-red-400" : "border-line"}`}
           aria-label={`${label} ${value ? formatThaiDate(value) : "ยังไม่ได้เลือก"}`}
         >
           <span>{value ? formatThaiDate(value) : "วัน/เดือน/ปี พ.ศ."}</span>
@@ -356,6 +372,7 @@ export function FiscalYearField({
   onInvalidInput,
   onBlur,
   disabled,
+  required,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -363,12 +380,14 @@ export function FiscalYearField({
   onInvalidInput: () => void;
   onBlur: () => void;
   disabled?: boolean;
+  required?: boolean;
 }) {
   const { t } = useLanguage();
   return (
     <div>
       <Field
         label={t("rec.label.fiscalYear")}
+        required={required}
         type="text"
         inputMode="numeric"
         pattern="[0-9]*"
@@ -398,12 +417,14 @@ export function FiscalYearField({
 
 export function TextAreaField({
   label,
+  required,
   compact = false,
   autoResize = false,
   className = "",
+  error,
   onInput,
   ...props
-}: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; compact?: boolean; autoResize?: boolean }) {
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; compact?: boolean; autoResize?: boolean; error?: string }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const resizeTextarea = (textarea: HTMLTextAreaElement) => {
     textarea.style.height = "auto";
@@ -416,7 +437,10 @@ export function TextAreaField({
 
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-ink">{label}</span>
+      <span className="text-sm font-semibold text-ink">
+        {label}
+        {required && <span className="ml-0.5 text-danger">*</span>}
+      </span>
       <textarea
         {...props}
         ref={textareaRef}
@@ -425,7 +449,7 @@ export function TextAreaField({
           if (autoResize) resizeTextarea(event.currentTarget);
           onInput?.(event);
         }}
-        className={`mt-2 w-full rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-primary ${autoResize ? "min-h-12 resize-none overflow-hidden" : compact ? "h-12 min-h-12 resize-none overflow-hidden" : "min-h-28 resize-y"} ${className}`}
+        className={`mt-2 w-full rounded-lg border bg-surface px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-primary ${autoResize ? "min-h-12 resize-none overflow-hidden" : compact ? "h-12 min-h-12 resize-none overflow-hidden" : "min-h-28 resize-y"} ${error ? "border-red-400 focus:border-red-400" : "border-line"} ${className}`}
       />
     </label>
   );
@@ -439,6 +463,8 @@ export function SelectField({
   placeholder,
   getOptionLabel,
   disabled,
+  required,
+  error,
 }: {
   label: string;
   value: string;
@@ -447,15 +473,20 @@ export function SelectField({
   placeholder?: string;
   getOptionLabel?: (value: string) => string;
   disabled?: boolean;
+  required?: boolean;
+  error?: string;
 }) {
   return (
     <label className="block min-w-0">
-      <span className="text-sm font-semibold text-ink">{label}</span>
+      <span className="text-sm font-semibold text-ink">
+        {label}
+        {required && <span className="ml-0.5 text-danger">*</span>}
+      </span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
-        className="mt-2 min-h-12 w-full min-w-0 truncate rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink outline-none focus:border-primary disabled:cursor-not-allowed disabled:text-muted"
+        className={`mt-2 min-h-12 w-full min-w-0 truncate rounded-lg border bg-surface px-4 py-3 text-sm text-ink outline-none focus:border-primary disabled:cursor-not-allowed disabled:text-muted ${error ? "border-red-400 focus:border-red-400" : "border-line"}`}
       >
         {placeholder && (
           <option value="" disabled className="bg-surface text-muted">
