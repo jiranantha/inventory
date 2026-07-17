@@ -52,7 +52,7 @@ export function StatusBadge({ value, variant = "outline" }: { value: string; var
   const colors = assetStatusColors[value] ?? { bg: "bg-slate-500/18", text: "text-ink", border: "ring-slate-300/30" };
   const style = `${colors.bg} ${colors.text} ${variant === "outline" ? colors.border : ""}`;
 
-  return <span className={`inline-flex min-h-6 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold leading-none ${variant === "outline" ? "ring-1" : ""} ${style}`}>{translateOption(value, lang)}</span>;
+  return <span className={`inline-flex min-h-6 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold leading-none ${variant === "outline" ? "ring-1" : "ring-0 border-0 shadow-none outline-none"} ${style}`}>{translateOption(value, lang)}</span>;
 }
 
 export function InspectionResultBadge({ inspected }: { inspected: boolean }) {
