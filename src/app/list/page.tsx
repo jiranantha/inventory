@@ -3,7 +3,8 @@
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AssetStructureBadge, FilterChip, InspectionResultBadge, PageHeader, SearchableFilterField, SelectField, StatusBadge, getAssetStructureFilterLabel } from "@/components/ui";
 import { assetReportExportColumns, assetToReportRow } from "@/lib/assets";
 import { exportAssetReport } from "@/lib/import-export";
@@ -34,6 +35,8 @@ function ListPage({
   onDeleteAsset: (asset: AssetListRow) => void;
 }) {
   const { lang, t } = useLanguage();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const inspectedAssetIds = useMemo(
     () => new Set(annualInspections.map((inspection) => inspection.assetId)),
     [annualInspections],
@@ -48,12 +51,26 @@ function ListPage({
   ];
   const assetTypeOptions = ["ทั้งหมด", "ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"];
 
-  const [search, setSearch] = useState("");
-  const [fiscalYear, setFiscalYear] = useState("ทั้งหมด");
-  const [organization, setOrganization] = useState("ทั้งหมด");
-  const [assetType, setAssetType] = useState("ทั้งหมด");
-  const [status, setStatus] = useState("ทั้งหมด");
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
+  const [fiscalYear, setFiscalYear] = useState(searchParams.get("year") ?? "ทั้งหมด");
+  const [organization, setOrganization] = useState(searchParams.get("unit") ?? "ทั้งหมด");
+  const [assetType, setAssetType] = useState(searchParams.get("type") ?? "ทั้งหมด");
+  const [status, setStatus] = useState(searchParams.get("status") ?? "ทั้งหมด");
   const [page, setPage] = useState(1);
+
+  const pushFilters = useCallback((f: {
+    search: string; fiscalYear: string; organization: string; assetType: string; status: string;
+  }) => {
+    const p = new URLSearchParams();
+    if (f.search.trim()) p.set("q", f.search.trim());
+    if (f.fiscalYear !== "ทั้งหมด") p.set("year", f.fiscalYear);
+    if (f.organization !== "ทั้งหมด") p.set("unit", f.organization);
+    if (f.assetType !== "ทั้งหมด") p.set("type", f.assetType);
+    if (f.status !== "ทั้งหมด") p.set("status", f.status);
+    const qs = p.toString();
+    router.replace(qs ? `/list?${qs}` : "/list", { scroll: false });
+  }, [router]);
+
   const [exportOpen, setExportOpen] = useState(false);
   const pageSize = 25;
 
@@ -81,6 +98,7 @@ function ListPage({
     setAssetType("ทั้งหมด");
     setStatus("ทั้งหมด");
     setPage(1);
+    router.replace("/list", { scroll: false });
   };
 
   const tableHeadings = [
@@ -153,8 +171,10 @@ function ListPage({
               <input
                 value={search}
                 onChange={(event) => {
-                  setSearch(event.target.value);
+                  const v = event.target.value;
+                  setSearch(v);
                   setPage(1);
+                  pushFilters({ search: v, fiscalYear, organization, assetType, status });
                 }}
                 placeholder={t("c.searchAssets")}
                 className="h-12 w-full rounded-lg border border-line bg-surfaceSoft py-3 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
@@ -162,7 +182,7 @@ function ListPage({
               {search.trim() && (
                 <button
                   type="button"
-                  onClick={() => { setSearch(""); setPage(1); }}
+                  onClick={() => { setSearch(""); setPage(1); pushFilters({ search: "", fiscalYear, organization, assetType, status }); }}
                   className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-sm font-bold text-muted hover:bg-slate-100 hover:text-slate-900"
                   aria-label="ล้างคำค้นหา"
                 >
@@ -171,10 +191,10 @@ function ListPage({
               )}
             </div>
           </label>
-          <SelectField label={t("list.filterYear")} value={fiscalYear} onChange={(value) => { setFiscalYear(value); setPage(1); }} options={fiscalYearOptions} getOptionLabel={(v) => translateOption(v, lang)} />
-          <SearchableFilterField label={t("list.filterOrg")} value={organization} onChange={(value) => { setOrganization(value); setPage(1); }} options={organizationOptions} getOptionLabel={(v) => translateOption(v, lang)} />
-          <SelectField label={t("list.filterType")} value={assetType} onChange={(value) => { setAssetType(value); setPage(1); }} options={assetTypeOptions} getOptionLabel={(v) => translateOption(v, lang)} />
-          <SelectField label={t("list.filterStatus")} value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={ASSET_STATUS_FILTER_OPTIONS} getOptionLabel={(v) => translateOption(v, lang)} />
+          <SelectField label={t("list.filterYear")} value={fiscalYear} onChange={(value) => { setFiscalYear(value); setPage(1); pushFilters({ search, fiscalYear: value, organization, assetType, status }); }} options={fiscalYearOptions} getOptionLabel={(v) => translateOption(v, lang)} />
+          <SearchableFilterField label={t("list.filterOrg")} value={organization} onChange={(value) => { setOrganization(value); setPage(1); pushFilters({ search, fiscalYear, organization: value, assetType, status }); }} options={organizationOptions} getOptionLabel={(v) => translateOption(v, lang)} />
+          <SelectField label={t("list.filterType")} value={assetType} onChange={(value) => { setAssetType(value); setPage(1); pushFilters({ search, fiscalYear, organization, assetType: value, status }); }} options={assetTypeOptions} getOptionLabel={(v) => translateOption(v, lang)} />
+          <SelectField label={t("list.filterStatus")} value={status} onChange={(value) => { setStatus(value); setPage(1); pushFilters({ search, fiscalYear, organization, assetType, status: value }); }} options={ASSET_STATUS_FILTER_OPTIONS} getOptionLabel={(v) => translateOption(v, lang)} />
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           <p className="text-sm font-normal text-muted">
@@ -192,11 +212,11 @@ function ListPage({
         </div>
         {hasActiveFilters && (
           <div className="mt-3 flex flex-wrap gap-2">
-            {search.trim() && <FilterChip label={t("chip.search")} value={search.trim()} onClear={() => { setSearch(""); setPage(1); }} />}
-            {fiscalYear !== "ทั้งหมด" && <FilterChip label={t("chip.year")} value={fiscalYear} onClear={() => { setFiscalYear("ทั้งหมด"); setPage(1); }} />}
-            {organization !== "ทั้งหมด" && <FilterChip label={t("chip.org")} value={organization} onClear={() => { setOrganization("ทั้งหมด"); setPage(1); }} />}
-            {assetType !== "ทั้งหมด" && <FilterChip label={t("chip.type")} value={translateOption(assetType, lang)} onClear={() => { setAssetType("ทั้งหมด"); setPage(1); }} />}
-            {status !== "ทั้งหมด" && <FilterChip label={t("chip.status")} value={translateOption(status, lang)} onClear={() => { setStatus("ทั้งหมด"); setPage(1); }} />}
+            {search.trim() && <FilterChip label={t("chip.search")} value={search.trim()} onClear={() => { setSearch(""); setPage(1); pushFilters({ search: "", fiscalYear, organization, assetType, status }); }} />}
+            {fiscalYear !== "ทั้งหมด" && <FilterChip label={t("chip.year")} value={fiscalYear} onClear={() => { setFiscalYear("ทั้งหมด"); setPage(1); pushFilters({ search, fiscalYear: "ทั้งหมด", organization, assetType, status }); }} />}
+            {organization !== "ทั้งหมด" && <FilterChip label={t("chip.org")} value={organization} onClear={() => { setOrganization("ทั้งหมด"); setPage(1); pushFilters({ search, fiscalYear, organization: "ทั้งหมด", assetType, status }); }} />}
+            {assetType !== "ทั้งหมด" && <FilterChip label={t("chip.type")} value={translateOption(assetType, lang)} onClear={() => { setAssetType("ทั้งหมด"); setPage(1); pushFilters({ search, fiscalYear, organization, assetType: "ทั้งหมด", status }); }} />}
+            {status !== "ทั้งหมด" && <FilterChip label={t("chip.status")} value={translateOption(status, lang)} onClear={() => { setStatus("ทั้งหมด"); setPage(1); pushFilters({ search, fiscalYear, organization, assetType, status: "ทั้งหมด" }); }} />}
           </div>
         )}
       </div>
@@ -343,16 +363,21 @@ function ListPage({
 export default function ListRoute() {
   const { permissions, assets, annualInspections, activeOrganizations, onGoToRecord, onViewDetails, onEditAsset, onDeleteAsset } = useAppData();
   if (!permissions.canViewList) return <PlaceholderPage title="ไม่มีสิทธิ์ดูรายการครุภัณฑ์" />;
+  const storeReturnUrl = () => {
+    sessionStorage.setItem("listReturnUrl", window.location.pathname + window.location.search);
+  };
   return (
-    <ListPage
-      assets={assets}
-      annualInspections={annualInspections}
-      permissions={permissions}
-      activeOrganizations={activeOrganizations}
-      onAddAsset={onGoToRecord}
-      onViewDetails={onViewDetails}
-      onEditAsset={onEditAsset}
-      onDeleteAsset={onDeleteAsset}
-    />
+    <Suspense>
+      <ListPage
+        assets={assets}
+        annualInspections={annualInspections}
+        permissions={permissions}
+        activeOrganizations={activeOrganizations}
+        onAddAsset={onGoToRecord}
+        onViewDetails={(asset) => { storeReturnUrl(); onViewDetails(asset); }}
+        onEditAsset={(asset) => { storeReturnUrl(); onEditAsset(asset); }}
+        onDeleteAsset={onDeleteAsset}
+      />
+    </Suspense>
   );
 }

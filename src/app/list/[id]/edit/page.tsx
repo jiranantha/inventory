@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 
@@ -757,7 +757,6 @@ function AssetEditPage({
 // ── Route entry point ─────────────────────────────────────────────────────────
 export default function AssetEditRoute() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
   const { t } = useLanguage();
   const {
     permissions,
@@ -766,6 +765,7 @@ export default function AssetEditRoute() {
     activeOrganizations,
     activeEquipmentTypes,
     activeLocations,
+    onBackToList,
   } = useAppData();
   if (!(permissions.canEdit || permissions.canEditLimitedFields))
     return <PlaceholderPage title={t("error.noEdit")} />;
@@ -776,7 +776,7 @@ export default function AssetEditRoute() {
       asset={asset}
       permissions={permissions}
       onSave={onSaveAsset}
-      onCancel={() => router.push("/list")}
+      onCancel={onBackToList}
       organizationOptions={activeOrganizations}
       equipmentTypeOptions={activeEquipmentTypes}
       locationOptions={activeLocations}

@@ -413,7 +413,13 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
   };
 
   const handleBackToList = () => {
-    router.push(ROUTES.list);
+    const returnUrl = sessionStorage.getItem("listReturnUrl");
+    if (returnUrl?.startsWith("/list")) {
+      sessionStorage.removeItem("listReturnUrl");
+      router.push(returnUrl);
+    } else {
+      router.push(ROUTES.list);
+    }
   };
 
   const handleUpdateUser = async (nextUser: AppUser) => {
