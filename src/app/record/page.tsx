@@ -444,12 +444,12 @@ function RecordPage({
         <RecordFormSection number={1} title={t("rec.sec1")} description={t("rec.sec1desc")}>
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
-              <Field label={t("rec.label.assetName")} required={!assetName.trim()} value={assetName} onChange={(event) => { setAssetName(event.target.value); setMainFormErrors((errors) => ({ ...errors, assetName: "" })); }} placeholder={t("rec.ph.assetName")} className={mainFormErrors.assetName ? "border-red-400 focus:border-red-400" : ""} />
+              <Field label={t("rec.label.assetName")} required value={assetName} onChange={(event) => { setAssetName(event.target.value); setMainFormErrors((errors) => ({ ...errors, assetName: "" })); }} placeholder={t("rec.ph.assetName")} className={mainFormErrors.assetName ? "border-red-400 focus:border-red-400" : ""} />
             </div>
             <div>
               <SelectField
                 label={t("rec.label.assetNature")}
-                required={!assetStructureType}
+                required
                 value={assetStructureType === "set" ? "ครุภัณฑ์แบบชุด" : "ครุภัณฑ์เดี่ยว"}
                 onChange={(value) => { handleStructureTypeChange(value); setMainFormErrors((errors) => ({ ...errors, assetStructureType: "" })); }}
                 options={["ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"]}
@@ -457,7 +457,7 @@ function RecordPage({
               />
             </div>
             <div>
-              <SelectField label={t("rec.label.assetCategory")} required={!assetType} value={assetType} onChange={(value) => { setAssetType(value); setMainFormErrors((errors) => ({ ...errors, assetType: "" })); }} options={equipmentTypeOptions} error={mainFormErrors.assetType} />
+              <SelectField label={t("rec.label.assetCategory")} required value={assetType} onChange={(value) => { setAssetType(value); setMainFormErrors((errors) => ({ ...errors, assetType: "" })); }} options={equipmentTypeOptions} error={mainFormErrors.assetType} />
             </div>
             <TextAreaField
               label={t("rec.label.specs")}
@@ -467,7 +467,7 @@ function RecordPage({
               autoResize
             />
             <FiscalYearField
-              required={!/^[0-9]{4}$/.test(fiscalYear)}
+              required
               value={fiscalYear}
               onChange={(value) => {
                 setFiscalYear(value);
@@ -511,7 +511,7 @@ function RecordPage({
             <div>
               <SelectField
                 label={t("rec.label.status")}
-                required={!status}
+                required
                 value={status}
                 onChange={(value) => { setStatus(value); setMainFormErrors((errors) => ({ ...errors, status: "" })); }}
                 options={allowedAssetStatuses}
@@ -531,12 +531,12 @@ function RecordPage({
                 onSelect={(organization) => { setSelectedOrganization(organization); setMainFormErrors((errors) => ({ ...errors, organization: "" })); }}
                 options={organizationOptions}
                 label={t("rec.label.org")}
-                required={!selectedOrganization}
+                required
                 error={mainFormErrors.organization}
               />
             </div>
             <div>
-              <SelectField label={t("rec.label.location")} required={!location} value={location} onChange={(value) => { setLocation(value); setMainFormErrors((errors) => ({ ...errors, location: "" })); }} options={locationOptions} placeholder={t("rec.ph.location")} error={mainFormErrors.location} />
+              <SelectField label={t("rec.label.location")} required value={location} onChange={(value) => { setLocation(value); setMainFormErrors((errors) => ({ ...errors, location: "" })); }} options={locationOptions} placeholder={t("rec.ph.location")} error={mainFormErrors.location} />
             </div>
             <div>
               <Field label={t("rec.label.responsible")} value={responsiblePerson} onChange={(event) => { setResponsiblePerson(event.target.value); setMainFormErrors((errors) => ({ ...errors, responsiblePerson: "" })); }} placeholder={t("rec.ph.responsible")} className={mainFormErrors.responsiblePerson ? "border-red-400 focus:border-red-400" : ""} />
@@ -590,7 +590,7 @@ function RecordPage({
               <div>
                 <Field
                   label={t("rec.modal.numberLocation")}
-                  required={!assetNumberLocation.trim()}
+                  required
                   value={assetNumberLocation}
                   onChange={(event) => { setAssetNumberLocation(event.target.value); setIssueFormErrors((errors) => ({ ...errors, assetNumberLocation: "" })); }}
                   placeholder={t("rec.ph.numberLocation")}
@@ -600,7 +600,7 @@ function RecordPage({
               <label className="block">
                 <span className="text-sm font-semibold text-ink">
                   {t("rec.modal.photos")}
-                  {imagePreviews.length === 0 && <span className="ml-0.5 text-danger">*</span>}
+                  <span className="ml-0.5 text-danger">*</span>
                 </span>
                 <input
                   type="file"
