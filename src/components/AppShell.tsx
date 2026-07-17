@@ -154,7 +154,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                       : "text-ink hover:bg-[#E1F1FE]"
                   }`}
                 >
-                  <Icon path={item.icon} />
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                    <Icon path={item.icon} />
+                  </span>
                   <span>{navLabelMap[item.key] ?? item.label}</span>
                 </Link>
               );
