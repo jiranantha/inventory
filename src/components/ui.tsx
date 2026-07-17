@@ -353,14 +353,8 @@ export function PhoneField({
         onBlur={onBlur}
         placeholder={t("rec.ph.phone")}
         aria-invalid={Boolean(error)}
-        aria-describedby={error ? "responsible-phone-error" : undefined}
         className={error ? "border-red-400 focus:border-red-400" : ""}
       />
-      {error && (
-        <p id="responsible-phone-error" className="mt-2 text-xs font-semibold text-danger">
-          {error}
-        </p>
-      )}
     </div>
   );
 }
@@ -403,14 +397,8 @@ export function FiscalYearField({
         disabled={disabled}
         placeholder={t("rec.ph.fiscalYear")}
         aria-invalid={Boolean(error)}
-        aria-describedby={error ? "fiscal-year-error" : undefined}
         className={error ? "border-red-400 focus:border-red-400" : ""}
       />
-      {error && (
-        <p id="fiscal-year-error" className="mt-2 text-xs font-semibold text-danger">
-          {error}
-        </p>
-      )}
     </div>
   );
 }
