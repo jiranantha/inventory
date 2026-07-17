@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AssetStructureBadge, BackIconButton, CloseIconButton, DetailInfoItem, PageHeader, RecordFormSection, StatusBadge } from "@/components/ui";
 import { getAssetDerivedValues, getNumberPlacementValue, getPurchaseProjectValue } from "@/lib/assets";
 import { formatThaiDateTime } from "@/lib/dates";
@@ -31,7 +31,15 @@ function AssetDetailPage({
   const safeText = (value: string | undefined | null) =>
     value && value !== "-" ? value : "-";
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; name: string } | null>(null);
   const { phoneValue } = getAssetDerivedValues(asset);
+
+  useEffect(() => {
+    if (!lightboxImage) return;
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") setLightboxImage(null); };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [lightboxImage]);
 
   const assetLogs = activityLogs.filter(
     (log) =>
@@ -198,12 +206,19 @@ function AssetDetailPage({
                   key={image.url}
                   className="overflow-hidden rounded-md border border-line bg-surfaceSoft"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={image.url}
-                    alt={image.name}
-                    className="aspect-square w-full object-cover"
-                  />
+                  <button
+                    type="button"
+                    className="block w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                    onClick={() => setLightboxImage({ url: image.url, name: image.name })}
+                    aria-label={`ดูรูปภาพ: ${image.name}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={image.url}
+                      alt={image.name}
+                      className="aspect-square w-full object-cover"
+                    />
+                  </button>
                   <figcaption
                     className="truncate px-2 py-1.5 text-xs text-muted"
                     title={image.name}
@@ -414,6 +429,42 @@ function AssetDetailPage({
                 </p>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm"
+          onClick={() => setLightboxImage(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="ดูรูปภาพขนาดใหญ่"
+        >
+          <div
+            className="relative flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setLightboxImage(null)}
+              aria-label="ปิดการดูรูปภาพ"
+              className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-white shadow-lg hover:bg-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+              </svg>
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxImage.url}
+              alt={lightboxImage.name}
+              className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            />
+            {lightboxImage.name && (
+              <p className="mt-2 text-center text-sm text-slate-300">{lightboxImage.name}</p>
+            )}
           </div>
         </div>
       )}
