@@ -1,0 +1,2 @@
+ALTER TABLE "assets" ADD COLUMN "registration_type" text DEFAULT 'ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา' NOT NULL;--> statement-breakpoint
+ALTER TABLE "assets" ADD COLUMN "university_asset_number" text DEFAULT '-' NOT NULL;

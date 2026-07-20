@@ -15,6 +15,13 @@
       "when": 1781666640607,
       "tag": "0001_pale_loki",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784533219153,
+      "tag": "0002_motionless_tempest",
+      "breakpoints": true
     }
   ]
 }
