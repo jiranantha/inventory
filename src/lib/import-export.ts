@@ -114,7 +114,8 @@ function formatExportDateEn() {
 }
 
 const COL_WIDTHS: Record<string, string> = {
-  fiscalYear: "46px", recordDate: "76px", assetNumber: "148px",
+  fiscalYear: "46px", recordDate: "76px",
+  registrationType: "140px", assetNumber: "148px", universityAssetNumber: "130px",
   assetName: "175px", budgetSource: "85px", purchaseProject: "135px",
   numberPlacement: "88px", assetStructureLabel: "66px", price: "66px",
   organization: "118px", location: "84px", responsiblePerson: "88px",

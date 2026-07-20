@@ -77,7 +77,7 @@ function ListPage({
   const filteredRows = useMemo(() => {
     const cleanSearch = search.trim().toLowerCase();
     return assets.filter((row) => {
-      const searchText = `${row.assetName} ${row.assetNumber} ${row.organization}`.toLowerCase();
+      const searchText = `${row.assetName} ${row.assetNumber} ${row.universityAssetNumber ?? ""} ${row.organization}`.toLowerCase();
       const matchSearch = !cleanSearch || searchText.includes(cleanSearch);
       const matchFiscalYear = fiscalYear === "ทั้งหมด" || row.fiscalYear === fiscalYear;
       const matchOrganization = organization === "ทั้งหมด" || row.organization === organization;

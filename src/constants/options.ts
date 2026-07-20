@@ -28,6 +28,12 @@ export const storageLocationOptions = [
   "ตี้เดียวฮู้เรื่อง",
 ];
 
+export const registrationTypeOptions = [
+  "ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา",
+  "ครุภัณฑ์มหาวิทยาลัย",
+  "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย",
+];
+
 export const pageDescriptions: Record<PageKey, string> = {
   dashboard: "ภาพรวมข้อมูลครุภัณฑ์ สถานะการใช้งาน และผลการตรวจสอบประจำปี",
   list: "ค้นหาและกรองข้อมูลจากหมายเลขครุภัณฑ์ ชื่อรายการ หรือฝ่าย/ชมรม",

@@ -33,6 +33,8 @@ export type AssetListRow = {
   imageCount: number;
   assetImages?: EvidenceImage[];
   note: string;
+  registrationType?: string;
+  universityAssetNumber?: string;
   assetStructureType: "single" | "set";
   assetSetItems: AssetSetItem[];
   updatedAt?: string;

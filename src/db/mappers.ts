@@ -36,6 +36,8 @@ export function rowToAsset(row: AssetRow): AssetListRow {
     imageCount: row.imageCount,
     assetImages: (row.assetImages ?? []) as EvidenceImage[],
     note: row.note,
+    registrationType: row.registrationType,
+    universityAssetNumber: row.universityAssetNumber,
     assetStructureType: row.assetStructureType === "set" ? "set" : "single",
     assetSetItems: row.assetSetItems ?? [],
     updatedAt: row.updatedAt ? formatThaiDateTimeWithSeconds(row.updatedAt.toISOString()) : undefined,
@@ -81,6 +83,8 @@ export function assetToColumns(asset: AssetListRow) {
     imageCount: asset.imageCount ?? 0,
     assetImages: (asset.assetImages ?? []) as EvidenceImage[],
     note: asset.note || "-",
+    registrationType: asset.registrationType || "ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา",
+    universityAssetNumber: asset.universityAssetNumber || "-",
     assetStructureType: asset.assetStructureType === "set" ? "set" : "single",
     assetSetItems: asset.assetSetItems ?? [],
   };

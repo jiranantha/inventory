@@ -82,7 +82,7 @@ function AssetDetailPage({
     const hiddenLocationFields = new Set(["อาคาร", "ห้อง"]);
     const hiddenAssetFields = new Set(["จำนวน", "หน่วยนับ"]);
     const fieldOrder = [
-      "ชื่อ", "หมายเลขครุภัณฑ์", "จัดซื้อในโครงการ",
+      "ชื่อ", "หมายเลขครุภัณฑ์", "เลขครุภัณฑ์มหาวิทยาลัย", "จัดซื้อในโครงการ",
       "ตำแหน่งที่ประทับหมายเลขครุภัณฑ์", "สถานะ", "สถานที่",
       "ผู้รับผิดชอบ", "เบอร์โทรผู้รับผิดชอบ", "หมายเหตุ",
       "deleted_at", "deleted_by", "updated_at",
@@ -191,7 +191,13 @@ function AssetDetailPage({
           </div>
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
-          <DetailInfoItem label="หมายเลขครุภัณฑ์" value={safeText(asset.assetNumber)} />
+          <DetailInfoItem label="ประเภทการลงทะเบียนครุภัณฑ์" value={safeText(asset.registrationType)} />
+          {asset.registrationType !== "ครุภัณฑ์มหาวิทยาลัย" && (
+            <DetailInfoItem label="เลขทะเบียนควบคุมกิจกรรมนักศึกษา" value={safeText(asset.assetNumber)} />
+          )}
+          {(asset.registrationType === "ครุภัณฑ์มหาวิทยาลัย" || asset.registrationType === "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย") && (
+            <DetailInfoItem label="เลขครุภัณฑ์มหาวิทยาลัย" value={safeText(asset.universityAssetNumber)} />
+          )}
           <DetailInfoItem
             label="ตำแหน่งที่ประทับหมายเลขครุภัณฑ์"
             value={getNumberPlacementValue(asset)}

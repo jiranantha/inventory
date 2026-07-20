@@ -78,7 +78,7 @@ function AuditPage({
       return { asset, inspection };
     }).filter(({ asset, inspection }) => {
       const inspectionText = inspection ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจสอบ";
-      const searchText = `${asset.assetNumber} ${asset.assetName} ${asset.organization} ${asset.location} ${asset.status} ${inspectionText}`.toLowerCase();
+      const searchText = `${asset.assetNumber} ${asset.universityAssetNumber ?? ""} ${asset.assetName} ${asset.organization} ${asset.location} ${asset.status} ${inspectionText}`.toLowerCase();
       const matchSearch = !cleanSearch || searchText.includes(cleanSearch);
       const matchAssetYear = assetFiscalYear === "ทั้งหมด" || asset.fiscalYear === assetFiscalYear;
       const matchOrganization = organization === "ทั้งหมด" || asset.organization === organization;

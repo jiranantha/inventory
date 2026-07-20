@@ -279,8 +279,8 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
       targetId: savedAsset.id,
       targetTable: "assets",
       detail: `แก้ไขข้อมูลครุภัณฑ์ ${savedAsset.assetName}`,
-      oldValue: `ชื่อ: ${oldAsset.assetName}, หมายเลขครุภัณฑ์: ${oldAsset.assetNumber}, จัดซื้อในโครงการ: ${oldAsset.purchaseProject || "-"}, ตำแหน่งที่ประทับหมายเลขครุภัณฑ์: ${oldAsset.numberPlacement || "-"}, วันที่บันทึกข้อมูล: ${oldAsset.recordDate}, วันที่ได้รับครุภัณฑ์: ${oldAsset.purchaseMonth}, สถานะ: ${oldAsset.status}, สถานที่: ${oldAsset.location}`,
-      newValue: `ชื่อ: ${savedAsset.assetName}, หมายเลขครุภัณฑ์: ${savedAsset.assetNumber}, จัดซื้อในโครงการ: ${savedAsset.purchaseProject || "-"}, ตำแหน่งที่ประทับหมายเลขครุภัณฑ์: ${savedAsset.numberPlacement || "-"}, วันที่บันทึกข้อมูล: ${savedAsset.recordDate}, วันที่ได้รับครุภัณฑ์: ${savedAsset.purchaseMonth}, สถานะ: ${savedAsset.status}, สถานที่: ${savedAsset.location}, updated_at: ${historyUpdatedAt}`,
+      oldValue: `ชื่อ: ${oldAsset.assetName}, หมายเลขครุภัณฑ์: ${oldAsset.assetNumber}, เลขครุภัณฑ์มหาวิทยาลัย: ${oldAsset.universityAssetNumber || "-"}, จัดซื้อในโครงการ: ${oldAsset.purchaseProject || "-"}, ตำแหน่งที่ประทับหมายเลขครุภัณฑ์: ${oldAsset.numberPlacement || "-"}, วันที่บันทึกข้อมูล: ${oldAsset.recordDate}, วันที่ได้รับครุภัณฑ์: ${oldAsset.purchaseMonth}, สถานะ: ${oldAsset.status}, สถานที่: ${oldAsset.location}`,
+      newValue: `ชื่อ: ${savedAsset.assetName}, หมายเลขครุภัณฑ์: ${savedAsset.assetNumber}, เลขครุภัณฑ์มหาวิทยาลัย: ${savedAsset.universityAssetNumber || "-"}, จัดซื้อในโครงการ: ${savedAsset.purchaseProject || "-"}, ตำแหน่งที่ประทับหมายเลขครุภัณฑ์: ${savedAsset.numberPlacement || "-"}, วันที่บันทึกข้อมูล: ${savedAsset.recordDate}, วันที่ได้รับครุภัณฑ์: ${savedAsset.purchaseMonth}, สถานะ: ${savedAsset.status}, สถานที่: ${savedAsset.location}, updated_at: ${historyUpdatedAt}`,
     };
     try {
       const { asset: updated, log } = await api.updateAsset(savedAsset.id, savedAsset, logInput);

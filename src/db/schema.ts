@@ -158,6 +158,8 @@ export const assets = pgTable(
     imageCount: integer("image_count").notNull().default(0),
     assetImages: jsonb("asset_images").$type<EvidenceImage[]>().notNull().default(sql`'[]'::jsonb`),
     note: text("note").notNull().default("-"),
+    registrationType: text("registration_type").notNull().default("ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา"),
+    universityAssetNumber: text("university_asset_number").notNull().default("-"),
     assetStructureType: text("asset_structure_type").notNull().default("single"),
     assetSetItems: jsonb("asset_set_items").$type<AssetSetItem[]>().notNull().default(sql`'[]'::jsonb`),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

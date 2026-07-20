@@ -19,7 +19,7 @@ import {
   TextAreaField,
   ThaiDateField,
 } from "@/components/ui";
-import { budgetSourceOptions } from "@/constants/options";
+import { budgetSourceOptions, registrationTypeOptions } from "@/constants/options";
 import {
   getAssetDerivedValues,
   getNumberPlacementValue,
@@ -111,6 +111,10 @@ function AssetEditPage({
 
   // ── Form state ──────────────────────────────────────────────────────────────
   const [assetCode] = useState(asset.assetCode);
+  const [registrationType, setRegistrationType] = useState(asset.registrationType || "ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา");
+  const [universityAssetNumber, setUniversityAssetNumber] = useState(
+    asset.universityAssetNumber && asset.universityAssetNumber !== "-" ? asset.universityAssetNumber : "",
+  );
   const [assetNumber, setAssetNumber] = useState(asset.assetNumber);
   const [numberPlacement, setNumberPlacement] = useState(initialNumberPlacement);
   const [purchaseProject, setPurchaseProject] = useState(initialPurchaseProject);
@@ -233,6 +237,8 @@ function AssetEditPage({
       {
         ...asset,
         assetCode,
+        registrationType,
+        universityAssetNumber: universityAssetNumber.trim() || "-",
         assetNumber,
         assetStructureType,
         assetSetItems:
@@ -445,22 +451,44 @@ function AssetEditPage({
           </div>
         </div>
 
-        {/* [1] [2] */}
+        {/* [1] Registration type */}
+        <div>
+          <SelectField
+            label="ประเภทการลงทะเบียนครุภัณฑ์"
+            value={registrationType}
+            onChange={setRegistrationType}
+            options={registrationTypeOptions}
+            disabled={!isAdmin}
+          />
+        </div>
+
+        {/* [2] Asset number  [3] University number  [4] Placement */}
         <div className="grid gap-4 lg:grid-cols-2">
-          <div>
+          {registrationType !== "ครุภัณฑ์มหาวิทยาลัย" && (
+            <div>
+              <Field
+                label="เลขทะเบียนควบคุมกิจกรรมนักศึกษา"
+                value={assetNumber}
+                onChange={(event) => setAssetNumber(event.target.value)}
+                disabled={!isAdmin}
+                placeholder={asset.assetNumber}
+              />
+              {!isAdmin && (
+                <p className="mt-1.5 text-xs text-muted">
+                  เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขหมายเลขครุภัณฑ์ได้
+                </p>
+              )}
+            </div>
+          )}
+          {(registrationType === "ครุภัณฑ์มหาวิทยาลัย" || registrationType === "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย") && (
             <Field
-              label="หมายเลขครุภัณฑ์"
-              value={assetNumber}
-              onChange={(event) => setAssetNumber(event.target.value)}
+              label="เลขครุภัณฑ์มหาวิทยาลัย"
+              value={universityAssetNumber}
+              onChange={(event) => setUniversityAssetNumber(event.target.value)}
               disabled={!isAdmin}
-              placeholder={asset.assetNumber}
+              placeholder="กรอกเลขครุภัณฑ์มหาวิทยาลัย"
             />
-            {!isAdmin && (
-              <p className="mt-1.5 text-xs text-muted">
-                เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขหมายเลขครุภัณฑ์ได้
-              </p>
-            )}
-          </div>
+          )}
           <Field
             label="ตำแหน่งที่ประทับหมายเลขครุภัณฑ์"
             value={numberPlacement}
