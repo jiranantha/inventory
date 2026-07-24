@@ -5,7 +5,7 @@ import { PlaceholderPage } from "@/components/StatusPages";
 
 import { useState, useMemo, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AssetStructureBadge, FilterChip, InspectionResultBadge, PageHeader, SearchableFilterField, SelectField, StatusBadge, getAssetStructureFilterLabel } from "@/components/ui";
+import { AssetStructureBadge, FilterChip, InspectionResultBadge, MultiSelectFilter, PageHeader, SearchableMultiSelectFilter, StatusBadge, getAssetStructureFilterLabel } from "@/components/ui";
 import { assetReportExportColumns, assetToReportRow } from "@/lib/assets";
 import { exportAssetReport } from "@/lib/import-export";
 import { Permissions } from "@/lib/permissions";
@@ -14,6 +14,11 @@ import { AnnualInspection, AssetListRow, Organization } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateOption } from "@/lib/i18n";
 import { ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
+
+function parseMultiParam(param: string | null): string[] {
+  if (!param) return [];
+  return param.split(",").map((s) => s.trim()).filter(Boolean);
+}
 
 function ListPage({
   assets,
@@ -52,21 +57,25 @@ function ListPage({
   const assetTypeOptions = ["ทั้งหมด", "ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"];
 
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
-  const [fiscalYear, setFiscalYear] = useState(searchParams.get("year") ?? "ทั้งหมด");
-  const [organization, setOrganization] = useState(searchParams.get("unit") ?? "ทั้งหมด");
-  const [assetType, setAssetType] = useState(searchParams.get("type") ?? "ทั้งหมด");
-  const [status, setStatus] = useState(searchParams.get("status") ?? "ทั้งหมด");
+  const [selectedYears, setSelectedYears] = useState<string[]>(() => parseMultiParam(searchParams.get("years")));
+  const [selectedUnits, setSelectedUnits] = useState<string[]>(() => parseMultiParam(searchParams.get("units")));
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(() => parseMultiParam(searchParams.get("types")));
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(() => parseMultiParam(searchParams.get("statuses")));
   const [page, setPage] = useState(1);
 
   const pushFilters = useCallback((f: {
-    search: string; fiscalYear: string; organization: string; assetType: string; status: string;
+    search: string;
+    years: string[];
+    units: string[];
+    types: string[];
+    statuses: string[];
   }) => {
     const p = new URLSearchParams();
     if (f.search.trim()) p.set("q", f.search.trim());
-    if (f.fiscalYear !== "ทั้งหมด") p.set("year", f.fiscalYear);
-    if (f.organization !== "ทั้งหมด") p.set("unit", f.organization);
-    if (f.assetType !== "ทั้งหมด") p.set("type", f.assetType);
-    if (f.status !== "ทั้งหมด") p.set("status", f.status);
+    if (f.years.length > 0) p.set("years", f.years.join(","));
+    if (f.units.length > 0) p.set("units", f.units.join(","));
+    if (f.types.length > 0) p.set("types", f.types.join(","));
+    if (f.statuses.length > 0) p.set("statuses", f.statuses.join(","));
     const qs = p.toString();
     router.replace(qs ? `/list?${qs}` : "/list", { scroll: false });
   }, [router]);
@@ -79,24 +88,24 @@ function ListPage({
     return assets.filter((row) => {
       const searchText = `${row.assetName} ${row.assetNumber} ${row.universityAssetNumber ?? ""} ${row.organization}`.toLowerCase();
       const matchSearch = !cleanSearch || searchText.includes(cleanSearch);
-      const matchFiscalYear = fiscalYear === "ทั้งหมด" || row.fiscalYear === fiscalYear;
-      const matchOrganization = organization === "ทั้งหมด" || row.organization === organization;
-      const matchAssetType = assetType === "ทั้งหมด" || getAssetStructureFilterLabel(row) === assetType;
-      const matchStatus = status === "ทั้งหมด" || row.status === status;
+      const matchFiscalYear = selectedYears.length === 0 || selectedYears.includes(row.fiscalYear);
+      const matchOrganization = selectedUnits.length === 0 || selectedUnits.includes(row.organization);
+      const matchAssetType = selectedTypes.length === 0 || selectedTypes.includes(getAssetStructureFilterLabel(row));
+      const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(row.status);
       return matchSearch && matchFiscalYear && matchOrganization && matchAssetType && matchStatus;
     });
-  }, [assetType, assets, fiscalYear, organization, search, status]);
+  }, [assets, search, selectedYears, selectedUnits, selectedTypes, selectedStatuses]);
 
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const safePage = Math.min(page, pageCount);
   const visibleRows = filteredRows.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const hasActiveFilters = Boolean(search.trim()) || fiscalYear !== "ทั้งหมด" || organization !== "ทั้งหมด" || assetType !== "ทั้งหมด" || status !== "ทั้งหมด";
+  const hasActiveFilters = Boolean(search.trim()) || selectedYears.length > 0 || selectedUnits.length > 0 || selectedTypes.length > 0 || selectedStatuses.length > 0;
   const clearAllFilters = () => {
     setSearch("");
-    setFiscalYear("ทั้งหมด");
-    setOrganization("ทั้งหมด");
-    setAssetType("ทั้งหมด");
-    setStatus("ทั้งหมด");
+    setSelectedYears([]);
+    setSelectedUnits([]);
+    setSelectedTypes([]);
+    setSelectedStatuses([]);
     setPage(1);
     router.replace("/list", { scroll: false });
   };
@@ -134,10 +143,10 @@ function ListPage({
                           onClick={() => {
                             const fp: string[] = [];
                             if (search.trim()) fp.push(lang === "th" ? `ค้นหา: ${search.trim()}` : `Search: ${search.trim()}`);
-                            if (fiscalYear !== "ทั้งหมด") fp.push(lang === "th" ? `ปีงบประมาณ: ${fiscalYear}` : `Fiscal Year: ${fiscalYear}`);
-                            if (organization !== "ทั้งหมด") fp.push(lang === "th" ? `หน่วยงาน: ${organization}` : `Department: ${organization}`);
-                            if (assetType !== "ทั้งหมด") fp.push(lang === "th" ? `ลักษณะ: ${translateOption(assetType, lang)}` : `Type: ${translateOption(assetType, lang)}`);
-                            if (status !== "ทั้งหมด") fp.push(lang === "th" ? `สถานะ: ${translateOption(status, lang)}` : `Status: ${translateOption(status, lang)}`);
+                            if (selectedYears.length > 0) fp.push(lang === "th" ? `ปีงบประมาณ: ${selectedYears.join(", ")}` : `Fiscal Year: ${selectedYears.join(", ")}`);
+                            if (selectedUnits.length > 0) fp.push(lang === "th" ? `หน่วยงาน: ${selectedUnits.join(", ")}` : `Department: ${selectedUnits.join(", ")}`);
+                            if (selectedTypes.length > 0) fp.push(lang === "th" ? `ลักษณะ: ${selectedTypes.map((v) => translateOption(v, lang)).join(", ")}` : `Type: ${selectedTypes.map((v) => translateOption(v, lang)).join(", ")}`);
+                            if (selectedStatuses.length > 0) fp.push(lang === "th" ? `สถานะ: ${selectedStatuses.map((v) => translateOption(v, lang)).join(", ")}` : `Status: ${selectedStatuses.map((v) => translateOption(v, lang)).join(", ")}`);
                             const reportTitle = lang === "th" ? "รายงานครุภัณฑ์ทั้งหมด" : "All Asset Report";
                             exportAssetReport(fmt, reportTitle, assetReportExportColumns, filteredRows.map(assetToReportRow), fp.join("  |  "), { lang });
                             setExportOpen(false);
@@ -174,7 +183,7 @@ function ListPage({
                   const v = event.target.value;
                   setSearch(v);
                   setPage(1);
-                  pushFilters({ search: v, fiscalYear, organization, assetType, status });
+                  pushFilters({ search: v, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses });
                 }}
                 placeholder={t("c.searchAssets")}
                 className="h-12 w-full rounded-lg border border-line bg-surfaceSoft py-3 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
@@ -182,7 +191,7 @@ function ListPage({
               {search.trim() && (
                 <button
                   type="button"
-                  onClick={() => { setSearch(""); setPage(1); pushFilters({ search: "", fiscalYear, organization, assetType, status }); }}
+                  onClick={() => { setSearch(""); setPage(1); pushFilters({ search: "", years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses }); }}
                   className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-sm font-bold text-muted hover:bg-slate-100 hover:text-slate-900"
                   aria-label="ล้างคำค้นหา"
                 >
@@ -191,10 +200,34 @@ function ListPage({
               )}
             </div>
           </label>
-          <SelectField label={t("list.filterYear")} value={fiscalYear} onChange={(value) => { setFiscalYear(value); setPage(1); pushFilters({ search, fiscalYear: value, organization, assetType, status }); }} options={fiscalYearOptions} getOptionLabel={(v) => translateOption(v, lang)} />
-          <SearchableFilterField label={t("list.filterOrg")} value={organization} onChange={(value) => { setOrganization(value); setPage(1); pushFilters({ search, fiscalYear, organization: value, assetType, status }); }} options={organizationOptions} getOptionLabel={(v) => translateOption(v, lang)} />
-          <SelectField label={t("list.filterType")} value={assetType} onChange={(value) => { setAssetType(value); setPage(1); pushFilters({ search, fiscalYear, organization, assetType: value, status }); }} options={assetTypeOptions} getOptionLabel={(v) => translateOption(v, lang)} />
-          <SelectField label={t("list.filterStatus")} value={status} onChange={(value) => { setStatus(value); setPage(1); pushFilters({ search, fiscalYear, organization, assetType, status: value }); }} options={ASSET_STATUS_FILTER_OPTIONS} getOptionLabel={(v) => translateOption(v, lang)} />
+          <MultiSelectFilter
+            label={t("list.filterYear")}
+            values={selectedYears}
+            onChange={(v) => { setSelectedYears(v); setPage(1); pushFilters({ search, years: v, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses }); }}
+            options={fiscalYearOptions}
+            getOptionLabel={(v) => translateOption(v, lang)}
+          />
+          <SearchableMultiSelectFilter
+            label={t("list.filterOrg")}
+            values={selectedUnits}
+            onChange={(v) => { setSelectedUnits(v); setPage(1); pushFilters({ search, years: selectedYears, units: v, types: selectedTypes, statuses: selectedStatuses }); }}
+            options={organizationOptions}
+            getOptionLabel={(v) => translateOption(v, lang)}
+          />
+          <MultiSelectFilter
+            label={t("list.filterType")}
+            values={selectedTypes}
+            onChange={(v) => { setSelectedTypes(v); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: v, statuses: selectedStatuses }); }}
+            options={assetTypeOptions}
+            getOptionLabel={(v) => translateOption(v, lang)}
+          />
+          <MultiSelectFilter
+            label={t("list.filterStatus")}
+            values={selectedStatuses}
+            onChange={(v) => { setSelectedStatuses(v); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: v }); }}
+            options={ASSET_STATUS_FILTER_OPTIONS}
+            getOptionLabel={(v) => translateOption(v, lang)}
+          />
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           <p className="text-sm font-normal text-muted">
@@ -212,11 +245,35 @@ function ListPage({
         </div>
         {hasActiveFilters && (
           <div className="mt-3 flex flex-wrap gap-2">
-            {search.trim() && <FilterChip label={t("chip.search")} value={search.trim()} onClear={() => { setSearch(""); setPage(1); pushFilters({ search: "", fiscalYear, organization, assetType, status }); }} />}
-            {fiscalYear !== "ทั้งหมด" && <FilterChip label={t("chip.year")} value={fiscalYear} onClear={() => { setFiscalYear("ทั้งหมด"); setPage(1); pushFilters({ search, fiscalYear: "ทั้งหมด", organization, assetType, status }); }} />}
-            {organization !== "ทั้งหมด" && <FilterChip label={t("chip.org")} value={organization} onClear={() => { setOrganization("ทั้งหมด"); setPage(1); pushFilters({ search, fiscalYear, organization: "ทั้งหมด", assetType, status }); }} />}
-            {assetType !== "ทั้งหมด" && <FilterChip label={t("chip.type")} value={translateOption(assetType, lang)} onClear={() => { setAssetType("ทั้งหมด"); setPage(1); pushFilters({ search, fiscalYear, organization, assetType: "ทั้งหมด", status }); }} />}
-            {status !== "ทั้งหมด" && <FilterChip label={t("chip.status")} value={translateOption(status, lang)} onClear={() => { setStatus("ทั้งหมด"); setPage(1); pushFilters({ search, fiscalYear, organization, assetType, status: "ทั้งหมด" }); }} />}
+            {search.trim() && <FilterChip label={t("chip.search")} value={search.trim()} onClear={() => { setSearch(""); setPage(1); pushFilters({ search: "", years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses }); }} />}
+            {selectedYears.length > 0 && (
+              <FilterChip
+                label={t("chip.year")}
+                value={selectedYears.length === 1 ? selectedYears[0] : `เลือก ${selectedYears.length} ปี`}
+                onClear={() => { setSelectedYears([]); setPage(1); pushFilters({ search, years: [], units: selectedUnits, types: selectedTypes, statuses: selectedStatuses }); }}
+              />
+            )}
+            {selectedUnits.length > 0 && (
+              <FilterChip
+                label={t("chip.org")}
+                value={selectedUnits.length === 1 ? selectedUnits[0] : `เลือก ${selectedUnits.length} หน่วยงาน`}
+                onClear={() => { setSelectedUnits([]); setPage(1); pushFilters({ search, years: selectedYears, units: [], types: selectedTypes, statuses: selectedStatuses }); }}
+              />
+            )}
+            {selectedTypes.length > 0 && (
+              <FilterChip
+                label={t("chip.type")}
+                value={selectedTypes.length === 1 ? translateOption(selectedTypes[0], lang) : `เลือก ${selectedTypes.length} ประเภท`}
+                onClear={() => { setSelectedTypes([]); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: [], statuses: selectedStatuses }); }}
+              />
+            )}
+            {selectedStatuses.length > 0 && (
+              <FilterChip
+                label={t("chip.status")}
+                value={selectedStatuses.length === 1 ? translateOption(selectedStatuses[0], lang) : `เลือก ${selectedStatuses.length} สถานะ`}
+                onClear={() => { setSelectedStatuses([]); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: [] }); }}
+              />
+            )}
           </div>
         )}
       </div>

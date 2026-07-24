@@ -5,7 +5,7 @@ import { PlaceholderPage } from "@/components/StatusPages";
 
 import { useState, useMemo } from "react";
 import { buttonColors, inspectionStatusColors } from "@/constants/colors";
-import { CloseIconButton, Field, FilterChip, SearchableFilterField, SelectField, StatusBadge, TextAreaField, ThaiDateField } from "@/components/ui";
+import { CloseIconButton, Field, FilterChip, MultiSelectFilter, SearchableMultiSelectFilter, SelectField, StatusBadge, TextAreaField, ThaiDateField } from "@/components/ui";
 import { formatThaiDate, getCurrentInspectionYear } from "@/lib/dates";
 import { uploadImage } from "@/lib/image-upload";
 import { uniqueSorted } from "@/lib/utils";
@@ -46,10 +46,10 @@ function AuditPage({
 
   const [inspectionYear, setInspectionYear] = useState(String(currentInspectionYear));
   const [search, setSearch] = useState("");
-  const [assetFiscalYear, setAssetFiscalYear] = useState("ทั้งหมด");
-  const [organization, setOrganization] = useState("ทั้งหมด");
-  const [assetStatus, setAssetStatus] = useState("ทั้งหมด");
-  const [inspectionResult, setInspectionResult] = useState("ทั้งหมด");
+  const [selectedYears, setSelectedYears] = useState<string[]>([]);
+  const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedInspectionResults, setSelectedInspectionResults] = useState<string[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<AssetListRow | null>(null);
   const [cancelTarget, setCancelTarget] = useState<{ asset: AssetListRow; inspection: AnnualInspection } | null>(null);
   const [inspectionDate, setInspectionDate] = useState(today);
@@ -80,16 +80,16 @@ function AuditPage({
       const inspectionText = inspection ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจสอบ";
       const searchText = `${asset.assetNumber} ${asset.universityAssetNumber ?? ""} ${asset.assetName} ${asset.organization} ${asset.location} ${asset.status} ${inspectionText}`.toLowerCase();
       const matchSearch = !cleanSearch || searchText.includes(cleanSearch);
-      const matchAssetYear = assetFiscalYear === "ทั้งหมด" || asset.fiscalYear === assetFiscalYear;
-      const matchOrganization = organization === "ทั้งหมด" || asset.organization === organization;
-      const matchStatus = assetStatus === "ทั้งหมด" || asset.status === assetStatus;
+      const matchAssetYear = selectedYears.length === 0 || selectedYears.includes(asset.fiscalYear);
+      const matchOrganization = selectedUnits.length === 0 || selectedUnits.includes(asset.organization);
+      const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(asset.status);
       const matchInspection =
-        inspectionResult === "ทั้งหมด" ||
-        (inspectionResult === "ตรวจสอบแล้ว" && Boolean(inspection)) ||
-        (inspectionResult === "ยังไม่ได้ตรวจสอบ" && !inspection);
+        selectedInspectionResults.length === 0 ||
+        (selectedInspectionResults.includes("ตรวจสอบแล้ว") && Boolean(inspection)) ||
+        (selectedInspectionResults.includes("ยังไม่ได้ตรวจสอบ") && !inspection);
       return matchSearch && matchAssetYear && matchOrganization && matchStatus && matchInspection;
     });
-  }, [annualInspections, assetFiscalYear, assetStatus, assets, inspectionResult, inspectionYear, organization, search]);
+  }, [annualInspections, assets, inspectionYear, search, selectedYears, selectedUnits, selectedStatuses, selectedInspectionResults]);
 
   const totalCount = rows.length;
   const inspectedCount = rows.filter((row) => row.inspection).length;
@@ -98,13 +98,13 @@ function AuditPage({
   const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
   const safePage = Math.min(page, pageCount);
   const visibleRows = rows.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const hasActiveAuditFilters = Boolean(search.trim()) || assetFiscalYear !== "ทั้งหมด" || organization !== "ทั้งหมด" || assetStatus !== "ทั้งหมด" || inspectionResult !== "ทั้งหมด";
+  const hasActiveAuditFilters = Boolean(search.trim()) || selectedYears.length > 0 || selectedUnits.length > 0 || selectedStatuses.length > 0 || selectedInspectionResults.length > 0;
   const clearAuditFilters = () => {
     setSearch("");
-    setAssetFiscalYear("ทั้งหมด");
-    setOrganization("ทั้งหมด");
-    setAssetStatus("ทั้งหมด");
-    setInspectionResult("ทั้งหมด");
+    setSelectedYears([]);
+    setSelectedUnits([]);
+    setSelectedStatuses([]);
+    setSelectedInspectionResults([]);
     setPage(1);
   };
   const auditResultText = rows.length > 0
@@ -332,10 +332,34 @@ function AuditPage({
               )}
             </div>
           </label>
-          <SelectField label={t("audit.filterYear")} value={assetFiscalYear} onChange={(v) => { setAssetFiscalYear(v); setPage(1); }} options={assetFiscalYearOptions} getOptionLabel={(v) => translateOption(v, lang)} />
-          <SearchableFilterField label={t("audit.filterOrg")} value={organization} onChange={(v) => { setOrganization(v); setPage(1); }} options={organizationOptions} getOptionLabel={(v) => translateOption(v, lang)} />
-          <SelectField label={t("audit.filterStatus")} value={assetStatus} onChange={(v) => { setAssetStatus(v); setPage(1); }} options={statusOptions} getOptionLabel={(v) => translateOption(v, lang)} />
-          <SelectField label={t("audit.filterInspection")} value={inspectionResult} onChange={(v) => { setInspectionResult(v); setPage(1); }} options={inspectionStateOptions} getOptionLabel={(v) => translateOption(v, lang)} />
+          <MultiSelectFilter
+            label={t("audit.filterYear")}
+            values={selectedYears}
+            onChange={(v) => { setSelectedYears(v); setPage(1); }}
+            options={assetFiscalYearOptions}
+            getOptionLabel={(v) => translateOption(v, lang)}
+          />
+          <SearchableMultiSelectFilter
+            label={t("audit.filterOrg")}
+            values={selectedUnits}
+            onChange={(v) => { setSelectedUnits(v); setPage(1); }}
+            options={organizationOptions}
+            getOptionLabel={(v) => translateOption(v, lang)}
+          />
+          <MultiSelectFilter
+            label={t("audit.filterStatus")}
+            values={selectedStatuses}
+            onChange={(v) => { setSelectedStatuses(v); setPage(1); }}
+            options={statusOptions}
+            getOptionLabel={(v) => translateOption(v, lang)}
+          />
+          <MultiSelectFilter
+            label={t("audit.filterInspection")}
+            values={selectedInspectionResults}
+            onChange={(v) => { setSelectedInspectionResults(v); setPage(1); }}
+            options={inspectionStateOptions}
+            getOptionLabel={(v) => translateOption(v, lang)}
+          />
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           {hasActiveAuditFilters && (
@@ -351,10 +375,34 @@ function AuditPage({
         {hasActiveAuditFilters && (
           <div className="mt-3 flex flex-wrap gap-2">
             {search.trim() && <FilterChip label={t("chip.search")} value={search.trim()} onClear={() => setSearch("")} />}
-            {assetFiscalYear !== "ทั้งหมด" && <FilterChip label={t("chip.year")} value={assetFiscalYear} onClear={() => setAssetFiscalYear("ทั้งหมด")} />}
-            {organization !== "ทั้งหมด" && <FilterChip label={t("chip.org")} value={organization} onClear={() => setOrganization("ทั้งหมด")} />}
-            {assetStatus !== "ทั้งหมด" && <FilterChip label={t("chip.status")} value={translateOption(assetStatus, lang)} onClear={() => setAssetStatus("ทั้งหมด")} />}
-            {inspectionResult !== "ทั้งหมด" && <FilterChip label={t("chip.inspection")} value={translateOption(inspectionResult, lang)} onClear={() => setInspectionResult("ทั้งหมด")} />}
+            {selectedYears.length > 0 && (
+              <FilterChip
+                label={t("chip.year")}
+                value={selectedYears.length === 1 ? selectedYears[0] : `เลือก ${selectedYears.length} ปี`}
+                onClear={() => { setSelectedYears([]); setPage(1); }}
+              />
+            )}
+            {selectedUnits.length > 0 && (
+              <FilterChip
+                label={t("chip.org")}
+                value={selectedUnits.length === 1 ? selectedUnits[0] : `เลือก ${selectedUnits.length} หน่วยงาน`}
+                onClear={() => { setSelectedUnits([]); setPage(1); }}
+              />
+            )}
+            {selectedStatuses.length > 0 && (
+              <FilterChip
+                label={t("chip.status")}
+                value={selectedStatuses.length === 1 ? translateOption(selectedStatuses[0], lang) : `เลือก ${selectedStatuses.length} สถานะ`}
+                onClear={() => { setSelectedStatuses([]); setPage(1); }}
+              />
+            )}
+            {selectedInspectionResults.length > 0 && (
+              <FilterChip
+                label={t("chip.inspection")}
+                value={selectedInspectionResults.length === 1 ? translateOption(selectedInspectionResults[0], lang) : `เลือก ${selectedInspectionResults.length} ผล`}
+                onClear={() => { setSelectedInspectionResults([]); setPage(1); }}
+              />
+            )}
           </div>
         )}
       </div>

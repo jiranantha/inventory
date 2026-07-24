@@ -586,6 +586,207 @@ export function SearchableFilterField({
   );
 }
 
+export function MultiSelectFilter({
+  label,
+  values,
+  onChange,
+  options,
+  getOptionLabel,
+}: {
+  label: string;
+  values: string[];
+  onChange: (values: string[]) => void;
+  options: string[];
+  getOptionLabel?: (value: string) => string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const actualOptions = options.filter((o) => o !== "ทั้งหมด");
+  const displayText =
+    values.length === 0
+      ? "ทั้งหมด"
+      : values.length === 1
+        ? (getOptionLabel ? getOptionLabel(values[0]) : values[0])
+        : `เลือก ${values.length} รายการ`;
+
+  const toggleValue = (opt: string) => {
+    if (values.includes(opt)) {
+      onChange(values.filter((v) => v !== opt));
+    } else {
+      onChange([...values, opt]);
+    }
+  };
+
+  return (
+    <div className="relative min-w-0">
+      <span className="text-sm font-semibold text-ink">{label}</span>
+      <button
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
+        className="mt-2 flex min-h-12 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-line bg-surface px-4 py-3 text-left text-sm text-ink outline-none hover:border-primary focus:border-primary"
+      >
+        <span className="min-w-0 truncate">{displayText}</span>
+        <svg className="h-4 w-4 shrink-0 text-muted" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)} />
+          <div className="absolute left-0 z-40 mt-1 w-full min-w-[160px] overflow-hidden rounded-lg border border-line bg-surface shadow-2xl">
+            <div className="max-h-64 overflow-y-auto p-1">
+              <button
+                type="button"
+                onClick={() => { onChange([]); setIsOpen(false); }}
+                className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition ${values.length === 0 ? "bg-primary/10 font-semibold text-primary" : "text-ink hover:bg-primary hover:text-white"}`}
+              >
+                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${values.length === 0 ? "border-primary bg-primary" : "border-line"}`}>
+                  {values.length === 0 && (
+                    <svg viewBox="0 0 12 12" fill="none" className="h-3 w-3">
+                      <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+                <span>ทั้งหมด</span>
+              </button>
+              {actualOptions.map((opt) => {
+                const checked = values.includes(opt);
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => toggleValue(opt)}
+                    className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition ${checked ? "bg-primary/10 font-semibold text-primary" : "text-ink hover:bg-primary hover:text-white"}`}
+                  >
+                    <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${checked ? "border-primary bg-primary" : "border-line"}`}>
+                      {checked && (
+                        <svg viewBox="0 0 12 12" fill="none" className="h-3 w-3">
+                          <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </span>
+                    <span className="min-w-0 truncate">{getOptionLabel ? getOptionLabel(opt) : opt}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function SearchableMultiSelectFilter({
+  label,
+  values,
+  onChange,
+  options,
+  getOptionLabel,
+}: {
+  label: string;
+  values: string[];
+  onChange: (values: string[]) => void;
+  options: string[];
+  getOptionLabel?: (value: string) => string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const actualOptions = useMemo(() => options.filter((o) => o !== "ทั้งหมด"), [options]);
+  const filteredOptions = useMemo(() => {
+    const clean = query.trim().toLowerCase();
+    if (!clean) return actualOptions;
+    return actualOptions.filter((opt) => opt.toLowerCase().includes(clean));
+  }, [actualOptions, query]);
+  const displayText =
+    values.length === 0
+      ? "ทั้งหมด"
+      : values.length === 1
+        ? (getOptionLabel ? getOptionLabel(values[0]) : values[0])
+        : `เลือก ${values.length} รายการ`;
+
+  const toggleValue = (opt: string) => {
+    if (values.includes(opt)) {
+      onChange(values.filter((v) => v !== opt));
+    } else {
+      onChange([...values, opt]);
+    }
+  };
+
+  return (
+    <div className="relative min-w-0">
+      <span className="text-sm font-semibold text-ink">{label}</span>
+      <button
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
+        className="mt-2 flex min-h-12 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-line bg-surface px-4 py-3 text-left text-sm text-ink outline-none hover:border-primary focus:border-primary"
+      >
+        <span className="min-w-0 truncate">{displayText}</span>
+        <svg className="h-4 w-4 shrink-0 text-muted" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => { setIsOpen(false); setQuery(""); }} />
+          <div className="absolute left-0 z-40 mt-1 w-full min-w-[180px] overflow-hidden rounded-lg border border-line bg-surface shadow-2xl">
+            <div className="border-b border-line p-2">
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="ค้นหาหน่วยงาน..."
+                className="w-full rounded-md border border-line bg-surfaceSoft px-3 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
+              />
+            </div>
+            <div className="max-h-64 overflow-y-auto p-1">
+              {!query.trim() && (
+                <button
+                  type="button"
+                  onClick={() => { onChange([]); setIsOpen(false); setQuery(""); }}
+                  className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition ${values.length === 0 ? "bg-primary/10 font-semibold text-primary" : "text-ink hover:bg-primary hover:text-white"}`}
+                >
+                  <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${values.length === 0 ? "border-primary bg-primary" : "border-line"}`}>
+                    {values.length === 0 && (
+                      <svg viewBox="0 0 12 12" fill="none" className="h-3 w-3">
+                        <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+                  <span>ทั้งหมด</span>
+                </button>
+              )}
+              {filteredOptions.length === 0 ? (
+                <p className="px-3 py-5 text-center text-sm text-muted">ไม่พบหน่วยงาน</p>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const checked = values.includes(opt);
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => toggleValue(opt)}
+                      className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition ${checked ? "bg-primary/10 font-semibold text-primary" : "text-ink hover:bg-primary hover:text-white"}`}
+                    >
+                      <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${checked ? "border-primary bg-primary" : "border-line"}`}>
+                        {checked && (
+                          <svg viewBox="0 0 12 12" fill="none" className="h-3 w-3">
+                            <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </span>
+                      <span className="min-w-0 truncate">{getOptionLabel ? getOptionLabel(opt) : opt}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function RecordFormSection({
   number,
   title,
