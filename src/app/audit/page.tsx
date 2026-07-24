@@ -378,28 +378,28 @@ function AuditPage({
             {selectedYears.length > 0 && (
               <FilterChip
                 label={t("chip.year")}
-                value={selectedYears.length === 1 ? selectedYears[0] : `เลือก ${selectedYears.length} ปี`}
+                value={selectedYears.join(", ")}
                 onClear={() => { setSelectedYears([]); setPage(1); }}
               />
             )}
             {selectedUnits.length > 0 && (
               <FilterChip
                 label={t("chip.org")}
-                value={selectedUnits.length === 1 ? selectedUnits[0] : `เลือก ${selectedUnits.length} หน่วยงาน`}
+                value={selectedUnits.join(", ")}
                 onClear={() => { setSelectedUnits([]); setPage(1); }}
               />
             )}
             {selectedStatuses.length > 0 && (
               <FilterChip
                 label={t("chip.status")}
-                value={selectedStatuses.length === 1 ? translateOption(selectedStatuses[0], lang) : `เลือก ${selectedStatuses.length} สถานะ`}
+                value={selectedStatuses.map((v) => translateOption(v, lang)).join(", ")}
                 onClear={() => { setSelectedStatuses([]); setPage(1); }}
               />
             )}
             {selectedInspectionResults.length > 0 && (
               <FilterChip
                 label={t("chip.inspection")}
-                value={selectedInspectionResults.length === 1 ? translateOption(selectedInspectionResults[0], lang) : `เลือก ${selectedInspectionResults.length} ผล`}
+                value={selectedInspectionResults.map((v) => translateOption(v, lang)).join(", ")}
                 onClear={() => { setSelectedInspectionResults([]); setPage(1); }}
               />
             )}
