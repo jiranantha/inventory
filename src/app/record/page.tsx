@@ -82,6 +82,8 @@ function RecordPage({
     const errors: Record<string, string> = {};
     const required = t("rec.err.required");
     if (!registrationType) errors.registrationType = required;
+    const needsUniversityAssetNumber = registrationType === "ครุภัณฑ์มหาวิทยาลัย" || registrationType === "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย";
+    if (needsUniversityAssetNumber && !universityAssetNumber.trim()) errors.universityAssetNumber = required;
     if (!assetName.trim()) errors.assetName = required;
     if (!assetStructureType) errors.assetStructureType = required;
     if (!assetType) errors.assetType = required;
@@ -122,7 +124,6 @@ function RecordPage({
     } else {
       setAssetNumber(getNextAssetNumber(assets, fiscalYear));
     }
-    setUniversityAssetNumber("");
     setAssetNumberLocation("");
     setIssueFormErrors({});
     setIssueModalOpen(true);
@@ -136,8 +137,6 @@ function RecordPage({
     const requiredMsg = t("rec.err.required");
     if (!cleanAssetName) errors.assetName = requiredMsg;
     if (registrationType !== "ครุภัณฑ์มหาวิทยาลัย" && !cleanAssetNumber) errors.assetNumber = "ไม่สามารถออกหมายเลขครุภัณฑ์ได้ กรุณาลองใหม่อีกครั้ง";
-    const needsUniversityNumber = registrationType === "ครุภัณฑ์มหาวิทยาลัย" || registrationType === "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย";
-    if (needsUniversityNumber && !universityAssetNumber.trim()) errors.universityAssetNumber = requiredMsg;
     if (!assetNumberLocation.trim()) errors.assetNumberLocation = requiredMsg;
     if (imagePreviews.length === 0) errors.images = requiredMsg;
     setIssueFormErrors(errors);
@@ -467,6 +466,19 @@ function RecordPage({
                 error={mainFormErrors.registrationType}
               />
             </div>
+            {(registrationType === "ครุภัณฑ์มหาวิทยาลัย" || registrationType === "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย") && (
+              <div>
+                <Field
+                  label={t("rec.label.universityAssetNumber")}
+                  required
+                  value={universityAssetNumber}
+                  onChange={(event) => { setUniversityAssetNumber(event.target.value); setMainFormErrors((errors) => ({ ...errors, universityAssetNumber: "" })); }}
+                  placeholder={t("rec.ph.universityAssetNumber")}
+                  className={mainFormErrors.universityAssetNumber ? "border-red-400 focus:border-red-400" : ""}
+                />
+                <FieldError message={mainFormErrors.universityAssetNumber} />
+              </div>
+            )}
             <div>
               <Field label={t("rec.label.assetName")} required value={assetName} onChange={(event) => { setAssetName(event.target.value); setMainFormErrors((errors) => ({ ...errors, assetName: "" })); }} placeholder={t("rec.ph.assetName")} className={mainFormErrors.assetName ? "border-red-400 focus:border-red-400" : ""} />
             </div>
@@ -615,15 +627,7 @@ function RecordPage({
               )}
               {(registrationType === "ครุภัณฑ์มหาวิทยาลัย" || registrationType === "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย") && (
                 <div>
-                  <Field
-                    label={t("rec.label.universityAssetNumber")}
-                    required
-                    value={universityAssetNumber}
-                    onChange={(event) => { setUniversityAssetNumber(event.target.value); setIssueFormErrors((errors) => ({ ...errors, universityAssetNumber: "" })); }}
-                    placeholder={t("rec.ph.universityAssetNumber")}
-                    className={issueFormErrors.universityAssetNumber ? "border-red-400 focus:border-red-400" : ""}
-                  />
-                  <FieldError message={issueFormErrors.universityAssetNumber} />
+                  <Field label={t("rec.label.universityAssetNumber")} value={universityAssetNumber} readOnly />
                 </div>
               )}
               <div>
