@@ -5,6 +5,7 @@ import { CloseIconButton, DetailInfoItem, Field, SelectField } from "@/component
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 import { AppUser, Permissions, RoleDefinition, UserRole, getPermissionLabel, getRoleDefinition, noPermissions } from "@/lib/permissions";
+import { getLatestAssetSequenceForYear } from "@/lib/assets";
 import { uniqueSorted } from "@/lib/utils";
 import { AssetListRow, MasterDataItem } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -141,8 +142,8 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
   };
 
   const organizationOptions = ["กองพัฒนานักศึกษามหาวิทยาลัยเชียงใหม่", "-", ...organizationItems.map((item) => item.name)];
-  const latestSequence = assets.reduce((highest, asset) => Math.max(highest, Number(asset.assetNumber.match(/(\d{1,6})\s*\/\s*\d{4}/)?.[1] ?? 0)), 143);
   const currentThaiYear = new Date().getFullYear() + 543;
+  const latestSequence = getLatestAssetSequenceForYear(assets, String(currentThaiYear));
   type TabKey = "users" | "roles" | "organizations" | "locations" | "types" | "numbers";
   const tabs: [TabKey, string][] = [
     ["users", t("set.tabUsers")], ["roles", t("set.tabRoles")], ["organizations", t("set.tabOrgs")], ["locations", t("set.tabLocations")], ["types", t("set.tabTypes")], ["numbers", t("set.tabNumbers")],

@@ -5,18 +5,24 @@ import { formatThaiDate, formatThaiDateTimeWithSeconds } from "@/lib/dates";
 import { getOrganizationType, normalizeOrganizationName } from "@/lib/organizations";
 import { AnnualInspection, AssetImportPreviewRow, AssetImportRow, AssetListRow, ReportColumn } from "@/types";
 
-// Running number to start counting from when no existing asset number is parseable
-// (the organisation's legacy register ended at 143).
 export const ASSET_NUMBER_PREFIX = "ค.อ.มช.";
-export const ASSET_NUMBER_SEED = 143;
+
+// The running number resets every fiscal year, so the "latest" sequence is only
+// ever computed among asset numbers whose /YYYY suffix matches the given year.
+export function getLatestAssetSequenceForYear(assets: AssetListRow[], fiscalYear: string) {
+  const targetYear = fiscalYear.trim();
+  return assets.reduce((highest, asset) => {
+    const match = asset.assetNumber.match(/(\d{1,6})\s*\/\s*(\d{4})/);
+    if (!match) return highest;
+    const [, sequenceText, yearText] = match;
+    if (yearText !== targetYear) return highest;
+    const sequence = Number(sequenceText);
+    return Number.isFinite(sequence) ? Math.max(highest, sequence) : highest;
+  }, 0);
+}
 
 export function getNextAssetNumber(assets: AssetListRow[], fiscalYear: string) {
-  const latestSequence = assets.reduce((highest, asset) => {
-    const match = asset.assetNumber.match(/(?:ค\.อ\.มช\.\s*)?(\d{1,6})\s*\/\s*\d{4}/);
-    const sequence = match ? Number(match[1]) : 0;
-    return Number.isFinite(sequence) ? Math.max(highest, sequence) : highest;
-  }, ASSET_NUMBER_SEED);
-
+  const latestSequence = getLatestAssetSequenceForYear(assets, fiscalYear);
   return `${ASSET_NUMBER_PREFIX}${String(latestSequence + 1).padStart(4, "0")}/${fiscalYear}`;
 }
 
