@@ -326,7 +326,7 @@ function ListPage({
               <col className="w-[104px]" />
               <col className="w-[132px]" />
               <col className="w-[54px]" />
-              <col className="w-[180px]" />
+              <col className="w-[150px]" />
             </colgroup>
             <thead className="bg-surfaceSoft text-ink">
               <tr>
@@ -353,11 +353,11 @@ function ListPage({
                       {row.imageCount}
                     </button>
                   </td>
-                  <td className="px-3 py-3">
-                    <div className="flex flex-row items-center justify-center gap-2">
-                      <button onClick={() => onViewDetails(row)} className="whitespace-nowrap rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-ink hover:border-primary hover:text-primary">{t("c.detail")}</button>
-                      {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="whitespace-nowrap rounded-md bg-orange px-2 py-1 text-[11px] font-semibold text-white hover:bg-orange/90">{t("c.edit")}</button>}
-                      {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="whitespace-nowrap rounded-md border border-red-300/30 px-2 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/10">{t("c.delete")}</button>}
+                  <td className="overflow-hidden px-2 py-3">
+                    <div className="flex flex-nowrap items-center justify-center gap-1">
+                      <button onClick={() => onViewDetails(row)} className="shrink-0 whitespace-nowrap rounded-md border border-line px-1.5 py-1 text-[11px] font-semibold text-ink hover:border-primary hover:text-primary">{t("c.detail")}</button>
+                      {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="shrink-0 whitespace-nowrap rounded-md bg-orange px-1.5 py-1 text-[11px] font-semibold text-white hover:bg-orange/90">{t("c.edit")}</button>}
+                      {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="shrink-0 whitespace-nowrap rounded-md border border-red-300/30 px-1.5 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/10">{t("c.delete")}</button>}
                     </div>
                   </td>
                 </tr>
