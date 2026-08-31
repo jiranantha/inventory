@@ -5,7 +5,7 @@ import { PlaceholderPage } from "@/components/StatusPages";
 
 import { useState, useMemo, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AssetNumberCell, FilterChip, InspectionResultBadge, MultiSelectFilter, PageHeader, RegistrationTypeBadge, SearchableMultiSelectFilter, StatusBadge, getAssetStructureFilterLabel, getRegistrationType } from "@/components/ui";
+import { AssetNumberCell, FilterChip, InspectionResultBadge, MultiSelectFilter, PageHeader, RegistrationTypeBadge, SearchableMultiSelectFilter, StatusBadge, getRegistrationType } from "@/components/ui";
 import { assetReportExportColumns, assetToReportRow } from "@/lib/assets";
 import { exportAssetReport } from "@/lib/import-export";
 import { Permissions } from "@/lib/permissions";
@@ -52,13 +52,11 @@ function ListPage({
       (name) => name !== "-" && name !== "สภานักศึกษา มหาวิทยาลัยเชียงใหม่"
     ),
   ];
-  const assetTypeOptions = ["ทั้งหมด", "ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"];
   const registrationTypeFilterOptions = ["ทั้งหมด", ...registrationTypeOptions];
 
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [selectedYears, setSelectedYears] = useState<string[]>(() => parseMultiParam(searchParams.get("years")));
   const [selectedUnits, setSelectedUnits] = useState<string[]>(() => parseMultiParam(searchParams.get("units")));
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(() => parseMultiParam(searchParams.get("types")));
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(() => parseMultiParam(searchParams.get("statuses")));
   const [selectedRegTypes, setSelectedRegTypes] = useState<string[]>(() => parseMultiParam(searchParams.get("regTypes")));
   const [page, setPage] = useState(1);
@@ -67,7 +65,6 @@ function ListPage({
     search: string;
     years: string[];
     units: string[];
-    types: string[];
     statuses: string[];
     regTypes: string[];
   }) => {
@@ -75,7 +72,6 @@ function ListPage({
     if (f.search.trim()) p.set("q", f.search.trim());
     if (f.years.length > 0) p.set("years", f.years.join(","));
     if (f.units.length > 0) p.set("units", f.units.join(","));
-    if (f.types.length > 0) p.set("types", f.types.join(","));
     if (f.statuses.length > 0) p.set("statuses", f.statuses.join(","));
     if (f.regTypes.length > 0) p.set("regTypes", f.regTypes.join(","));
     const qs = p.toString();
@@ -92,22 +88,20 @@ function ListPage({
       const matchSearch = !cleanSearch || searchText.includes(cleanSearch);
       const matchFiscalYear = selectedYears.length === 0 || selectedYears.includes(row.fiscalYear);
       const matchOrganization = selectedUnits.length === 0 || selectedUnits.includes(row.organization);
-      const matchAssetType = selectedTypes.length === 0 || selectedTypes.includes(getAssetStructureFilterLabel(row));
       const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(row.status);
       const matchRegType = selectedRegTypes.length === 0 || selectedRegTypes.includes(getRegistrationType(row));
-      return matchSearch && matchFiscalYear && matchOrganization && matchAssetType && matchStatus && matchRegType;
+      return matchSearch && matchFiscalYear && matchOrganization && matchStatus && matchRegType;
     });
-  }, [assets, search, selectedYears, selectedUnits, selectedTypes, selectedStatuses, selectedRegTypes]);
+  }, [assets, search, selectedYears, selectedUnits, selectedStatuses, selectedRegTypes]);
 
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const safePage = Math.min(page, pageCount);
   const visibleRows = filteredRows.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const hasActiveFilters = Boolean(search.trim()) || selectedYears.length > 0 || selectedUnits.length > 0 || selectedTypes.length > 0 || selectedStatuses.length > 0 || selectedRegTypes.length > 0;
+  const hasActiveFilters = Boolean(search.trim()) || selectedYears.length > 0 || selectedUnits.length > 0 || selectedStatuses.length > 0 || selectedRegTypes.length > 0;
   const clearAllFilters = () => {
     setSearch("");
     setSelectedYears([]);
     setSelectedUnits([]);
-    setSelectedTypes([]);
     setSelectedStatuses([]);
     setSelectedRegTypes([]);
     setPage(1);
@@ -149,7 +143,6 @@ function ListPage({
                             if (search.trim()) fp.push(lang === "th" ? `ค้นหา: ${search.trim()}` : `Search: ${search.trim()}`);
                             if (selectedYears.length > 0) fp.push(lang === "th" ? `ปีงบประมาณ: ${selectedYears.join(", ")}` : `Fiscal Year: ${selectedYears.join(", ")}`);
                             if (selectedUnits.length > 0) fp.push(lang === "th" ? `หน่วยงาน: ${selectedUnits.join(", ")}` : `Department: ${selectedUnits.join(", ")}`);
-                            if (selectedTypes.length > 0) fp.push(lang === "th" ? `ลักษณะ: ${selectedTypes.map((v) => translateOption(v, lang)).join(", ")}` : `Type: ${selectedTypes.map((v) => translateOption(v, lang)).join(", ")}`);
                             if (selectedStatuses.length > 0) fp.push(lang === "th" ? `สถานะ: ${selectedStatuses.map((v) => translateOption(v, lang)).join(", ")}` : `Status: ${selectedStatuses.map((v) => translateOption(v, lang)).join(", ")}`);
                             const reportTitle = lang === "th" ? "รายงานครุภัณฑ์ทั้งหมด" : "All Asset Report";
                             exportAssetReport(fmt, reportTitle, assetReportExportColumns, filteredRows.map(assetToReportRow), fp.join("  |  "), { lang });
@@ -174,7 +167,7 @@ function ListPage({
         )}
       />
       <div className="rounded-lg border border-line bg-surface p-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(5,minmax(0,1fr))]">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(4,minmax(0,1fr))]">
           <label className="block md:col-span-2 xl:col-span-1">
             <span className="text-sm font-semibold text-ink">{t("c.search")}</span>
             <div className="relative mt-2">
@@ -187,7 +180,7 @@ function ListPage({
                   const v = event.target.value;
                   setSearch(v);
                   setPage(1);
-                  pushFilters({ search: v, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes });
+                  pushFilters({ search: v, years: selectedYears, units: selectedUnits, statuses: selectedStatuses, regTypes: selectedRegTypes });
                 }}
                 placeholder={t("c.searchAssets")}
                 className="h-12 w-full rounded-lg border border-line bg-surfaceSoft py-3 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
@@ -195,7 +188,7 @@ function ListPage({
               {search.trim() && (
                 <button
                   type="button"
-                  onClick={() => { setSearch(""); setPage(1); pushFilters({ search: "", years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
+                  onClick={() => { setSearch(""); setPage(1); pushFilters({ search: "", years: selectedYears, units: selectedUnits, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
                   className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-sm font-bold text-muted hover:bg-slate-100 hover:text-slate-900"
                   aria-label="ล้างคำค้นหา"
                 >
@@ -207,35 +200,28 @@ function ListPage({
           <MultiSelectFilter
             label={t("list.filterYear")}
             values={selectedYears}
-            onChange={(v) => { setSelectedYears(v); setPage(1); pushFilters({ search, years: v, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
+            onChange={(v) => { setSelectedYears(v); setPage(1); pushFilters({ search, years: v, units: selectedUnits, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
             options={fiscalYearOptions}
             getOptionLabel={(v) => translateOption(v, lang)}
           />
           <SearchableMultiSelectFilter
             label={t("list.filterOrg")}
             values={selectedUnits}
-            onChange={(v) => { setSelectedUnits(v); setPage(1); pushFilters({ search, years: selectedYears, units: v, types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
+            onChange={(v) => { setSelectedUnits(v); setPage(1); pushFilters({ search, years: selectedYears, units: v, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
             options={organizationOptions}
-            getOptionLabel={(v) => translateOption(v, lang)}
-          />
-          <MultiSelectFilter
-            label={t("list.filterType")}
-            values={selectedTypes}
-            onChange={(v) => { setSelectedTypes(v); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: v, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
-            options={assetTypeOptions}
             getOptionLabel={(v) => translateOption(v, lang)}
           />
           <MultiSelectFilter
             label={t("list.filterStatus")}
             values={selectedStatuses}
-            onChange={(v) => { setSelectedStatuses(v); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: v, regTypes: selectedRegTypes }); }}
+            onChange={(v) => { setSelectedStatuses(v); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, statuses: v, regTypes: selectedRegTypes }); }}
             options={ASSET_STATUS_FILTER_OPTIONS}
             getOptionLabel={(v) => translateOption(v, lang)}
           />
           <MultiSelectFilter
             label={t("list.filterRegType")}
             values={selectedRegTypes}
-            onChange={(v) => { setSelectedRegTypes(v); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: v }); }}
+            onChange={(v) => { setSelectedRegTypes(v); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, statuses: selectedStatuses, regTypes: v }); }}
             options={registrationTypeFilterOptions}
             getOptionLabel={(v) => translateOption(v, lang)}
           />
@@ -256,40 +242,33 @@ function ListPage({
         </div>
         {hasActiveFilters && (
           <div className="mt-3 flex flex-wrap gap-2">
-            {search.trim() && <FilterChip label={t("chip.search")} value={search.trim()} onClear={() => { setSearch(""); setPage(1); pushFilters({ search: "", years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes }); }} />}
+            {search.trim() && <FilterChip label={t("chip.search")} value={search.trim()} onClear={() => { setSearch(""); setPage(1); pushFilters({ search: "", years: selectedYears, units: selectedUnits, statuses: selectedStatuses, regTypes: selectedRegTypes }); }} />}
             {selectedYears.length > 0 && (
               <FilterChip
                 label={t("chip.year")}
                 value={selectedYears.join(", ")}
-                onClear={() => { setSelectedYears([]); setPage(1); pushFilters({ search, years: [], units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
+                onClear={() => { setSelectedYears([]); setPage(1); pushFilters({ search, years: [], units: selectedUnits, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
               />
             )}
             {selectedUnits.length > 0 && (
               <FilterChip
                 label={t("chip.org")}
                 value={selectedUnits.join(", ")}
-                onClear={() => { setSelectedUnits([]); setPage(1); pushFilters({ search, years: selectedYears, units: [], types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
-              />
-            )}
-            {selectedTypes.length > 0 && (
-              <FilterChip
-                label={t("chip.type")}
-                value={selectedTypes.map((v) => translateOption(v, lang)).join(", ")}
-                onClear={() => { setSelectedTypes([]); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: [], statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
+                onClear={() => { setSelectedUnits([]); setPage(1); pushFilters({ search, years: selectedYears, units: [], statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
               />
             )}
             {selectedStatuses.length > 0 && (
               <FilterChip
                 label={t("chip.status")}
                 value={selectedStatuses.map((v) => translateOption(v, lang)).join(", ")}
-                onClear={() => { setSelectedStatuses([]); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: [], regTypes: selectedRegTypes }); }}
+                onClear={() => { setSelectedStatuses([]); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, statuses: [], regTypes: selectedRegTypes }); }}
               />
             )}
             {selectedRegTypes.length > 0 && (
               <FilterChip
                 label={t("chip.regType")}
                 value={selectedRegTypes.map((v) => translateOption(v, lang)).join(", ")}
-                onClear={() => { setSelectedRegTypes([]); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: [] }); }}
+                onClear={() => { setSelectedRegTypes([]); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, statuses: selectedStatuses, regTypes: [] }); }}
               />
             )}
           </div>
