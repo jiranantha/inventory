@@ -315,7 +315,7 @@ function ListPage({
       {/* Desktop table */}
       <div className="hidden w-full overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="w-full overflow-x-auto">
-          <table className="w-full min-w-[1050px] table-fixed border-collapse text-left text-sm xl:min-w-0">
+          <table className="w-full min-w-[1150px] table-fixed border-collapse text-left text-sm xl:min-w-0">
             <colgroup>
               <col className="w-[44px]" />
               <col className="w-[64px]" />
@@ -326,7 +326,7 @@ function ListPage({
               <col className="w-[104px]" />
               <col className="w-[132px]" />
               <col className="w-[54px]" />
-              <col className="w-[150px]" />
+              <col className="w-[240px]" />
             </colgroup>
             <thead className="bg-surfaceSoft text-ink">
               <tr>
@@ -354,10 +354,10 @@ function ListPage({
                     </button>
                   </td>
                   <td className="overflow-hidden px-2 py-3">
-                    <div className="flex flex-nowrap items-center justify-center gap-1">
-                      <button onClick={() => onViewDetails(row)} className="shrink-0 whitespace-nowrap rounded-md border border-line px-1.5 py-1 text-[11px] font-semibold text-ink hover:border-primary hover:text-primary">{t("c.detail")}</button>
-                      {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="shrink-0 whitespace-nowrap rounded-md bg-orange px-1.5 py-1 text-[11px] font-semibold text-white hover:bg-orange/90">{t("c.edit")}</button>}
-                      {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="shrink-0 whitespace-nowrap rounded-md border border-red-300/30 px-1.5 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/10">{t("c.delete")}</button>}
+                    <div className="flex flex-nowrap items-center justify-center gap-1.5">
+                      <button onClick={() => onViewDetails(row)} className="shrink-0 whitespace-nowrap rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-ink hover:border-primary hover:text-primary">{t("c.detail")}</button>
+                      {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="shrink-0 whitespace-nowrap rounded-md bg-orange px-2 py-1 text-[11px] font-semibold text-white hover:bg-orange/90">{t("c.edit")}</button>}
+                      {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="shrink-0 whitespace-nowrap rounded-md border border-red-300/30 px-2 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/10">{t("c.delete")}</button>}
                     </div>
                   </td>
                 </tr>
