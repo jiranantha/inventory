@@ -161,7 +161,7 @@ export function AssetNumberCell({ asset }: { asset: AssetListRow }) {
 
   if (registrationType === UNIVERSITY_REGISTRATION_TYPE) {
     return (
-      <div className="line-clamp-2 break-words" title={universityNumber}>
+      <div className="max-w-full truncate whitespace-nowrap" title={universityNumber}>
         {universityNumber}
       </div>
     );
@@ -169,15 +169,15 @@ export function AssetNumberCell({ asset }: { asset: AssetListRow }) {
 
   if (registrationType === BOTH_NUMBERS_REGISTRATION_TYPE) {
     return (
-      <div title={`${asset.assetNumber} · เลข มช. ${universityNumber}`}>
-        <div className="line-clamp-1 break-words">{asset.assetNumber}</div>
-        <div className="mt-0.5 truncate text-xs font-normal text-muted">เลข มช. {universityNumber}</div>
+      <div className="max-w-full" title={`${asset.assetNumber} · เลข มช. ${universityNumber}`}>
+        <div className="truncate whitespace-nowrap">{asset.assetNumber}</div>
+        <div className="mt-0.5 truncate whitespace-nowrap text-xs font-normal text-muted">เลข มช. {universityNumber}</div>
       </div>
     );
   }
 
   return (
-    <div className="line-clamp-2 break-words" title={asset.assetNumber}>
+    <div className="max-w-full truncate whitespace-nowrap" title={asset.assetNumber}>
       {asset.assetNumber}
     </div>
   );

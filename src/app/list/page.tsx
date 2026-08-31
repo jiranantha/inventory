@@ -115,11 +115,11 @@ function ListPage({
   };
 
   const tableHeadings = [
-    t("col.no"), t("col.year"), t("col.number"), t("col.numberType"), t("col.name"),
+    t("col.no"), t("col.yearShort"), t("col.number"), t("col.numberType"), t("col.name"),
     t("col.org"), t("col.status"), t("col.inspection"),
     t("col.image"), t("col.manage"),
   ];
-  const centeredHeadings = new Set([t("col.no"), t("col.year"), t("col.numberType"), t("col.status"), t("col.inspection"), t("col.image"), t("col.manage")]);
+  const centeredHeadings = new Set([t("col.no"), t("col.yearShort"), t("col.numberType"), t("col.status"), t("col.inspection"), t("col.image"), t("col.manage")]);
 
   return (
     <section className="mx-auto w-full max-w-screen-2xl space-y-4">
@@ -339,10 +339,10 @@ function ListPage({
           <table className="w-full min-w-[1050px] table-fixed border-collapse text-left text-sm xl:min-w-0">
             <colgroup>
               <col className="w-[44px]" />
-              <col className="w-[84px]" />
-              <col className="w-[150px]" />
+              <col className="w-[64px]" />
+              <col className="w-[160px]" />
               <col className="w-[116px]" />
-              <col className="w-[230px]" />
+              <col className="w-[220px]" />
               <col className="w-[165px]" />
               <col className="w-[104px]" />
               <col className="w-[132px]" />
@@ -365,7 +365,7 @@ function ListPage({
                   <td className="px-3 py-3 text-center">{row.fiscalYear}</td>
                   <td className="overflow-hidden px-4 py-3 font-semibold text-primary"><AssetNumberCell asset={row} /></td>
                   <td className="overflow-hidden px-3 py-3 text-center"><div className="mx-auto max-w-full overflow-hidden"><RegistrationTypeBadge registrationType={row.registrationType} /></div></td>
-                  <td className="px-4 py-3 font-semibold text-ink" title={row.assetName}><div className="line-clamp-2 break-words">{row.assetName}</div></td>
+                  <td className="overflow-hidden px-4 py-3 font-semibold text-ink" title={row.assetName}><div className="max-w-full truncate">{row.assetName}</div></td>
                   <td className="overflow-hidden px-4 py-3"><div className="max-w-full truncate" title={row.organization}>{row.organization}</div></td>
                   <td className="px-3 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
                   <td className="px-3 py-3 text-center"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></td>
