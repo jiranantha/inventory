@@ -5,7 +5,7 @@ import { PlaceholderPage } from "@/components/StatusPages";
 
 import { useState, useMemo, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AssetNumberCell, AssetStructureBadge, FilterChip, InspectionResultBadge, MultiSelectFilter, PageHeader, RegistrationTypeBadge, SearchableMultiSelectFilter, StatusBadge, getAssetStructureFilterLabel, getRegistrationType } from "@/components/ui";
+import { AssetNumberCell, FilterChip, InspectionResultBadge, MultiSelectFilter, PageHeader, RegistrationTypeBadge, SearchableMultiSelectFilter, StatusBadge, getAssetStructureFilterLabel, getRegistrationType } from "@/components/ui";
 import { assetReportExportColumns, assetToReportRow } from "@/lib/assets";
 import { exportAssetReport } from "@/lib/import-export";
 import { Permissions } from "@/lib/permissions";
@@ -116,10 +116,10 @@ function ListPage({
 
   const tableHeadings = [
     t("col.no"), t("col.year"), t("col.number"), t("col.numberType"), t("col.name"),
-    t("col.type"), t("col.org"), t("col.status"), t("col.inspection"),
+    t("col.org"), t("col.status"), t("col.inspection"),
     t("col.image"), t("col.manage"),
   ];
-  const centeredHeadings = new Set([t("col.no"), t("col.year"), t("col.numberType"), t("col.type"), t("col.status"), t("col.inspection"), t("col.image"), t("col.manage")]);
+  const centeredHeadings = new Set([t("col.no"), t("col.year"), t("col.numberType"), t("col.status"), t("col.inspection"), t("col.image"), t("col.manage")]);
 
   return (
     <section className="mx-auto w-full max-w-screen-2xl space-y-4">
@@ -310,7 +310,6 @@ function ListPage({
             </div>
             <dl className="mt-3 grid gap-2 text-sm">
               <div><dt className="text-xs font-semibold text-muted">{t("col.numberType")}</dt><dd className="mt-1"><RegistrationTypeBadge registrationType={row.registrationType} /></dd></div>
-              <div><dt className="text-xs font-semibold text-muted">{t("col.type")}</dt><dd className="mt-1"><AssetStructureBadge asset={row} /></dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.org")}</dt><dd className="mt-1 break-words text-ink">{row.organization}</dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.inspection")}</dt><dd className="mt-1"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></dd></div>
             </dl>
@@ -337,15 +336,14 @@ function ListPage({
       {/* Desktop table */}
       <div className="hidden w-full overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="w-full overflow-x-auto">
-          <table className="w-full min-w-[1100px] table-fixed border-collapse text-left text-sm xl:min-w-0">
+          <table className="w-full min-w-[1050px] table-fixed border-collapse text-left text-sm xl:min-w-0">
             <colgroup>
               <col className="w-[44px]" />
               <col className="w-[84px]" />
               <col className="w-[150px]" />
               <col className="w-[116px]" />
-              <col className="w-[195px]" />
-              <col className="w-[104px]" />
-              <col className="w-[150px]" />
+              <col className="w-[230px]" />
+              <col className="w-[165px]" />
               <col className="w-[104px]" />
               <col className="w-[132px]" />
               <col className="w-[54px]" />
@@ -368,7 +366,6 @@ function ListPage({
                   <td className="overflow-hidden px-4 py-3 font-semibold text-primary"><AssetNumberCell asset={row} /></td>
                   <td className="overflow-hidden px-3 py-3 text-center"><div className="mx-auto max-w-full overflow-hidden"><RegistrationTypeBadge registrationType={row.registrationType} /></div></td>
                   <td className="px-4 py-3 font-semibold text-ink" title={row.assetName}><div className="line-clamp-2 break-words">{row.assetName}</div></td>
-                  <td className="overflow-hidden px-3 py-3 text-center"><div className="mx-auto max-w-full overflow-hidden"><AssetStructureBadge asset={row} /></div></td>
                   <td className="overflow-hidden px-4 py-3"><div className="max-w-full truncate" title={row.organization}>{row.organization}</div></td>
                   <td className="px-3 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
                   <td className="px-3 py-3 text-center"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></td>
@@ -388,7 +385,7 @@ function ListPage({
               ))}
               {visibleRows.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-3 py-12 text-center">
+                  <td colSpan={10} className="px-3 py-12 text-center">
                     <div className="mx-auto max-w-md">
                       <p className="text-base font-bold text-white">{t("c.noData")}</p>
                       <p className="mt-2 text-sm leading-6 text-muted">{t("c.noDataSub")}</p>
