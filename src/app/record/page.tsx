@@ -138,7 +138,6 @@ function RecordPage({
     if (!cleanAssetName) errors.assetName = requiredMsg;
     if (registrationType !== "ครุภัณฑ์มหาวิทยาลัย" && !cleanAssetNumber) errors.assetNumber = "ไม่สามารถออกหมายเลขครุภัณฑ์ได้ กรุณาลองใหม่อีกครั้ง";
     if (!assetNumberLocation.trim()) errors.assetNumberLocation = requiredMsg;
-    if (imagePreviews.length === 0) errors.images = requiredMsg;
     setIssueFormErrors(errors);
     if (!organization || Object.keys(errors).length > 0) {
       return;
@@ -643,7 +642,6 @@ function RecordPage({
               <label className="block">
                 <span className="text-sm font-semibold text-ink">
                   {t("rec.modal.photos")}
-                  <span className="ml-0.5 text-danger">*</span>
                 </span>
                 <input
                   type="file"
