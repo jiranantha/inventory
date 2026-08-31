@@ -344,8 +344,8 @@ function ListPage({
                   <td className="px-3 py-3 text-center">{row.fiscalYear}</td>
                   <td className="px-4 py-3 font-semibold text-primary" title={row.assetNumber}><div className="line-clamp-2 break-words">{row.assetNumber}</div></td>
                   <td className="px-4 py-3 font-semibold text-ink" title={row.assetName}><div className="line-clamp-2 break-words">{row.assetName}</div></td>
-                  <td className="px-3 py-3 text-center"><AssetStructureBadge asset={row} /></td>
-                  <td className="px-4 py-3"><div className="truncate" title={row.organization}>{row.organization}</div></td>
+                  <td className="overflow-hidden px-3 py-3 text-center"><div className="mx-auto max-w-full overflow-hidden"><AssetStructureBadge asset={row} /></div></td>
+                  <td className="overflow-hidden px-4 py-3"><div className="max-w-full truncate" title={row.organization}>{row.organization}</div></td>
                   <td className="px-3 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
                   <td className="px-3 py-3 text-center"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></td>
                   <td className="px-3 py-3 text-center">

@@ -95,8 +95,11 @@ export function FilterChip({
 export function AssetStructureBadge({ asset }: { asset: AssetListRow }) {
   const isSet = asset.assetStructureType === "set";
   return (
-    <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold leading-5 ring-1 ${isSet ? "bg-sky-400/12 text-sky-200 ring-sky-300/25" : "bg-white/10 text-ink ring-line"}`}>
-      {isSet ? `แบบชุด · ${asset.assetSetItems.length} รายการย่อย` : "ครุภัณฑ์เดี่ยว"}
+    <span
+      title={isSet ? `แบบชุด (${asset.assetSetItems.length})` : "ครุภัณฑ์เดี่ยว"}
+      className={`inline-flex max-w-full items-center truncate whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold leading-5 ring-1 ${isSet ? "bg-sky-400/12 text-sky-200 ring-sky-300/25" : "bg-white/10 text-ink ring-line"}`}
+    >
+      {isSet ? `แบบชุด (${asset.assetSetItems.length})` : "ครุภัณฑ์เดี่ยว"}
     </span>
   );
 }
