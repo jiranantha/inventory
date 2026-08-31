@@ -5,7 +5,7 @@ import { PlaceholderPage } from "@/components/StatusPages";
 
 import { useState, useMemo, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AssetStructureBadge, FilterChip, InspectionResultBadge, MultiSelectFilter, PageHeader, SearchableMultiSelectFilter, StatusBadge, getAssetStructureFilterLabel } from "@/components/ui";
+import { AssetNumberCell, AssetStructureBadge, FilterChip, InspectionResultBadge, MultiSelectFilter, PageHeader, RegistrationTypeBadge, SearchableMultiSelectFilter, StatusBadge, getAssetStructureFilterLabel, getRegistrationType } from "@/components/ui";
 import { assetReportExportColumns, assetToReportRow } from "@/lib/assets";
 import { exportAssetReport } from "@/lib/import-export";
 import { Permissions } from "@/lib/permissions";
@@ -14,6 +14,7 @@ import { AnnualInspection, AssetListRow } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateOption } from "@/lib/i18n";
 import { ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
+import { registrationTypeOptions } from "@/constants/options";
 
 function parseMultiParam(param: string | null): string[] {
   if (!param) return [];
@@ -52,12 +53,14 @@ function ListPage({
     ),
   ];
   const assetTypeOptions = ["ทั้งหมด", "ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"];
+  const registrationTypeFilterOptions = ["ทั้งหมด", ...registrationTypeOptions];
 
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [selectedYears, setSelectedYears] = useState<string[]>(() => parseMultiParam(searchParams.get("years")));
   const [selectedUnits, setSelectedUnits] = useState<string[]>(() => parseMultiParam(searchParams.get("units")));
   const [selectedTypes, setSelectedTypes] = useState<string[]>(() => parseMultiParam(searchParams.get("types")));
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(() => parseMultiParam(searchParams.get("statuses")));
+  const [selectedRegTypes, setSelectedRegTypes] = useState<string[]>(() => parseMultiParam(searchParams.get("regTypes")));
   const [page, setPage] = useState(1);
 
   const pushFilters = useCallback((f: {
@@ -66,6 +69,7 @@ function ListPage({
     units: string[];
     types: string[];
     statuses: string[];
+    regTypes: string[];
   }) => {
     const p = new URLSearchParams();
     if (f.search.trim()) p.set("q", f.search.trim());
@@ -73,6 +77,7 @@ function ListPage({
     if (f.units.length > 0) p.set("units", f.units.join(","));
     if (f.types.length > 0) p.set("types", f.types.join(","));
     if (f.statuses.length > 0) p.set("statuses", f.statuses.join(","));
+    if (f.regTypes.length > 0) p.set("regTypes", f.regTypes.join(","));
     const qs = p.toString();
     router.replace(qs ? `/list?${qs}` : "/list", { scroll: false });
   }, [router]);
@@ -89,30 +94,32 @@ function ListPage({
       const matchOrganization = selectedUnits.length === 0 || selectedUnits.includes(row.organization);
       const matchAssetType = selectedTypes.length === 0 || selectedTypes.includes(getAssetStructureFilterLabel(row));
       const matchStatus = selectedStatuses.length === 0 || selectedStatuses.includes(row.status);
-      return matchSearch && matchFiscalYear && matchOrganization && matchAssetType && matchStatus;
+      const matchRegType = selectedRegTypes.length === 0 || selectedRegTypes.includes(getRegistrationType(row));
+      return matchSearch && matchFiscalYear && matchOrganization && matchAssetType && matchStatus && matchRegType;
     });
-  }, [assets, search, selectedYears, selectedUnits, selectedTypes, selectedStatuses]);
+  }, [assets, search, selectedYears, selectedUnits, selectedTypes, selectedStatuses, selectedRegTypes]);
 
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const safePage = Math.min(page, pageCount);
   const visibleRows = filteredRows.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const hasActiveFilters = Boolean(search.trim()) || selectedYears.length > 0 || selectedUnits.length > 0 || selectedTypes.length > 0 || selectedStatuses.length > 0;
+  const hasActiveFilters = Boolean(search.trim()) || selectedYears.length > 0 || selectedUnits.length > 0 || selectedTypes.length > 0 || selectedStatuses.length > 0 || selectedRegTypes.length > 0;
   const clearAllFilters = () => {
     setSearch("");
     setSelectedYears([]);
     setSelectedUnits([]);
     setSelectedTypes([]);
     setSelectedStatuses([]);
+    setSelectedRegTypes([]);
     setPage(1);
     router.replace("/list", { scroll: false });
   };
 
   const tableHeadings = [
-    t("col.no"), t("col.year"), t("col.number"), t("col.name"),
+    t("col.no"), t("col.year"), t("col.number"), t("col.numberType"), t("col.name"),
     t("col.type"), t("col.org"), t("col.status"), t("col.inspection"),
     t("col.image"), t("col.manage"),
   ];
-  const centeredHeadings = new Set([t("col.no"), t("col.year"), t("col.type"), t("col.status"), t("col.inspection"), t("col.image"), t("col.manage")]);
+  const centeredHeadings = new Set([t("col.no"), t("col.year"), t("col.numberType"), t("col.type"), t("col.status"), t("col.inspection"), t("col.image"), t("col.manage")]);
 
   return (
     <section className="mx-auto w-full max-w-screen-2xl space-y-4">
@@ -167,7 +174,7 @@ function ListPage({
         )}
       />
       <div className="rounded-lg border border-line bg-surface p-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(5,minmax(0,1fr))]">
           <label className="block md:col-span-2 xl:col-span-1">
             <span className="text-sm font-semibold text-ink">{t("c.search")}</span>
             <div className="relative mt-2">
@@ -180,7 +187,7 @@ function ListPage({
                   const v = event.target.value;
                   setSearch(v);
                   setPage(1);
-                  pushFilters({ search: v, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses });
+                  pushFilters({ search: v, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes });
                 }}
                 placeholder={t("c.searchAssets")}
                 className="h-12 w-full rounded-lg border border-line bg-surfaceSoft py-3 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
@@ -188,7 +195,7 @@ function ListPage({
               {search.trim() && (
                 <button
                   type="button"
-                  onClick={() => { setSearch(""); setPage(1); pushFilters({ search: "", years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses }); }}
+                  onClick={() => { setSearch(""); setPage(1); pushFilters({ search: "", years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
                   className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-sm font-bold text-muted hover:bg-slate-100 hover:text-slate-900"
                   aria-label="ล้างคำค้นหา"
                 >
@@ -200,29 +207,36 @@ function ListPage({
           <MultiSelectFilter
             label={t("list.filterYear")}
             values={selectedYears}
-            onChange={(v) => { setSelectedYears(v); setPage(1); pushFilters({ search, years: v, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses }); }}
+            onChange={(v) => { setSelectedYears(v); setPage(1); pushFilters({ search, years: v, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
             options={fiscalYearOptions}
             getOptionLabel={(v) => translateOption(v, lang)}
           />
           <SearchableMultiSelectFilter
             label={t("list.filterOrg")}
             values={selectedUnits}
-            onChange={(v) => { setSelectedUnits(v); setPage(1); pushFilters({ search, years: selectedYears, units: v, types: selectedTypes, statuses: selectedStatuses }); }}
+            onChange={(v) => { setSelectedUnits(v); setPage(1); pushFilters({ search, years: selectedYears, units: v, types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
             options={organizationOptions}
             getOptionLabel={(v) => translateOption(v, lang)}
           />
           <MultiSelectFilter
             label={t("list.filterType")}
             values={selectedTypes}
-            onChange={(v) => { setSelectedTypes(v); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: v, statuses: selectedStatuses }); }}
+            onChange={(v) => { setSelectedTypes(v); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: v, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
             options={assetTypeOptions}
             getOptionLabel={(v) => translateOption(v, lang)}
           />
           <MultiSelectFilter
             label={t("list.filterStatus")}
             values={selectedStatuses}
-            onChange={(v) => { setSelectedStatuses(v); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: v }); }}
+            onChange={(v) => { setSelectedStatuses(v); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: v, regTypes: selectedRegTypes }); }}
             options={ASSET_STATUS_FILTER_OPTIONS}
+            getOptionLabel={(v) => translateOption(v, lang)}
+          />
+          <MultiSelectFilter
+            label={t("list.filterRegType")}
+            values={selectedRegTypes}
+            onChange={(v) => { setSelectedRegTypes(v); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: v }); }}
+            options={registrationTypeFilterOptions}
             getOptionLabel={(v) => translateOption(v, lang)}
           />
         </div>
@@ -242,33 +256,40 @@ function ListPage({
         </div>
         {hasActiveFilters && (
           <div className="mt-3 flex flex-wrap gap-2">
-            {search.trim() && <FilterChip label={t("chip.search")} value={search.trim()} onClear={() => { setSearch(""); setPage(1); pushFilters({ search: "", years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses }); }} />}
+            {search.trim() && <FilterChip label={t("chip.search")} value={search.trim()} onClear={() => { setSearch(""); setPage(1); pushFilters({ search: "", years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes }); }} />}
             {selectedYears.length > 0 && (
               <FilterChip
                 label={t("chip.year")}
                 value={selectedYears.join(", ")}
-                onClear={() => { setSelectedYears([]); setPage(1); pushFilters({ search, years: [], units: selectedUnits, types: selectedTypes, statuses: selectedStatuses }); }}
+                onClear={() => { setSelectedYears([]); setPage(1); pushFilters({ search, years: [], units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
               />
             )}
             {selectedUnits.length > 0 && (
               <FilterChip
                 label={t("chip.org")}
                 value={selectedUnits.join(", ")}
-                onClear={() => { setSelectedUnits([]); setPage(1); pushFilters({ search, years: selectedYears, units: [], types: selectedTypes, statuses: selectedStatuses }); }}
+                onClear={() => { setSelectedUnits([]); setPage(1); pushFilters({ search, years: selectedYears, units: [], types: selectedTypes, statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
               />
             )}
             {selectedTypes.length > 0 && (
               <FilterChip
                 label={t("chip.type")}
                 value={selectedTypes.map((v) => translateOption(v, lang)).join(", ")}
-                onClear={() => { setSelectedTypes([]); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: [], statuses: selectedStatuses }); }}
+                onClear={() => { setSelectedTypes([]); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: [], statuses: selectedStatuses, regTypes: selectedRegTypes }); }}
               />
             )}
             {selectedStatuses.length > 0 && (
               <FilterChip
                 label={t("chip.status")}
                 value={selectedStatuses.map((v) => translateOption(v, lang)).join(", ")}
-                onClear={() => { setSelectedStatuses([]); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: [] }); }}
+                onClear={() => { setSelectedStatuses([]); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: [], regTypes: selectedRegTypes }); }}
+              />
+            )}
+            {selectedRegTypes.length > 0 && (
+              <FilterChip
+                label={t("chip.regType")}
+                value={selectedRegTypes.map((v) => translateOption(v, lang)).join(", ")}
+                onClear={() => { setSelectedRegTypes([]); setPage(1); pushFilters({ search, years: selectedYears, units: selectedUnits, types: selectedTypes, statuses: selectedStatuses, regTypes: [] }); }}
               />
             )}
           </div>
@@ -282,12 +303,13 @@ function ListPage({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-muted">{t("col.no")} {(safePage - 1) * pageSize + index + 1} · {t("col.year")} {row.fiscalYear}</p>
-                <p className="mt-1 break-words text-sm font-bold text-primary">{row.assetNumber}</p>
+                <div className="mt-1 text-sm font-bold text-primary"><AssetNumberCell asset={row} /></div>
                 <h3 className="mt-1 break-words text-base font-extrabold text-ink">{row.assetName}</h3>
               </div>
               <StatusBadge value={row.status} variant="soft" />
             </div>
             <dl className="mt-3 grid gap-2 text-sm">
+              <div><dt className="text-xs font-semibold text-muted">{t("col.numberType")}</dt><dd className="mt-1"><RegistrationTypeBadge registrationType={row.registrationType} /></dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.type")}</dt><dd className="mt-1"><AssetStructureBadge asset={row} /></dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.org")}</dt><dd className="mt-1 break-words text-ink">{row.organization}</dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.inspection")}</dt><dd className="mt-1"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></dd></div>
@@ -315,14 +337,15 @@ function ListPage({
       {/* Desktop table */}
       <div className="hidden w-full overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="w-full overflow-x-auto">
-          <table className="w-full min-w-[1024px] table-fixed border-collapse text-left text-sm xl:min-w-0">
+          <table className="w-full min-w-[1100px] table-fixed border-collapse text-left text-sm xl:min-w-0">
             <colgroup>
               <col className="w-[44px]" />
               <col className="w-[84px]" />
-              <col className="w-[158px]" />
-              <col className="w-[215px]" />
-              <col className="w-[112px]" />
-              <col className="w-[158px]" />
+              <col className="w-[150px]" />
+              <col className="w-[116px]" />
+              <col className="w-[195px]" />
+              <col className="w-[104px]" />
+              <col className="w-[150px]" />
               <col className="w-[104px]" />
               <col className="w-[132px]" />
               <col className="w-[54px]" />
@@ -342,7 +365,8 @@ function ListPage({
                 <tr key={row.assetCode} className="align-middle hover:bg-surfaceSoft">
                   <td className="px-3 py-3 text-center text-muted">{(safePage - 1) * pageSize + index + 1}</td>
                   <td className="px-3 py-3 text-center">{row.fiscalYear}</td>
-                  <td className="px-4 py-3 font-semibold text-primary" title={row.assetNumber}><div className="line-clamp-2 break-words">{row.assetNumber}</div></td>
+                  <td className="overflow-hidden px-4 py-3 font-semibold text-primary"><AssetNumberCell asset={row} /></td>
+                  <td className="overflow-hidden px-3 py-3 text-center"><div className="mx-auto max-w-full overflow-hidden"><RegistrationTypeBadge registrationType={row.registrationType} /></div></td>
                   <td className="px-4 py-3 font-semibold text-ink" title={row.assetName}><div className="line-clamp-2 break-words">{row.assetName}</div></td>
                   <td className="overflow-hidden px-3 py-3 text-center"><div className="mx-auto max-w-full overflow-hidden"><AssetStructureBadge asset={row} /></div></td>
                   <td className="overflow-hidden px-4 py-3"><div className="max-w-full truncate" title={row.organization}>{row.organization}</div></td>
@@ -364,7 +388,7 @@ function ListPage({
               ))}
               {visibleRows.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-12 text-center">
+                  <td colSpan={11} className="px-3 py-12 text-center">
                     <div className="mx-auto max-w-md">
                       <p className="text-base font-bold text-white">{t("c.noData")}</p>
                       <p className="mt-2 text-sm leading-6 text-muted">{t("c.noDataSub")}</p>

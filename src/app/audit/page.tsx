@@ -5,12 +5,13 @@ import { PlaceholderPage } from "@/components/StatusPages";
 
 import { useState, useMemo } from "react";
 import { buttonColors, inspectionStatusColors } from "@/constants/colors";
-import { CloseIconButton, Field, FilterChip, MultiSelectFilter, SearchableMultiSelectFilter, SelectField, StatusBadge, TextAreaField, ThaiDateField } from "@/components/ui";
+import { CloseIconButton, Field, FilterChip, MultiSelectFilter, RegistrationTypeBadge, SearchableMultiSelectFilter, SelectField, StatusBadge, TextAreaField, ThaiDateField, getRegistrationType } from "@/components/ui";
 import { formatThaiDate, getCurrentInspectionYear } from "@/lib/dates";
 import { uploadImage } from "@/lib/image-upload";
 import { uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow, EvidenceImage } from "@/types";
 import { allowedAssetStatuses, ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
+import { registrationTypeOptions } from "@/constants/options";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateOption } from "@/lib/i18n";
 
@@ -40,6 +41,7 @@ function AuditPage({
   const statusOptions = ASSET_STATUS_FILTER_OPTIONS;
   const inspectionStateOptions = ["ทั้งหมด", "ตรวจสอบแล้ว", "ยังไม่ได้ตรวจสอบ"];
   const modalStatusOptions = allowedAssetStatuses.filter((value) => value !== "รอตรวจสอบ");
+  const registrationTypeFilterOptions = ["ทั้งหมด", ...registrationTypeOptions];
 
   const [inspectionYear, setInspectionYear] = useState(String(currentInspectionYear));
   const [search, setSearch] = useState("");
@@ -47,6 +49,7 @@ function AuditPage({
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedInspectionResults, setSelectedInspectionResults] = useState<string[]>([]);
+  const [selectedRegTypes, setSelectedRegTypes] = useState<string[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<AssetListRow | null>(null);
   const [cancelTarget, setCancelTarget] = useState<{ asset: AssetListRow; inspection: AnnualInspection } | null>(null);
   const [inspectionDate, setInspectionDate] = useState(today);
@@ -84,9 +87,10 @@ function AuditPage({
         selectedInspectionResults.length === 0 ||
         (selectedInspectionResults.includes("ตรวจสอบแล้ว") && Boolean(inspection)) ||
         (selectedInspectionResults.includes("ยังไม่ได้ตรวจสอบ") && !inspection);
-      return matchSearch && matchAssetYear && matchOrganization && matchStatus && matchInspection;
+      const matchRegType = selectedRegTypes.length === 0 || selectedRegTypes.includes(getRegistrationType(asset));
+      return matchSearch && matchAssetYear && matchOrganization && matchStatus && matchInspection && matchRegType;
     });
-  }, [annualInspections, assets, inspectionYear, search, selectedYears, selectedUnits, selectedStatuses, selectedInspectionResults]);
+  }, [annualInspections, assets, inspectionYear, search, selectedYears, selectedUnits, selectedStatuses, selectedInspectionResults, selectedRegTypes]);
 
   const totalCount = rows.length;
   const inspectedCount = rows.filter((row) => row.inspection).length;
@@ -95,13 +99,14 @@ function AuditPage({
   const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
   const safePage = Math.min(page, pageCount);
   const visibleRows = rows.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const hasActiveAuditFilters = Boolean(search.trim()) || selectedYears.length > 0 || selectedUnits.length > 0 || selectedStatuses.length > 0 || selectedInspectionResults.length > 0;
+  const hasActiveAuditFilters = Boolean(search.trim()) || selectedYears.length > 0 || selectedUnits.length > 0 || selectedStatuses.length > 0 || selectedInspectionResults.length > 0 || selectedRegTypes.length > 0;
   const clearAuditFilters = () => {
     setSearch("");
     setSelectedYears([]);
     setSelectedUnits([]);
     setSelectedStatuses([]);
     setSelectedInspectionResults([]);
+    setSelectedRegTypes([]);
     setPage(1);
   };
   const auditResultText = rows.length > 0
@@ -279,10 +284,10 @@ function AuditPage({
   );
 
   const tableHeadings = [
-    t("col.dot"), t("col.no"), t("col.number"), t("audit.col.assetName"),
+    t("col.dot"), t("col.no"), t("col.number"), t("col.numberType"), t("audit.col.assetName"),
     t("col.org"), t("col.location"), t("col.status"), t("col.inspection"), t("col.manage"),
   ];
-  const centeredTableHeadings = new Set([t("col.status"), t("col.inspection")]);
+  const centeredTableHeadings = new Set([t("col.numberType"), t("col.status"), t("col.inspection")]);
 
   return (
     <section className="mx-auto w-full max-w-screen-2xl space-y-5">
@@ -304,7 +309,7 @@ function AuditPage({
       </div>
 
       <div className="rounded-lg border border-line bg-surface p-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(5,minmax(0,1fr))]">
           <label className="block md:col-span-2 xl:col-span-1">
             <span className="text-sm font-semibold text-ink">{t("c.search")}</span>
             <div className="relative mt-2">
@@ -357,6 +362,13 @@ function AuditPage({
             options={inspectionStateOptions}
             getOptionLabel={(v) => translateOption(v, lang)}
           />
+          <MultiSelectFilter
+            label={t("audit.filterRegType")}
+            values={selectedRegTypes}
+            onChange={(v) => { setSelectedRegTypes(v); setPage(1); }}
+            options={registrationTypeFilterOptions}
+            getOptionLabel={(v) => translateOption(v, lang)}
+          />
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           {hasActiveAuditFilters && (
@@ -400,6 +412,13 @@ function AuditPage({
                 onClear={() => { setSelectedInspectionResults([]); setPage(1); }}
               />
             )}
+            {selectedRegTypes.length > 0 && (
+              <FilterChip
+                label={t("chip.regType")}
+                value={selectedRegTypes.map((v) => translateOption(v, lang)).join(", ")}
+                onClear={() => { setSelectedRegTypes([]); setPage(1); }}
+              />
+            )}
           </div>
         )}
       </div>
@@ -419,6 +438,7 @@ function AuditPage({
               </span>
             </div>
             <dl className="mt-3 grid gap-2 text-sm">
+              <div><dt className="text-xs font-semibold text-muted">{t("col.numberType")}</dt><dd className="mt-1"><RegistrationTypeBadge registrationType={asset.registrationType} /></dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.org")}</dt><dd className="mt-1 break-words text-ink">{asset.organization}</dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.location")}</dt><dd className="mt-1 text-ink">{asset.location}</dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.status")}</dt><dd className="mt-1"><StatusBadge value={asset.status} variant="soft" /></dd></div>
@@ -445,14 +465,15 @@ function AuditPage({
       {/* Desktop table */}
       <div className="hidden overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] table-fixed border-collapse text-left text-sm">
+          <table className="w-full min-w-[970px] table-fixed border-collapse text-left text-sm">
             <colgroup>
               <col className="w-[40px]" />
               <col className="w-[50px]" />
               <col className="w-[150px]" />
-              <col className="w-[210px]" />
-              <col className="w-[145px]" />
-              <col className="w-[130px]" />
+              <col className="w-[112px]" />
+              <col className="w-[200px]" />
+              <col className="w-[140px]" />
+              <col className="w-[125px]" />
               <col className="w-[100px]" />
               <col className="w-[135px]" />
               <col className="w-[125px]" />
@@ -477,14 +498,15 @@ function AuditPage({
                   <td className="px-2 py-3 font-semibold text-primary" title={asset.assetNumber}>
                     <div className="line-clamp-2 break-words">{asset.assetNumber}</div>
                   </td>
+                  <td className="overflow-hidden px-2 py-3 text-center"><div className="mx-auto max-w-full overflow-hidden"><RegistrationTypeBadge registrationType={asset.registrationType} /></div></td>
                   <td className="px-2 py-3 font-semibold text-ink" title={asset.assetName}>
                     <div className="truncate">{asset.assetName}</div>
                   </td>
-                  <td className="px-2 py-3 text-ink" title={asset.organization}>
-                    <div className="truncate">{asset.organization}</div>
+                  <td className="overflow-hidden px-2 py-3 text-ink" title={asset.organization}>
+                    <div className="max-w-full truncate">{asset.organization}</div>
                   </td>
-                  <td className="px-2 py-3 text-ink" title={asset.location}>
-                    <div className="truncate">{asset.location}</div>
+                  <td className="overflow-hidden px-2 py-3 text-ink" title={asset.location}>
+                    <div className="max-w-full truncate">{asset.location}</div>
                   </td>
                   <td className="px-2 py-3 text-center"><StatusBadge value={asset.status} variant="soft" /></td>
                   <td className="px-2 py-3 text-center">
@@ -521,7 +543,7 @@ function AuditPage({
               ))}
               {visibleRows.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-3 py-12 text-center">
+                  <td colSpan={10} className="px-3 py-12 text-center">
                     <div className="mx-auto max-w-md">
                       <p className="text-base font-bold text-ink">{t("c.noData")}</p>
                       <p className="mt-2 text-sm leading-6 text-muted">{t("c.noDataSub")}</p>

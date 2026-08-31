@@ -117,6 +117,72 @@ export function getAssetStructureFilterLabel(asset: AssetListRow) {
   return "ครุภัณฑ์เดี่ยว";
 }
 
+export const DEFAULT_REGISTRATION_TYPE = "ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา";
+export const UNIVERSITY_REGISTRATION_TYPE = "ครุภัณฑ์มหาวิทยาลัย";
+export const BOTH_NUMBERS_REGISTRATION_TYPE = "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย";
+
+export function getRegistrationType(asset: Pick<AssetListRow, "registrationType">) {
+  return asset.registrationType || DEFAULT_REGISTRATION_TYPE;
+}
+
+export function getRegistrationTypeBadgeText(registrationType?: string): string {
+  if (registrationType === UNIVERSITY_REGISTRATION_TYPE) return "มหาวิทยาลัย";
+  if (registrationType === BOTH_NUMBERS_REGISTRATION_TYPE) return "ทั้งสองเลข";
+  return "กิจกรรมนักศึกษา";
+}
+
+// Compact badge showing which number(s) an asset uses (activity / university / both),
+// shared by /list and /audit so the two pages stay visually consistent.
+export function RegistrationTypeBadge({ registrationType }: { registrationType?: string }) {
+  const { lang } = useLanguage();
+  const label = translateOption(getRegistrationTypeBadgeText(registrationType), lang);
+  const colorClass =
+    registrationType === BOTH_NUMBERS_REGISTRATION_TYPE
+      ? "bg-emerald-400/12 text-emerald-200 ring-emerald-300/25"
+      : registrationType === UNIVERSITY_REGISTRATION_TYPE
+        ? "bg-amber-400/12 text-amber-200 ring-amber-300/25"
+        : "bg-sky-400/12 text-sky-200 ring-sky-300/25";
+  return (
+    <span
+      title={label}
+      className={`inline-flex max-w-full items-center truncate whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold leading-5 ring-1 ${colorClass}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+// Renders assetNumber / universityAssetNumber (or both, stacked) depending on
+// registrationType — used only where the number itself must reflect that split
+// (currently /list); other pages keep showing assetNumber as before.
+export function AssetNumberCell({ asset }: { asset: AssetListRow }) {
+  const registrationType = getRegistrationType(asset);
+  const universityNumber = asset.universityAssetNumber?.trim() || "-";
+
+  if (registrationType === UNIVERSITY_REGISTRATION_TYPE) {
+    return (
+      <div className="line-clamp-2 break-words" title={universityNumber}>
+        {universityNumber}
+      </div>
+    );
+  }
+
+  if (registrationType === BOTH_NUMBERS_REGISTRATION_TYPE) {
+    return (
+      <div title={`${asset.assetNumber} · เลข มช. ${universityNumber}`}>
+        <div className="line-clamp-1 break-words">{asset.assetNumber}</div>
+        <div className="mt-0.5 truncate text-xs font-normal text-muted">เลข มช. {universityNumber}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="line-clamp-2 break-words" title={asset.assetNumber}>
+      {asset.assetNumber}
+    </div>
+  );
+}
+
 export function SearchableOrganizationSelect({
   selected,
   onSelect,
