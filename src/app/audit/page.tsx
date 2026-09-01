@@ -438,7 +438,7 @@ function AuditPage({
               </span>
             </div>
             <dl className="mt-3 grid gap-2 text-sm">
-              <div><dt className="text-xs font-semibold text-muted">{t("col.numberType")}</dt><dd className="mt-1"><RegistrationTypeBadge registrationType={asset.registrationType} /></dd></div>
+              <div><dt className="text-xs font-semibold text-muted">{t("col.numberType")}</dt><dd className="mt-1"><RegistrationTypeBadge registrationType={asset.registrationType} truncate={false} /></dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.org")}</dt><dd className="mt-1 break-words text-ink">{asset.organization}</dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.location")}</dt><dd className="mt-1 text-ink">{asset.location}</dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.status")}</dt><dd className="mt-1"><StatusBadge value={asset.status} variant="soft" /></dd></div>
@@ -465,18 +465,24 @@ function AuditPage({
       {/* Desktop table */}
       <div className="hidden overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[970px] table-fixed border-collapse text-left text-sm">
+          {/* ผล/ลำดับ/หมายเลขครุภัณฑ์/ประเภทเลข/สถานที่จัดเก็บ/สถานะ/ผลการตรวจสอบ/จัดการ are
+              fixed-px, sized to what their content (dots, badges, buttons) actually needs —
+              they don't grow with viewport width. ชื่อครุภัณฑ์ and หน่วยงาน are left with no
+              width so they split whatever space remains (table-layout: fixed auto-column
+              rule), which keeps the table balanced and flush on both narrow and wide screens
+              instead of leaving a gap or squeezing จัดการ. */}
+          <table className="w-full min-w-[950px] table-fixed border-collapse text-left text-sm">
             <colgroup>
-              <col className="w-[40px]" />
-              <col className="w-[50px]" />
-              <col className="w-[150px]" />
-              <col className="w-[112px]" />
-              <col className="w-[200px]" />
+              <col className="w-[36px]" />
+              <col className="w-[46px]" />
               <col className="w-[140px]" />
-              <col className="w-[125px]" />
+              <col className="w-[118px]" />
+              <col />
+              <col />
+              <col className="w-[120px]" />
               <col className="w-[100px]" />
-              <col className="w-[135px]" />
-              <col className="w-[125px]" />
+              <col className="w-[146px]" />
+              <col className="w-[162px]" />
             </colgroup>
             <thead className="bg-surfaceSoft text-ink">
               <tr>
@@ -498,7 +504,7 @@ function AuditPage({
                   <td className="px-2 py-3 font-semibold text-primary" title={asset.assetNumber}>
                     <div className="line-clamp-2 break-words">{asset.assetNumber}</div>
                   </td>
-                  <td className="overflow-hidden px-2 py-3 text-center"><div className="mx-auto max-w-full overflow-hidden"><RegistrationTypeBadge registrationType={asset.registrationType} /></div></td>
+                  <td className="px-2 py-3 text-center"><div className="mx-auto w-fit"><RegistrationTypeBadge registrationType={asset.registrationType} truncate={false} /></div></td>
                   <td className="px-2 py-3 font-semibold text-ink" title={asset.assetName}>
                     <div className="truncate">{asset.assetName}</div>
                   </td>
@@ -520,16 +526,16 @@ function AuditPage({
                       </span>
                     )}
                   </td>
-                  <td className="px-2 py-3">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => openInspectionModal(asset)} className="whitespace-nowrap rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-white transition hover:bg-amberSoft">
+                  <td className="overflow-hidden px-2 py-3">
+                    <div className="flex flex-nowrap items-center gap-2">
+                      <button onClick={() => openInspectionModal(asset)} className="shrink-0 whitespace-nowrap rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-white transition hover:bg-amberSoft">
                         {t("audit.btnAudit")}
                       </button>
                       <button
                         type="button"
                         disabled={!inspection}
                         onClick={() => inspection && setCancelTarget({ asset, inspection })}
-                        className={`whitespace-nowrap rounded-md border px-3 py-1.5 text-xs font-semibold ${
+                        className={`shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 text-xs font-semibold ${
                           inspection
                             ? `cursor-pointer ${buttonColors.cancelEnabled}`
                             : `cursor-not-allowed ${buttonColors.cancelDisabled}`
