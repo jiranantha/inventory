@@ -120,10 +120,12 @@ const COL_WIDTHS: Record<string, string> = {
   numberPlacement: "88px", assetStructureLabel: "66px", price: "66px",
   organization: "118px", location: "84px", responsiblePerson: "88px",
   responsiblePhone: "76px", status: "66px", note: "96px",
-  // PDF-only reduced column set (see assetPdfReportColumns) — sized to fit an A4
-  // landscape page without the wide fields Word/Excel exports still include.
-  pdfFiscalYear: "60px", pdfAssetNumber: "170px", pdfNumberType: "110px",
-  pdfAssetName: "230px", pdfOrganization: "170px", pdfStatus: "80px", pdfInspectionResult: "130px",
+  // PDF-only reduced column set (see assetPdfReportColumns) — percentages (summing to
+  // 100% together with the 5% index column) so the table always fills the full page
+  // width regardless of render size, instead of fixed px that left the table narrower
+  // than the page or forced awkward proportional scaling.
+  pdfFiscalYear: "7%", pdfAssetNumber: "15%", pdfNumberType: "12%",
+  pdfAssetName: "22%", pdfOrganization: "22%", pdfStatus: "8%", pdfInspectionResult: "9%",
 };
 
 export function buildReportHtml(
@@ -132,6 +134,7 @@ export function buildReportHtml(
   rows: Array<Record<string, string | number>>,
   filterSummary: string,
   lang: "th" | "en" = "th",
+  layout?: { indexColumnLabel?: string; indexColumnWidth?: string; pageFillHeightPx?: number },
 ) {
   const isEn = lang === "en";
   const systemName    = isEn ? "Activity Inventory Management System" : "ระบบครุภัณฑ์กิจกรรม";
@@ -140,19 +143,29 @@ export function buildReportHtml(
   const filterLabel   = isEn ? "Filters" : "เงื่อนไขตัวกรอง";
   const allLabel      = isEn ? "All records" : "ข้อมูลทั้งหมด";
   const noDataLabel   = isEn ? "No records found for the selected filters." : "ไม่พบรายการตามเงื่อนไขที่เลือก";
-  const footerText    = isEn ? "Activity Inventory Management System · Auto-generated report" : "ระบบครุภัณฑ์กิจกรรม · รายงานสร้างจากระบบอัตโนมัติ";
+  const footerText    = isEn ? "Activity Inventory Management System · Auto-generated report" : "ระบบครุภัณฑ์กิจกรรม · รายงานนี้สร้างจากระบบอัตโนมัติ";
   const unitLabel     = isEn ? "items" : "รายการ";
   const exportDate    = isEn ? formatExportDateEn() : formatExportDateTh();
   const filterDisplay = filterSummary.trim() || allLabel;
+  const indexLabel    = layout?.indexColumnLabel ?? "#";
+  const indexWidth    = layout?.indexColumnWidth ?? "34px";
 
   const colGroup = [
-    '<col style="width:34px" />',
+    `<col style="width:${indexWidth}" />`,
     ...columns.map((c) => `<col style="width:${COL_WIDTHS[c.key] ?? "100px"}" />`),
   ].join("");
   const headerCells = columns.map((c) => `<th>${c.label}</th>`).join("");
   const bodyRows = rows.map((row, i) =>
     `<tr><td class="n">${i + 1}</td>${columns.map((c) => `<td>${getReportRowValue(row, c.key)}</td>`).join("")}</tr>`,
   ).join("");
+  // When pageFillHeightPx is set (PDF export only), the header+table sit in a flex
+  // column stretched to one full printed page's height, so the footer anchors to the
+  // bottom of the page (margin-top:auto) instead of leaving a large blank gap after a
+  // short table — the table itself is never stretched, only the footer's position is.
+  const pageFillStyle = layout?.pageFillHeightPx
+    ? `min-height:${layout.pageFillHeightPx}px;display:flex;flex-direction:column`
+    : "";
+  const footerStyle = layout?.pageFillHeightPx ? "margin-top:auto" : "";
 
   return `<!doctype html>
 <html lang="${lang}">
@@ -163,18 +176,19 @@ export function buildReportHtml(
 @page { size: A4 landscape; margin: 10mm 12mm; }
 *{box-sizing:border-box}
 body{font-family:"Noto Sans Thai","TH Sarabun New",Tahoma,sans-serif;color:#0F172A;margin:0;padding:0;font-size:10px}
+.pg{${pageFillStyle}}
 .hdr{margin-bottom:12px;padding-bottom:9px;border-bottom:2.5px solid #1E40AF}
 .sys{font-size:11px;font-weight:700;color:#1E40AF;margin:0 0 3px}
-.ttl{font-size:17px;font-weight:800;color:#0F172A;margin:0 0 8px;line-height:1.25}
-.meta{display:flex;flex-wrap:wrap;gap:4px 20px;font-size:9.5px}
+.ttl{font-size:19px;font-weight:800;color:#0F172A;margin:0 0 8px;line-height:1.25}
+.meta{display:flex;flex-wrap:wrap;gap:5px 20px;font-size:10.5px}
 .mi{display:flex;gap:4px}
 .ml{font-weight:700;color:#0F172A}
 .mv{color:#475569}
-table{width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed;line-height:1.45}
+table{width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed;line-height:1.5}
 thead{display:table-header-group}
-th{background:#1E40AF;color:#fff;text-align:left;font-weight:700;padding:5px 6px;border:1px solid #1E3A8A;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-td{border:1px solid #CBD5E1;padding:4px 6px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
-td.n{text-align:center;color:#64748B;font-size:9px;width:34px}
+th{background:#1E40AF;color:#fff;text-align:left;font-weight:700;padding:7px 8px;border:1px solid #1E3A8A;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td{border:1px solid #CBD5E1;padding:6px 8px;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
+td.n{text-align:center;color:#64748B;font-size:10px}
 tr{page-break-inside:avoid}
 tr:nth-child(even) td{background:#F0F8FF}
 .ftr{margin-top:10px;padding-top:7px;border-top:1px solid #CBD5E1;font-size:9px;color:#64748B;text-align:center}
@@ -182,6 +196,7 @@ tr:nth-child(even) td{background:#F0F8FF}
 </style>
 </head>
 <body>
+<div class="pg">
 <div class="hdr">
   <p class="sys">${systemName}</p>
   <h1 class="ttl">${title}</h1>
@@ -193,10 +208,11 @@ tr:nth-child(even) td{background:#F0F8FF}
 </div>
 <table>
   <colgroup>${colGroup}</colgroup>
-  <thead><tr><th style="width:34px">#</th>${headerCells}</tr></thead>
+  <thead><tr><th style="width:${indexWidth}">${indexLabel}</th>${headerCells}</tr></thead>
   <tbody>${bodyRows || `<tr><td class="nd" colspan="${columns.length + 1}">${noDataLabel}</td></tr>`}</tbody>
 </table>
-<div class="ftr">${footerText}</div>
+<div class="ftr" style="${footerStyle}">${footerText}</div>
+</div>
 </body>
 </html>`;
 }
@@ -308,15 +324,32 @@ export function concatPdfParts(parts: Uint8Array[]) {
   return result;
 }
 
-export function buildPdfFromCanvas(canvas: HTMLCanvasElement) {
-  const pageWidth = 841.89;
-  const pageHeight = 595.28;
-  const margin = 30;
+// A4 landscape geometry (points; 1pt = 1/72in), shared by buildPdfFromCanvas and the
+// asset-report page-fill calculation so the two always stay consistent.
+export const PDF_PAGE_WIDTH_PT = 841.89;
+export const PDF_PAGE_HEIGHT_PT = 595.28;
+export const PDF_MARGIN_PT = 30; // ~10.6mm, within the requested 10–12mm range
+
+// The "CSS px" height that one full printed page's content area corresponds to when
+// the report HTML is rendered at `renderWidthPx` — used to make a short table's
+// footer sit at the bottom of the page instead of right under the table.
+export function getPdfPageContentHeightPx(renderWidthPx: number) {
+  const imageWidthPt = PDF_PAGE_WIDTH_PT - PDF_MARGIN_PT * 2;
+  const maxImageHeightPt = PDF_PAGE_HEIGHT_PT - PDF_MARGIN_PT * 2;
+  return Math.floor((maxImageHeightPt * renderWidthPx) / imageWidthPt);
+}
+
+export function buildPdfFromCanvas(canvas: HTMLCanvasElement, options?: { showPageNumbers?: boolean }) {
+  const pageWidth = PDF_PAGE_WIDTH_PT;
+  const pageHeight = PDF_PAGE_HEIGHT_PT;
+  const margin = PDF_MARGIN_PT;
   const imageWidthPt = pageWidth - margin * 2;
   const maxImageHeightPt = pageHeight - margin * 2;
   const sliceHeightPx = Math.floor((maxImageHeightPt * canvas.width) / imageWidthPt);
+  const totalPages = Math.max(1, Math.ceil(canvas.height / sliceHeightPx));
   const pages: Array<{ width: number; height: number; bytes: Uint8Array; imageHeightPt: number }> = [];
 
+  let pageIndex = 0;
   for (let sourceY = 0; sourceY < canvas.height; sourceY += sliceHeightPx) {
     const currentSliceHeight = Math.min(sliceHeightPx, canvas.height - sourceY);
     const sliceCanvas = document.createElement("canvas");
@@ -327,12 +360,23 @@ export function buildPdfFromCanvas(canvas: HTMLCanvasElement) {
     context.fillStyle = "#F5F7FA";
     context.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
     context.drawImage(canvas, 0, sourceY, canvas.width, currentSliceHeight, 0, 0, canvas.width, currentSliceHeight);
+    if (options?.showPageNumbers) {
+      // Baked into the raster (not a native PDF text object) so Thai glyphs render
+      // correctly without needing to embed a Thai-capable PDF font.
+      const label = `หน้า ${pageIndex + 1}/${totalPages}`;
+      context.font = "600 22px 'IBM Plex Sans Thai', Tahoma, sans-serif";
+      context.fillStyle = "#64748B";
+      context.textAlign = "right";
+      context.textBaseline = "bottom";
+      context.fillText(label, sliceCanvas.width - 40, sliceCanvas.height - 28);
+    }
     pages.push({
       width: sliceCanvas.width,
       height: sliceCanvas.height,
       bytes: dataUrlToBytes(sliceCanvas.toDataURL("image/jpeg", 0.92)),
       imageHeightPt: (currentSliceHeight * imageWidthPt) / canvas.width,
     });
+    pageIndex += 1;
   }
 
   const objectParts: Uint8Array[][] = [];
@@ -453,13 +497,19 @@ export async function exportDashboardToPDF() {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+const PDF_RENDER_WIDTH_PX = 1120;
+
 export async function exportAssetReport(format: ReportFormat, title: string, columns: ReportColumn[], rows: Array<Record<string, string | number>>, filterSummary: string, options?: { lang?: "th" | "en"; pdfFileName?: string }) {
   const safeName = title.replace(/\s+/g, "-");
-  const html = buildReportHtml(title, columns, rows, filterSummary, options?.lang ?? "th");
 
   if (format === "pdf") {
-    const canvas = await renderReportHtmlToCanvas(html);
-    const pdfBlob = buildPdfFromCanvas(canvas);
+    const html = buildReportHtml(title, columns, rows, filterSummary, options?.lang ?? "th", {
+      indexColumnLabel: "ลำดับ",
+      indexColumnWidth: "5%",
+      pageFillHeightPx: getPdfPageContentHeightPx(PDF_RENDER_WIDTH_PX),
+    });
+    const canvas = await renderReportHtmlToCanvas(html, PDF_RENDER_WIDTH_PX);
+    const pdfBlob = buildPdfFromCanvas(canvas, { showPageNumbers: true });
     const url = URL.createObjectURL(pdfBlob);
     const link = document.createElement("a");
     link.href = url;
@@ -470,6 +520,8 @@ export async function exportAssetReport(format: ReportFormat, title: string, col
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     return;
   }
+
+  const html = buildReportHtml(title, columns, rows, filterSummary, options?.lang ?? "th");
 
   if (format === "word") {
     downloadReportFile(`${safeName}.doc`, "application/msword;charset=utf-8", html);
