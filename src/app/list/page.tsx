@@ -288,7 +288,7 @@ function ListPage({
               <StatusBadge value={row.status} variant="soft" />
             </div>
             <dl className="mt-3 grid gap-2 text-sm">
-              <div><dt className="text-xs font-semibold text-muted">{t("col.numberType")}</dt><dd className="mt-1"><RegistrationTypeBadge registrationType={row.registrationType} /></dd></div>
+              <div><dt className="text-xs font-semibold text-muted">{t("col.numberType")}</dt><dd className="mt-1"><RegistrationTypeBadge registrationType={row.registrationType} truncate={false} /></dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.org")}</dt><dd className="mt-1 break-words text-ink">{row.organization}</dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.inspection")}</dt><dd className="mt-1"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></dd></div>
             </dl>
@@ -315,18 +315,24 @@ function ListPage({
       {/* Desktop table */}
       <div className="hidden w-full overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="w-full overflow-x-auto">
-          <table className="w-full min-w-[860px] table-fixed border-collapse text-left text-sm">
+          {/* No/Year/Number/NumberType/Status/Inspection/Image/Manage are fixed-px —
+              their content (badges, buttons, short numbers) doesn't need to grow with
+              viewport width, so giving them a % share made them balloon on wide screens
+              and left dead space after the action buttons. Name and Org are left with
+              no width so they split whatever's left (table-layout: fixed auto-columns
+              rule) and absorb all remaining space, however much or little there is. */}
+          <table className="w-full min-w-[960px] table-fixed border-collapse text-left text-sm">
             <colgroup>
-              <col className="w-[4%]" />
-              <col className="w-[5%]" />
-              <col className="w-[13%]" />
-              <col className="w-[8%]" />
-              <col className="w-[16%]" />
-              <col className="w-[12%]" />
-              <col className="w-[7%]" />
-              <col className="w-[9%]" />
-              <col className="w-[4%]" />
-              <col className="w-[22%]" />
+              <col className="w-[44px]" />
+              <col className="w-[52px]" />
+              <col className="w-[152px]" />
+              <col className="w-[122px]" />
+              <col />
+              <col />
+              <col className="w-[100px]" />
+              <col className="w-[108px]" />
+              <col className="w-[54px]" />
+              <col className="w-[182px]" />
             </colgroup>
             <thead className="bg-surfaceSoft text-ink">
               <tr>
@@ -343,7 +349,7 @@ function ListPage({
                   <td className="px-3 py-3 text-center text-muted">{(safePage - 1) * pageSize + index + 1}</td>
                   <td className="px-3 py-3 text-center">{row.fiscalYear}</td>
                   <td className="overflow-hidden px-3 py-3 font-semibold text-primary"><AssetNumberCell asset={row} /></td>
-                  <td className="overflow-hidden px-2 py-3 text-center"><div className="mx-auto max-w-full overflow-hidden"><RegistrationTypeBadge registrationType={row.registrationType} /></div></td>
+                  <td className="px-2 py-3 text-center"><div className="mx-auto w-fit"><RegistrationTypeBadge registrationType={row.registrationType} truncate={false} /></div></td>
                   <td className="overflow-hidden px-3 py-3 font-semibold text-ink" title={row.assetName}><div className="max-w-full truncate">{row.assetName}</div></td>
                   <td className="overflow-hidden px-3 py-3"><div className="max-w-full truncate" title={row.organization}>{row.organization}</div></td>
                   <td className="px-3 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>

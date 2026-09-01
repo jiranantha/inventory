@@ -132,8 +132,10 @@ export function getRegistrationTypeBadgeText(registrationType?: string): string 
 }
 
 // Compact badge showing which number(s) an asset uses (activity / university / both),
-// shared by /list and /audit so the two pages stay visually consistent.
-export function RegistrationTypeBadge({ registrationType }: { registrationType?: string }) {
+// shared by /list and /audit so the two pages stay visually consistent. `truncate`
+// defaults to true (audit's existing behavior); /list passes false so the badge text
+// is never cut off, relying on its column being sized wide enough instead.
+export function RegistrationTypeBadge({ registrationType, truncate = true }: { registrationType?: string; truncate?: boolean }) {
   const { lang } = useLanguage();
   const label = translateOption(getRegistrationTypeBadgeText(registrationType), lang);
   const colorClass =
@@ -145,7 +147,7 @@ export function RegistrationTypeBadge({ registrationType }: { registrationType?:
   return (
     <span
       title={label}
-      className={`inline-flex max-w-full items-center truncate whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold leading-5 ring-1 ${colorClass}`}
+      className={`inline-flex max-w-full items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold leading-5 ring-1 ${truncate ? "truncate" : ""} ${colorClass}`}
     >
       {label}
     </span>
