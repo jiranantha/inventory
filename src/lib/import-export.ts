@@ -96,21 +96,21 @@ export async function readAssetRowsFromFile(file: File): Promise<AssetImportRow[
   return dataRows.filter((row) => row.some(Boolean)).map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])));
 }
 
-function formatExportDateTh() {
+function formatExportDatePartsTh() {
   const now = new Date();
   const months = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
   const thaiYear = now.getFullYear() + 543;
   const hh = String(now.getHours()).padStart(2, "0");
   const mm = String(now.getMinutes()).padStart(2, "0");
-  return `${now.getDate()} ${months[now.getMonth()]} ${thaiYear} เวลา ${hh}:${mm} น.`;
+  return { date: `${now.getDate()} ${months[now.getMonth()]} ${thaiYear}`, time: `${hh}:${mm} น.` };
 }
 
-function formatExportDateEn() {
+function formatExportDatePartsEn() {
   const now = new Date();
   const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const hh = String(now.getHours()).padStart(2, "0");
   const mm = String(now.getMinutes()).padStart(2, "0");
-  return `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}, ${hh}:${mm}`;
+  return { date: `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`, time: `${hh}:${mm}` };
 }
 
 const COL_WIDTHS: Record<string, string> = {
@@ -138,14 +138,15 @@ export function buildReportHtml(
 ) {
   const isEn = lang === "en";
   const systemName    = isEn ? "Activity Inventory Management System" : "ระบบครุภัณฑ์กิจกรรม";
-  const exportedLabel = isEn ? "Exported on" : "วันที่ส่งออก";
+  const exportedLabel = isEn ? "Export date" : "วันที่ส่งออก";
+  const timeLabel     = isEn ? "Time" : "เวลา";
   const totalLabel    = isEn ? "Total records" : "จำนวนรายการ";
-  const filterLabel   = isEn ? "Filters" : "เงื่อนไขตัวกรอง";
+  const filterLabel   = isEn ? "Filter conditions" : "เงื่อนไขการกรอง";
   const allLabel      = isEn ? "All records" : "ข้อมูลทั้งหมด";
   const noDataLabel   = isEn ? "No records found for the selected filters." : "ไม่พบรายการตามเงื่อนไขที่เลือก";
   const footerText    = isEn ? "Activity Inventory Management System · Auto-generated report" : "ระบบครุภัณฑ์กิจกรรม · รายงานนี้สร้างจากระบบอัตโนมัติ";
   const unitLabel     = isEn ? "items" : "รายการ";
-  const exportDate    = isEn ? formatExportDateEn() : formatExportDateTh();
+  const dateParts     = isEn ? formatExportDatePartsEn() : formatExportDatePartsTh();
   const filterDisplay = filterSummary.trim() || allLabel;
   const indexLabel    = layout?.indexColumnLabel ?? "#";
   const indexWidth    = layout?.indexColumnWidth ?? "34px";
@@ -180,8 +181,11 @@ body{font-family:"Noto Sans Thai","TH Sarabun New",Tahoma,sans-serif;color:#0F17
 .hdr{margin-bottom:12px;padding-bottom:9px;border-bottom:2.5px solid #1E40AF}
 .sys{font-size:11px;font-weight:700;color:#1E40AF;margin:0 0 3px}
 .ttl{font-size:19px;font-weight:800;color:#0F172A;margin:0 0 8px;line-height:1.25}
-.meta{display:flex;flex-wrap:wrap;gap:5px 20px;font-size:10.5px}
-.mi{display:flex;gap:4px}
+.meta{border:1px solid #C7D9F0;border-radius:6px;background:#F5F9FF;padding:8px 12px}
+.meta-row1{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 10px;font-size:10.5px}
+.meta-row2{margin-top:6px;padding-top:6px;border-top:1px dashed #C7D9F0;font-size:10.5px;line-height:1.55;word-break:break-word;overflow-wrap:anywhere}
+.mi{display:flex;gap:4px;white-space:nowrap}
+.sep{color:#94A3B8}
 .ml{font-weight:700;color:#0F172A}
 .mv{color:#475569}
 table{width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed;line-height:1.5}
@@ -201,9 +205,14 @@ tr:nth-child(even) td{background:#F0F8FF}
   <p class="sys">${systemName}</p>
   <h1 class="ttl">${title}</h1>
   <div class="meta">
-    <div class="mi"><span class="ml">${exportedLabel}:</span><span class="mv">${exportDate}</span></div>
-    <div class="mi"><span class="ml">${totalLabel}:</span><span class="mv">${rows.length.toLocaleString("th-TH")} ${unitLabel}</span></div>
-    <div class="mi"><span class="ml">${filterLabel}:</span><span class="mv">${filterDisplay}</span></div>
+    <div class="meta-row1">
+      <span class="mi"><span class="ml">${exportedLabel}:</span><span class="mv">${dateParts.date}</span></span>
+      <span class="sep">|</span>
+      <span class="mi"><span class="ml">${timeLabel}:</span><span class="mv">${dateParts.time}</span></span>
+      <span class="sep">|</span>
+      <span class="mi"><span class="ml">${totalLabel}:</span><span class="mv">${rows.length.toLocaleString("th-TH")} ${unitLabel}</span></span>
+    </div>
+    <div class="meta-row2"><span class="ml">${filterLabel}:</span> <span class="mv">${filterDisplay}</span></div>
   </div>
 </div>
 <table>
