@@ -134,6 +134,47 @@ export const assetReportExportColumns: ReportColumn[] = [
   { key: "note", label: "หมายเหตุ" },
 ];
 
+// PDF report needs a shorter column set than Word/Excel so the table stays readable
+// on an A4 landscape page — see requirement to only export the columns visible on
+// /list, not every database field. Keys are prefixed to avoid colliding with
+// assetReportExportColumns' own COL_WIDTHS entries (e.g. "assetNumber").
+export const assetPdfReportColumns: ReportColumn[] = [
+  { key: "pdfFiscalYear", label: "ปีงบ" },
+  { key: "pdfAssetNumber", label: "หมายเลขครุภัณฑ์" },
+  { key: "pdfNumberType", label: "ประเภทเลข" },
+  { key: "pdfAssetName", label: "ชื่อครุภัณฑ์" },
+  { key: "pdfOrganization", label: "หน่วยงาน" },
+  { key: "pdfStatus", label: "สถานะ" },
+  { key: "pdfInspectionResult", label: "ผลการตรวจสอบ" },
+];
+
+function getPdfAssetNumberValue(asset: AssetListRow) {
+  const registrationType = asset.registrationType || "ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา";
+  const universityNumber = asset.universityAssetNumber?.trim() || "-";
+  if (registrationType === "ครุภัณฑ์มหาวิทยาลัย") return universityNumber;
+  if (registrationType === "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย") return `${asset.assetNumber} / เลข มช. ${universityNumber}`;
+  return asset.assetNumber;
+}
+
+function getPdfRegistrationTypeLabel(asset: AssetListRow) {
+  const registrationType = asset.registrationType || "ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา";
+  if (registrationType === "ครุภัณฑ์มหาวิทยาลัย") return "มหาวิทยาลัย";
+  if (registrationType === "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย") return "ทั้งสองเลข";
+  return "กิจกรรมนักศึกษา";
+}
+
+export function assetToPdfReportRow(asset: AssetListRow, inspected: boolean): Record<string, string | number> {
+  return {
+    pdfFiscalYear: asset.fiscalYear,
+    pdfAssetNumber: getPdfAssetNumberValue(asset),
+    pdfNumberType: getPdfRegistrationTypeLabel(asset),
+    pdfAssetName: asset.assetName,
+    pdfOrganization: asset.organization,
+    pdfStatus: asset.status,
+    pdfInspectionResult: inspected ? "ตรวจสอบแล้ว" : "ยังไม่ได้ตรวจ",
+  };
+}
+
 export const assetReportDisplayColumns: ReportColumn[] = [
   { key: "fiscalYear", label: "ปีงบประมาณ" },
   { key: "assetNumber", label: "หมายเลขครุภัณฑ์" },

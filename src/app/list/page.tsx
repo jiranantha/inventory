@@ -6,7 +6,7 @@ import { PlaceholderPage } from "@/components/StatusPages";
 import { useState, useMemo, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AssetNumberCell, FilterChip, InspectionResultBadge, MultiSelectFilter, PageHeader, RegistrationTypeBadge, SearchableMultiSelectFilter, StatusBadge, getRegistrationType } from "@/components/ui";
-import { assetReportExportColumns, assetToReportRow } from "@/lib/assets";
+import { assetPdfReportColumns, assetReportExportColumns, assetToPdfReportRow, assetToReportRow } from "@/lib/assets";
 import { exportAssetReport } from "@/lib/import-export";
 import { Permissions } from "@/lib/permissions";
 import { uniqueSorted } from "@/lib/utils";
@@ -19,6 +19,13 @@ import { registrationTypeOptions } from "@/constants/options";
 function parseMultiParam(param: string | null): string[] {
   if (!param) return [];
   return param.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+function buildAssetPdfFileName(selectedYears: string[]) {
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  const yearPart = selectedYears.length === 1 ? `_${selectedYears[0]}` : "";
+  return `รายงานครุภัณฑ์ทั้งหมด${yearPart}_${dateStr}.pdf`;
 }
 
 function ListPage({
@@ -144,8 +151,19 @@ function ListPage({
                             if (selectedYears.length > 0) fp.push(lang === "th" ? `ปีงบประมาณ: ${selectedYears.join(", ")}` : `Fiscal Year: ${selectedYears.join(", ")}`);
                             if (selectedUnits.length > 0) fp.push(lang === "th" ? `หน่วยงาน: ${selectedUnits.join(", ")}` : `Department: ${selectedUnits.join(", ")}`);
                             if (selectedStatuses.length > 0) fp.push(lang === "th" ? `สถานะ: ${selectedStatuses.map((v) => translateOption(v, lang)).join(", ")}` : `Status: ${selectedStatuses.map((v) => translateOption(v, lang)).join(", ")}`);
+                            if (selectedRegTypes.length > 0) fp.push(lang === "th" ? `ประเภทการขึ้นทะเบียน: ${selectedRegTypes.map((v) => translateOption(v, lang)).join(", ")}` : `Registration Type: ${selectedRegTypes.map((v) => translateOption(v, lang)).join(", ")}`);
                             const reportTitle = lang === "th" ? "รายงานครุภัณฑ์ทั้งหมด" : "All Asset Report";
-                            exportAssetReport(fmt, reportTitle, assetReportExportColumns, filteredRows.map(assetToReportRow), fp.join("  |  "), { lang });
+                            const isPdf = fmt === "pdf";
+                            const columns = isPdf ? assetPdfReportColumns : assetReportExportColumns;
+                            const exportRows = isPdf
+                              ? filteredRows.map((row) => assetToPdfReportRow(row, inspectedAssetIds.has(row.id)))
+                              : filteredRows.map(assetToReportRow);
+                            void exportAssetReport(fmt, reportTitle, columns, exportRows, fp.join("  |  "), {
+                              lang,
+                              pdfFileName: isPdf ? buildAssetPdfFileName(selectedYears) : undefined,
+                            }).catch(() => {
+                              window.alert(lang === "th" ? "ไม่สามารถส่งออกไฟล์ได้ กรุณาลองใหม่อีกครั้ง" : "Export failed. Please try again.");
+                            });
                             setExportOpen(false);
                           }}
                           className="w-full px-4 py-2.5 text-left text-xs font-semibold text-ink hover:bg-surfaceSoft"

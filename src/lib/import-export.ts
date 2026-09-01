@@ -120,6 +120,10 @@ const COL_WIDTHS: Record<string, string> = {
   numberPlacement: "88px", assetStructureLabel: "66px", price: "66px",
   organization: "118px", location: "84px", responsiblePerson: "88px",
   responsiblePhone: "76px", status: "66px", note: "96px",
+  // PDF-only reduced column set (see assetPdfReportColumns) — sized to fit an A4
+  // landscape page without the wide fields Word/Excel exports still include.
+  pdfFiscalYear: "60px", pdfAssetNumber: "170px", pdfNumberType: "110px",
+  pdfAssetName: "230px", pdfOrganization: "170px", pdfStatus: "80px", pdfInspectionResult: "130px",
 };
 
 export function buildReportHtml(
@@ -132,7 +136,7 @@ export function buildReportHtml(
   const isEn = lang === "en";
   const systemName    = isEn ? "Activity Inventory Management System" : "ระบบครุภัณฑ์กิจกรรม";
   const exportedLabel = isEn ? "Exported on" : "วันที่ส่งออก";
-  const totalLabel    = isEn ? "Total records" : "จำนวนข้อมูลทั้งหมด";
+  const totalLabel    = isEn ? "Total records" : "จำนวนรายการ";
   const filterLabel   = isEn ? "Filters" : "เงื่อนไขตัวกรอง";
   const allLabel      = isEn ? "All records" : "ข้อมูลทั้งหมด";
   const noDataLabel   = isEn ? "No records found for the selected filters." : "ไม่พบรายการตามเงื่อนไขที่เลือก";
@@ -373,6 +377,67 @@ export function buildPdfFromCanvas(canvas: HTMLCanvasElement) {
   return new Blob([concatPdfParts(parts)], { type: "application/pdf" });
 }
 
+// Renders a full standalone HTML document (as produced by buildReportHtml, complete
+// with its own <style> block) into a canvas via a hidden, attached iframe — an iframe
+// is required (rather than a detached DOMParser document) because layout/scroll
+// measurements only exist for documents that are actually part of the render tree.
+export async function renderReportHtmlToCanvas(html: string, widthPx = 1120) {
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.position = "fixed";
+  iframe.style.left = "-10000px";
+  iframe.style.top = "0";
+  iframe.style.width = `${widthPx}px`;
+  iframe.style.height = "0px";
+  iframe.style.border = "0";
+  document.body.appendChild(iframe);
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      iframe.addEventListener("load", () => resolve(), { once: true });
+      iframe.addEventListener("error", () => reject(new Error("ไม่สามารถเตรียมเอกสารสำหรับ Export PDF ได้")), { once: true });
+      iframe.srcdoc = html;
+    });
+
+    const doc = iframe.contentDocument;
+    if (!doc) throw new Error("ไม่สามารถเตรียมเอกสารสำหรับ Export PDF ได้");
+    await doc.fonts?.ready;
+
+    const heightPx = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight, 1);
+    const styleText = Array.from(doc.querySelectorAll("style")).map((el) => el.textContent ?? "").join("\n");
+    // foreignObject requires well-formed XML; innerHTML's HTML-serialized void
+    // elements (e.g. <col> from the report's <colgroup>) aren't self-closed and
+    // break the SVG parse. XMLSerializer always closes them correctly.
+    const bodyHtml = new XMLSerializer().serializeToString(doc.body).replace(/^<body[^>]*>/, "").replace(/<\/body>$/, "");
+
+    const wrapped = `
+      <div xmlns="http://www.w3.org/1999/xhtml" style="box-sizing:border-box;width:${widthPx}px;min-height:${heightPx}px;background:#FFFFFF;">
+        <style>${styleText}</style>
+        ${bodyHtml}
+      </div>
+    `;
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${widthPx}" height="${heightPx}">
+        <foreignObject width="100%" height="100%">${wrapped}</foreignObject>
+      </svg>
+    `;
+    const image = await loadImageFromSource(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
+    const scale = 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = widthPx * scale;
+    canvas.height = heightPx * scale;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("ไม่สามารถเตรียม Canvas สำหรับ Export ได้");
+    context.scale(scale, scale);
+    context.fillStyle = "#FFFFFF";
+    context.fillRect(0, 0, widthPx, heightPx);
+    context.drawImage(image, 0, 0);
+    return canvas;
+  } finally {
+    iframe.remove();
+  }
+}
+
 export async function exportDashboardToPDF() {
   const element = document.getElementById("dashboard-export-area");
   if (!element) throw new Error("ไม่พบพื้นที่ Dashboard สำหรับส่งออก");
@@ -388,17 +453,21 @@ export async function exportDashboardToPDF() {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function exportAssetReport(format: ReportFormat, title: string, columns: ReportColumn[], rows: Array<Record<string, string | number>>, filterSummary: string, options?: { lang?: "th" | "en" }) {
+export async function exportAssetReport(format: ReportFormat, title: string, columns: ReportColumn[], rows: Array<Record<string, string | number>>, filterSummary: string, options?: { lang?: "th" | "en"; pdfFileName?: string }) {
   const safeName = title.replace(/\s+/g, "-");
   const html = buildReportHtml(title, columns, rows, filterSummary, options?.lang ?? "th");
 
   if (format === "pdf") {
-    const reportWindow = window.open("", "_blank", "width=1200,height=800");
-    if (!reportWindow) return;
-    reportWindow.document.write(html);
-    reportWindow.document.close();
-    reportWindow.focus();
-    window.setTimeout(() => reportWindow.print(), 400);
+    const canvas = await renderReportHtmlToCanvas(html);
+    const pdfBlob = buildPdfFromCanvas(canvas);
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = options?.pdfFileName ?? `${safeName}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     return;
   }
 
