@@ -315,23 +315,23 @@ function ListPage({
       {/* Desktop table */}
       <div className="hidden w-full overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="w-full overflow-x-auto">
-          <table className="w-full min-w-[1150px] table-fixed border-collapse text-left text-sm xl:min-w-0">
+          <table className="w-full min-w-[860px] table-fixed border-collapse text-left text-sm">
             <colgroup>
-              <col className="w-[44px]" />
-              <col className="w-[64px]" />
-              <col className="w-[160px]" />
-              <col className="w-[116px]" />
-              <col className="w-[220px]" />
-              <col className="w-[165px]" />
-              <col className="w-[104px]" />
-              <col className="w-[132px]" />
-              <col className="w-[54px]" />
-              <col className="w-[240px]" />
+              <col className="w-[4%]" />
+              <col className="w-[5%]" />
+              <col className="w-[13%]" />
+              <col className="w-[8%]" />
+              <col className="w-[16%]" />
+              <col className="w-[12%]" />
+              <col className="w-[7%]" />
+              <col className="w-[9%]" />
+              <col className="w-[4%]" />
+              <col className="w-[22%]" />
             </colgroup>
             <thead className="bg-surfaceSoft text-ink">
               <tr>
                 {tableHeadings.map((heading) => (
-                  <th key={heading} className={`border-b border-line px-4 py-2.5 font-semibold ${centeredHeadings.has(heading) ? "text-center" : ""}`}>
+                  <th key={heading} className={`border-b border-line px-3 py-2.5 font-semibold ${centeredHeadings.has(heading) ? "text-center" : ""}`}>
                     {heading}
                   </th>
                 ))}
@@ -342,10 +342,10 @@ function ListPage({
                 <tr key={row.assetCode} className="align-middle hover:bg-surfaceSoft">
                   <td className="px-3 py-3 text-center text-muted">{(safePage - 1) * pageSize + index + 1}</td>
                   <td className="px-3 py-3 text-center">{row.fiscalYear}</td>
-                  <td className="overflow-hidden px-4 py-3 font-semibold text-primary"><AssetNumberCell asset={row} /></td>
-                  <td className="overflow-hidden px-3 py-3 text-center"><div className="mx-auto max-w-full overflow-hidden"><RegistrationTypeBadge registrationType={row.registrationType} /></div></td>
-                  <td className="overflow-hidden px-4 py-3 font-semibold text-ink" title={row.assetName}><div className="max-w-full truncate">{row.assetName}</div></td>
-                  <td className="overflow-hidden px-4 py-3"><div className="max-w-full truncate" title={row.organization}>{row.organization}</div></td>
+                  <td className="overflow-hidden px-3 py-3 font-semibold text-primary"><AssetNumberCell asset={row} /></td>
+                  <td className="overflow-hidden px-2 py-3 text-center"><div className="mx-auto max-w-full overflow-hidden"><RegistrationTypeBadge registrationType={row.registrationType} /></div></td>
+                  <td className="overflow-hidden px-3 py-3 font-semibold text-ink" title={row.assetName}><div className="max-w-full truncate">{row.assetName}</div></td>
+                  <td className="overflow-hidden px-3 py-3"><div className="max-w-full truncate" title={row.organization}>{row.organization}</div></td>
                   <td className="px-3 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
                   <td className="px-3 py-3 text-center"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></td>
                   <td className="px-3 py-3 text-center">
