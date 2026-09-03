@@ -89,31 +89,31 @@ function MasterDataPanel({ title, description, items, onChange, addLabel, search
     <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-6">
       <h2 className="text-xl font-bold text-ink">{title}</h2>
       <p className="mt-2 text-sm text-muted">{description}</p>
-      <div className="relative mt-5">
-        <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <path d="m14 14 3.5 3.5M8.5 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={searchPlaceholder}
-          className="min-h-11 w-full rounded-lg border border-lineStrong bg-surface py-2 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
-        />
-        {search.trim() && (
-          <button
-            type="button"
-            onClick={() => setSearch("")}
-            className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-sm font-bold text-muted hover:text-ink"
-            aria-label="ล้างคำค้นหา"
-          >
-            x
-          </button>
-        )}
-      </div>
-      <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-        <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={addLabel} className="min-h-11 flex-1 rounded-lg border border-lineStrong bg-surface px-4 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-primary" />
-        <button type="button" onClick={save} className="min-h-11 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white hover:bg-primary-hover">{editingId === null ? "เพิ่มรายการ" : "บันทึก"}</button>
-        {editingId !== null && <button type="button" onClick={() => { setEditingId(null); setDraft(""); }} className="min-h-11 rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink">ยกเลิก</button>}
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="relative sm:flex-[1_1_45%]">
+          <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="m14 14 3.5 3.5M8.5 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={searchPlaceholder}
+            className="min-h-11 w-full rounded-lg border border-lineStrong bg-surface py-2 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
+          />
+          {search.trim() && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-sm font-bold text-muted hover:text-ink"
+              aria-label="ล้างคำค้นหา"
+            >
+              x
+            </button>
+          )}
+        </div>
+        <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={addLabel} className="min-h-11 rounded-lg border border-lineStrong bg-surface px-4 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-primary sm:flex-[1_1_40%]" />
+        <button type="button" onClick={save} className="min-h-11 shrink-0 whitespace-nowrap rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white hover:bg-primary-hover">{editingId === null ? "เพิ่มรายการ" : "บันทึก"}</button>
+        {editingId !== null && <button type="button" onClick={() => { setEditingId(null); setDraft(""); }} className="min-h-11 shrink-0 whitespace-nowrap rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink">ยกเลิก</button>}
       </div>
       <div className="mt-5 divide-y divide-line overflow-hidden rounded-lg border border-line">
         {visibleItems.length === 0 && search.trim() && (
