@@ -326,13 +326,16 @@ export function createAssetFromImportRow(row: AssetImportRow, index: number): As
 // leaves the dropdown blank (its placeholder option) to mean "unused". Labels
 // here match the /record add-asset form's field labels exactly (src/lib/i18n.ts
 // rec.label.* / rec.modal.numberLocation), per that page being the source of
-// truth for field naming. Order here drives the mapping UI.
-export const ADMIN_IMPORT_FIELD_DEFINITIONS: { key: AdminImportFieldKey; label: string }[] = [
+// truth for field naming. `required` drives the mapping UI's two sections —
+// required fields render up front, everything else sits in a collapsible
+// "เพิ่มเติม" section so the page isn't overwhelming with dropdowns. Order
+// within each group is the order the mapping UI renders them in.
+export const ADMIN_IMPORT_FIELD_DEFINITIONS: { key: AdminImportFieldKey; label: string; required?: boolean }[] = [
+  { key: "assetName", label: "ชื่อรายการครุภัณฑ์", required: true },
+  { key: "assetNumber", label: "เลขทะเบียนควบคุมกิจกรรมนักศึกษา", required: true },
+  { key: "universityAssetNumber", label: "เลขครุภัณฑ์มหาวิทยาลัย", required: true },
   { key: "registrationType", label: "ประเภทการลงทะเบียนครุภัณฑ์" },
-  { key: "assetNumber", label: "เลขทะเบียนควบคุมกิจกรรมนักศึกษา" },
-  { key: "universityAssetNumber", label: "เลขครุภัณฑ์มหาวิทยาลัย" },
   { key: "numberPlacement", label: "ระบุตำแหน่งที่ประทับหมายเลขครุภัณฑ์" },
-  { key: "assetName", label: "ชื่อรายการครุภัณฑ์" },
   { key: "assetStructureType", label: "ลักษณะครุภัณฑ์" },
   { key: "assetType", label: "ประเภทครุภัณฑ์" },
   { key: "assetDescription", label: "ข้อมูลจำเพาะ / คุณลักษณะของครุภัณฑ์" },

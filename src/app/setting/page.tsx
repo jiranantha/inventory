@@ -141,6 +141,12 @@ const IMPORT_STATUS_BADGE_CLASS: Record<AdminAssetImportRow["statusKind"], strin
   invalid: "border-red-300/40 bg-red-400/10 text-red-200",
 };
 
+// Split once, outside the component, since ADMIN_IMPORT_FIELD_DEFINITIONS is a
+// static module-level list — required fields render up front, the rest sit in
+// a collapsible "เพิ่มเติม" section so the mapping UI isn't overwhelming.
+const requiredImportFields = ADMIN_IMPORT_FIELD_DEFINITIONS.filter((field) => field.required);
+const optionalImportFields = ADMIN_IMPORT_FIELD_DEFINITIONS.filter((field) => !field.required);
+
 function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; onImportAssets: (rows: AssetListRow[]) => Promise<AssetImportInsertSummary> }) {
   const { showToast } = useAppData();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -153,6 +159,7 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
   const [previewRows, setPreviewRows] = useState<AdminAssetImportRow[] | null>(null);
   const [checkError, setCheckError] = useState("");
   const [mappingError, setMappingError] = useState("");
+  const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [checking, setChecking] = useState(false);
   const [importing, setImporting] = useState(false);
   const [insertSummary, setInsertSummary] = useState<AssetImportInsertSummary | null>(null);
@@ -168,6 +175,7 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
     setPreviewRows(null);
     setCheckError("");
     setMappingError("");
+    setShowOptionalFields(false);
     setInsertSummary(null);
   };
 
@@ -227,8 +235,12 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
 
   const handleShowPreview = () => {
     if (!activeSheet) return;
-    if (!mapping.assetName || (!mapping.assetNumber && !mapping.universityAssetNumber)) {
-      setMappingError("กรุณาจับคู่คอลัมน์ที่จำเป็นก่อนแสดงตัวอย่างข้อมูล");
+    if (!mapping.assetName) {
+      setMappingError("กรุณาจับคู่คอลัมน์ชื่อรายการครุภัณฑ์ก่อนแสดงตัวอย่างข้อมูล");
+      return;
+    }
+    if (!mapping.assetNumber && !mapping.universityAssetNumber) {
+      setMappingError("กรุณาจับคู่เลขครุภัณฑ์อย่างน้อย 1 ประเภท");
       return;
     }
     setMappingError("");
@@ -325,9 +337,6 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
           <p className="mt-2 rounded-md border border-sky-300/30 bg-sky-400/10 px-3 py-2 text-sm font-semibold text-sky-100">
             กรุณาจับคู่คอลัมน์จากไฟล์ Excel กับข้อมูลในระบบก่อนนำเข้า
           </p>
-          <p className="mt-2 text-xs text-muted">
-            ช่องที่มีเครื่องหมาย <span className="text-red-300">*</span> จำเป็นต้องจับคู่: ชื่อรายการครุภัณฑ์ และเลขครุภัณฑ์อย่างน้อยหนึ่งอย่าง (เลขทะเบียนควบคุมกิจกรรมนักศึกษา หรือ เลขครุภัณฑ์มหาวิทยาลัย) — ช่องอื่นเว้นว่างได้หากไม่มีในไฟล์
-          </p>
 
           {workbook.sheets.length > 1 && (
             <label className="mt-4 block sm:w-72">
@@ -369,28 +378,66 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {ADMIN_IMPORT_FIELD_DEFINITIONS.map((field) => (
-              <label key={field.key} className="block">
-                <span className="text-sm font-semibold text-ink">
-                  {field.label}
-                  {(field.key === "assetName" || field.key === "assetNumber" || field.key === "universityAssetNumber") && <span className="text-red-300"> *</span>}
-                </span>
-                <select
-                  value={mapping[field.key] ?? ""}
-                  onChange={(event) => handleMappingChange(field.key, event.target.value)}
-                  className="mt-2 min-h-11 w-full rounded-lg border border-lineStrong bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
-                >
-                  <option value="">เลือกคอลัมน์จาก Excel</option>
-                  {activeSheet.columns.map((column) => (
-                    <option key={column.id} value={column.id}>{column.label}</option>
-                  ))}
-                </select>
-              </label>
-            ))}
+          <div className="mt-5">
+            <h4 className="text-sm font-bold text-ink">ฟิลด์ที่จำเป็น</h4>
+            <p className="mt-1 text-xs text-muted">
+              ต้องจับคู่ &quot;ชื่อรายการครุภัณฑ์&quot; และเลขครุภัณฑ์อย่างน้อย 1 ประเภท (เลขทะเบียนควบคุมกิจกรรมนักศึกษา หรือ เลขครุภัณฑ์มหาวิทยาลัย)
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {requiredImportFields.map((field) => (
+                <label key={field.key} className="block">
+                  <span className="text-sm font-semibold text-ink">
+                    {field.label}
+                    <span className="text-red-300"> *</span>
+                  </span>
+                  <select
+                    value={mapping[field.key] ?? ""}
+                    onChange={(event) => handleMappingChange(field.key, event.target.value)}
+                    className="mt-2 min-h-11 w-full rounded-lg border border-lineStrong bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+                  >
+                    <option value="">เลือกคอลัมน์จาก Excel</option>
+                    {activeSheet.columns.map((column) => (
+                      <option key={column.id} value={column.id}>{column.label}</option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
           </div>
 
           {mappingError && <p className="mt-4 rounded-md border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm font-semibold text-amber-100">{mappingError}</p>}
+
+          <div className="mt-5 border-t border-line pt-4">
+            <button
+              type="button"
+              onClick={() => setShowOptionalFields((value) => !value)}
+              className="text-sm font-semibold text-primary hover:underline"
+            >
+              {showOptionalFields ? "ซ่อนตัวเลือกเพิ่มเติม" : "แสดงตัวเลือกเพิ่มเติม"}
+            </button>
+            {showOptionalFields && (
+              <div className="mt-4">
+                <p className="text-xs text-muted">ฟิลด์เพิ่มเติมเป็นทางเลือก เว้นว่างได้หากไม่มีคอลัมน์นี้ในไฟล์ ระบบจะใช้ค่าเริ่มต้นให้อัตโนมัติ</p>
+                <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {optionalImportFields.map((field) => (
+                    <label key={field.key} className="block">
+                      <span className="text-sm font-semibold text-ink">{field.label}</span>
+                      <select
+                        value={mapping[field.key] ?? ""}
+                        onChange={(event) => handleMappingChange(field.key, event.target.value)}
+                        className="mt-2 min-h-11 w-full rounded-lg border border-lineStrong bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+                      >
+                        <option value="">เลือกคอลัมน์จาก Excel</option>
+                        {activeSheet.columns.map((column) => (
+                          <option key={column.id} value={column.id}>{column.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="mt-5 flex justify-end border-t border-line pt-4">
             <button
