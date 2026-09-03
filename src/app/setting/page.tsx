@@ -5,10 +5,10 @@ import { CloseIconButton, DetailInfoItem, Field, SelectField } from "@/component
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 import { AppUser, Permissions, RoleDefinition, UserRole, getPermissionLabel, getRoleDefinition, noPermissions } from "@/lib/permissions";
-import { ADMIN_IMPORT_TEMPLATE_COLUMNS, buildAdminAssetImportPreview, findAssetNameHeader, getLatestAssetSequenceForYear, summarizeAdminAssetImport } from "@/lib/assets";
-import { downloadReportFile, readAssetRowsFromFile } from "@/lib/import-export";
+import { ADMIN_IMPORT_FIELD_DEFINITIONS, ADMIN_IMPORT_TEMPLATE_COLUMNS, buildAdminAssetImportPreview, getLatestAssetSequenceForYear, guessColumnMapping, summarizeAdminAssetImport } from "@/lib/assets";
+import { downloadReportFile, readExcelWorkbookForMapping } from "@/lib/import-export";
 import { uniqueSorted } from "@/lib/utils";
-import { AdminAssetImportRow, AssetImportInsertSummary, AssetListRow, MasterDataItem } from "@/types";
+import { AdminAssetImportRow, AdminImportColumnMapping, AssetImportInsertSummary, AssetListRow, DetectedExcelWorkbook, MasterDataItem } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 function ActiveToggle({ checked, onChange, disabled, ariaLabel }: {
@@ -141,30 +141,41 @@ const IMPORT_STATUS_BADGE_CLASS: Record<AdminAssetImportRow["statusKind"], strin
   invalid: "border-red-300/40 bg-red-400/10 text-red-200",
 };
 
+const NO_COLUMN_VALUE = "__none__";
+
 function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; onImportAssets: (rows: AssetListRow[]) => Promise<AssetImportInsertSummary> }) {
   const { showToast } = useAppData();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentThaiYear = new Date().getFullYear() + 543;
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [defaultFiscalYear, setDefaultFiscalYear] = useState(String(currentThaiYear));
+  const [workbook, setWorkbook] = useState<DetectedExcelWorkbook | null>(null);
+  const [sheetIndex, setSheetIndex] = useState(0);
+  const [mapping, setMapping] = useState<AdminImportColumnMapping>({});
   const [previewRows, setPreviewRows] = useState<AdminAssetImportRow[] | null>(null);
   const [checkError, setCheckError] = useState("");
+  const [mappingError, setMappingError] = useState("");
   const [checking, setChecking] = useState(false);
   const [importing, setImporting] = useState(false);
   const [insertSummary, setInsertSummary] = useState<AssetImportInsertSummary | null>(null);
 
+  const activeSheet = workbook?.sheets[sheetIndex] ?? null;
   const previewSummary = useMemo(() => (previewRows ? summarizeAdminAssetImport(previewRows) : null), [previewRows]);
   const readyRows = useMemo(() => previewRows?.filter((row) => row.statusKind === "ready" && row.asset) ?? [], [previewRows]);
 
-  const resetPreview = () => {
+  const resetAll = () => {
+    setWorkbook(null);
+    setSheetIndex(0);
+    setMapping({});
     setPreviewRows(null);
     setCheckError("");
+    setMappingError("");
     setInsertSummary(null);
   };
 
   const handleFileChange = (file: File | null) => {
     setSelectedFile(file);
-    resetPreview();
+    resetAll();
   };
 
   const handleCheckFile = async () => {
@@ -182,21 +193,48 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
       return;
     }
     setChecking(true);
-    resetPreview();
+    resetAll();
     try {
-      const rows = await readAssetRowsFromFile(selectedFile);
-      const headers = Object.keys(rows[0] ?? {});
-      if (!findAssetNameHeader(headers)) {
-        setCheckError("ไม่พบคอลัมน์ที่ใช้เป็นชื่อครุภัณฑ์ กรุณาตรวจสอบว่ามีคอลัมน์ เช่น รายการ, ชื่อครุภัณฑ์ หรือ ชื่อรายการครุภัณฑ์");
+      const parsed = await readExcelWorkbookForMapping(selectedFile);
+      if (!parsed.sheets.length || parsed.sheets.every((sheet) => sheet.rows.length === 0)) {
+        setCheckError("ไม่พบข้อมูลในไฟล์ Excel กรุณาตรวจสอบไฟล์อีกครั้ง");
         return;
       }
-      const preview = buildAdminAssetImportPreview(rows, assets, defaultFiscalYear);
-      setPreviewRows(preview);
+      setWorkbook(parsed);
+      setSheetIndex(0);
+      setMapping(guessColumnMapping(parsed.sheets[0].columns));
     } catch (error) {
       setCheckError(error instanceof Error ? error.message : "ไม่สามารถอ่านไฟล์ Excel ได้");
     } finally {
       setChecking(false);
     }
+  };
+
+  const handleSheetChange = (index: number) => {
+    setSheetIndex(index);
+    setMapping(guessColumnMapping(workbook?.sheets[index]?.columns ?? []));
+    setPreviewRows(null);
+    setMappingError("");
+    setInsertSummary(null);
+  };
+
+  const handleMappingChange = (field: (typeof ADMIN_IMPORT_FIELD_DEFINITIONS)[number]["key"], columnId: string) => {
+    setMapping((current) => ({ ...current, [field]: columnId === NO_COLUMN_VALUE ? null : columnId }));
+    setPreviewRows(null);
+    setMappingError("");
+    setInsertSummary(null);
+  };
+
+  const handleShowPreview = () => {
+    if (!activeSheet) return;
+    if (!mapping.assetName || (!mapping.assetNumber && !mapping.universityAssetNumber)) {
+      setMappingError("กรุณาจับคู่คอลัมน์อย่างน้อย \"ชื่อครุภัณฑ์\" และหมายเลขครุภัณฑ์อย่างใดอย่างหนึ่ง (กิจกรรมนักศึกษา หรือ มหาวิทยาลัย) ก่อนแสดงตัวอย่าง");
+      return;
+    }
+    setMappingError("");
+    const preview = buildAdminAssetImportPreview(activeSheet.rows, mapping, assets, defaultFiscalYear);
+    setPreviewRows(preview);
+    setInsertSummary(null);
   };
 
   const handleConfirmImport = async () => {
@@ -207,6 +245,7 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
       setInsertSummary(summary);
       setPreviewRows(null);
       setSelectedFile(null);
+      resetAll();
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       showToast(error instanceof Error ? error.message : "นำเข้าข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
@@ -235,10 +274,11 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
         <h3 className="text-base font-bold text-ink">คำแนะนำการนำเข้า</h3>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-muted">
           <li>รองรับเฉพาะไฟล์ .xlsx และ .xls เท่านั้น</li>
-          <li>ระบบรองรับชื่อคอลัมน์ได้หลายรูปแบบ เช่น รายการ, ชื่อครุภัณฑ์ หรือ ชื่อรายการครุภัณฑ์</li>
-          <li>แต่ละแถวต้องมีหมายเลขครุภัณฑ์ หรือเลขครุภัณฑ์มหาวิทยาลัย อย่างน้อยหนึ่งอย่าง ระบบจะกำหนดประเภทการขึ้นทะเบียนให้อัตโนมัติ</li>
-          <li>หากไม่ระบุปีงบประมาณในไฟล์ ระบบจะใช้ปีงบประมาณเริ่มต้นที่กำหนดไว้ด้านล่าง</li>
+          <li>ระบบไม่บังคับชื่อคอลัมน์ในไฟล์ Excel ผู้ดูแลระบบสามารถเลือกจับคู่คอลัมน์จากไฟล์กับข้อมูลในระบบก่อนนำเข้าได้</li>
+          <li>แต่ละแถวต้องจับคู่ชื่อครุภัณฑ์ และหมายเลขครุภัณฑ์อย่างน้อยหนึ่งอย่าง (กิจกรรมนักศึกษา หรือ มหาวิทยาลัย) ระบบจะกำหนดประเภทการขึ้นทะเบียนให้อัตโนมัติ</li>
+          <li>หากไม่จับคู่คอลัมน์ปีงบประมาณ ระบบจะใช้ปีงบประมาณเริ่มต้นที่กำหนดไว้ด้านล่าง</li>
           <li>ข้อมูลที่ซ้ำกับระบบ หรือข้อมูลไม่ครบ/ผิดรูปแบบ จะไม่ถูกนำเข้า</li>
+          <li className="font-semibold text-ink">กรุณาตรวจสอบตัวอย่างข้อมูลก่อนกดยืนยันนำเข้า เพราะข้อมูลจะถูกเพิ่มเข้าสู่ฐานข้อมูลจริง</li>
         </ul>
         <button type="button" onClick={handleDownloadTemplate} className="mt-4 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">
           ดาวน์โหลดแบบฟอร์ม Excel
@@ -259,7 +299,7 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
             />
           </label>
           <label className="block sm:w-48">
-            <span className="text-sm font-semibold text-ink">ปีงบประมาณเริ่มต้น (ถ้าไม่มีในไฟล์)</span>
+            <span className="text-sm font-semibold text-ink">ปีงบประมาณเริ่มต้น (ถ้าไม่จับคู่คอลัมน์)</span>
             <input
               value={defaultFiscalYear}
               onChange={(event) => setDefaultFiscalYear(event.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
@@ -278,6 +318,87 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
         </div>
         {checkError && <p className="mt-3 rounded-md border border-red-400/30 bg-red-400/10 px-3 py-2 text-sm font-semibold text-red-200">{checkError}</p>}
       </div>
+
+      {workbook && activeSheet && (
+        <div className="rounded-lg border border-line bg-surface p-6">
+          <h3 className="text-base font-bold text-ink">จับคู่คอลัมน์จากไฟล์ Excel</h3>
+          <p className="mt-2 rounded-md border border-sky-300/30 bg-sky-400/10 px-3 py-2 text-sm font-semibold text-sky-100">
+            กรุณาจับคู่คอลัมน์จากไฟล์ Excel กับข้อมูลในระบบก่อนนำเข้า
+          </p>
+
+          {workbook.sheets.length > 1 && (
+            <label className="mt-4 block sm:w-72">
+              <span className="text-sm font-semibold text-ink">เลือกชีตข้อมูล</span>
+              <select
+                value={sheetIndex}
+                onChange={(event) => handleSheetChange(Number(event.target.value))}
+                className="mt-2 min-h-11 w-full rounded-lg border border-lineStrong bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+              >
+                {workbook.sheets.map((sheet, index) => (
+                  <option key={sheet.name + index} value={index}>{sheet.name} ({sheet.rows.length} แถว)</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <div className="mt-4">
+            <p className="text-sm font-semibold text-ink">ตัวอย่างข้อมูลดิบจากไฟล์</p>
+            <div className="mt-2 max-h-56 overflow-auto rounded-lg border border-line">
+              <table className="w-full min-w-[800px] border-collapse text-left text-xs">
+                <thead className="sticky top-0 bg-surfaceSoft text-ink">
+                  <tr>
+                    {activeSheet.columns.map((column) => (
+                      <th key={column.id} className="border-b border-line px-3 py-2 font-semibold">{column.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
+                  {activeSheet.rows.slice(0, 5).map((row, index) => (
+                    <tr key={index}>
+                      {activeSheet.columns.map((column) => (
+                        <td key={column.id} className="px-3 py-2" title={row[column.id]}>{row[column.id] || "-"}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {ADMIN_IMPORT_FIELD_DEFINITIONS.map((field) => (
+              <label key={field.key} className="block">
+                <span className="text-sm font-semibold text-ink">
+                  {field.label}
+                  {(field.key === "assetName") && <span className="text-red-300"> *</span>}
+                </span>
+                <select
+                  value={mapping[field.key] ?? NO_COLUMN_VALUE}
+                  onChange={(event) => handleMappingChange(field.key, event.target.value)}
+                  className="mt-2 min-h-11 w-full rounded-lg border border-lineStrong bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+                >
+                  <option value={NO_COLUMN_VALUE}>ไม่ใช้คอลัมน์นี้</option>
+                  {activeSheet.columns.map((column) => (
+                    <option key={column.id} value={column.id}>{column.label}</option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+
+          {mappingError && <p className="mt-4 rounded-md border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm font-semibold text-amber-100">{mappingError}</p>}
+
+          <div className="mt-5 flex justify-end border-t border-line pt-4">
+            <button
+              type="button"
+              onClick={handleShowPreview}
+              className="min-h-11 rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-white hover:bg-primary-hover"
+            >
+              แสดงตัวอย่างข้อมูล
+            </button>
+          </div>
+        </div>
+      )}
 
       {previewSummary && (
         <div className="rounded-lg border border-line bg-surface p-6">
@@ -317,7 +438,7 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
             <table className="w-full min-w-[1200px] border-collapse text-left text-xs">
               <thead className="sticky top-0 bg-surfaceSoft text-ink">
                 <tr>
-                  {["ลำดับ", "ปีงบประมาณ", "หมายเลขครุภัณฑ์", "เลขครุภัณฑ์มหาวิทยาลัย", "ประเภทการขึ้นทะเบียน", "ชื่อรายการครุภัณฑ์", "ลักษณะครุภัณฑ์", "ประเภทครุภัณฑ์", "หน่วยงาน", "สถานที่จัดเก็บ", "สถานะ", "ผลการตรวจสอบ", "หมายเหตุ", "สถานะการตรวจสอบข้อมูล"].map((label) => (
+                  {["ลำดับ", "ปีงบประมาณ", "หมายเลขครุภัณฑ์กิจกรรมนักศึกษา", "เลขครุภัณฑ์มหาวิทยาลัย", "ประเภทการขึ้นทะเบียน", "ชื่อครุภัณฑ์", "ลักษณะครุภัณฑ์", "ประเภทครุภัณฑ์", "หน่วยงาน", "สถานที่จัดเก็บ", "สถานะ", "หมายเหตุ", "ผลการตรวจสอบแถว"].map((label) => (
                     <th key={label} className="border-b border-line px-3 py-2 font-semibold">{label}</th>
                   ))}
                 </tr>
@@ -336,7 +457,6 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
                     <td className="px-3 py-2" title={row.organization}>{row.organization}</td>
                     <td className="px-3 py-2">{row.location}</td>
                     <td className="px-3 py-2">{row.status}</td>
-                    <td className="px-3 py-2">{row.inspectionResult}</td>
                     <td className="px-3 py-2" title={row.note}>{row.note}</td>
                     <td className="px-3 py-2">
                       <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-bold ${IMPORT_STATUS_BADGE_CLASS[row.statusKind]}`} title={row.reasons.join(", ")}>

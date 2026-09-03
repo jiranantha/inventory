@@ -1,7 +1,7 @@
 import { getReportRowValue } from "@/lib/assets";
 import { formatThaiDateTime, getCurrentInspectionYear } from "@/lib/dates";
 import { padDatePart } from "@/lib/utils";
-import { AssetImportRow, ReportColumn, ReportFormat } from "@/types";
+import { AssetImportRow, DetectedExcelColumn, DetectedExcelSheet, DetectedExcelWorkbook, ReportColumn, ReportFormat } from "@/types";
 
 export function getExcelColumnIndex(cellRef: string) {
   const letters = cellRef.replace(/\d+/g, "");
@@ -94,6 +94,133 @@ export async function readAssetRowsFromFile(file: File): Promise<AssetImportRow[
   const rows = tableRows.length > 0 ? tableRows : text.split(/\r?\n/).filter(Boolean).map((line) => line.split(line.includes("\t") ? "\t" : ",").map((cell) => cell.trim()));
   const [headers = [], ...dataRows] = rows;
   return dataRows.filter((row) => row.some(Boolean)).map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])));
+}
+
+// --- /setting > นำเข้าข้อมูล Excel (admin-only, manual column mapping) --------
+// Unlike readAssetRowsFromFile above (used by /record, left untouched), this
+// path makes no assumption about header text or which sheet holds the data:
+// it returns every sheet's raw rows keyed by synthetic column ids plus a
+// human-readable label per column, so the admin can map arbitrary column
+// names to system fields before anything is validated or imported.
+
+function excelColumnLabel(index: number): string {
+  let n = index + 1;
+  let label = "";
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    label = String.fromCharCode(65 + rem) + label;
+    n = Math.floor((n - 1) / 26);
+  }
+  return label;
+}
+
+// Duplicates the cell-reading loop from parseSheetXml above (rather than
+// reusing it) so readAssetRowsFromFile's exact behavior for /record stays
+// untouched — this variant returns raw arrays instead of header-keyed objects.
+function parseSheetXmlToRawRows(sheetXml: string, sharedStrings: string[]): string[][] {
+  const xml = new DOMParser().parseFromString(sheetXml, "application/xml");
+  return Array.from(xml.getElementsByTagName("row")).map((rowElement) => {
+    const cells: string[] = [];
+    Array.from(rowElement.getElementsByTagName("c")).forEach((cell) => {
+      const ref = cell.getAttribute("r") ?? "";
+      const columnIndex = getExcelColumnIndex(ref);
+      const type = cell.getAttribute("t");
+      const valueNode = cell.getElementsByTagName("v")[0];
+      const inlineNode = cell.getElementsByTagName("t")[0];
+      const rawValue = type === "s" ? sharedStrings[Number(valueNode?.textContent ?? 0)] : inlineNode?.textContent ?? valueNode?.textContent ?? "";
+      cells[columnIndex] = (rawValue ?? "").trim();
+    });
+    return cells;
+  });
+}
+
+// Picks the most header-like row among the first few rows: the one with the
+// most non-empty, non-numeric cells (headers are almost always text labels),
+// so a title row or blank leading row doesn't get treated as the header.
+function pickHeaderRowIndex(rows: string[][]): number {
+  const limit = Math.min(rows.length, 5);
+  let bestIndex = 0;
+  let bestScore = -1;
+  for (let index = 0; index < limit; index += 1) {
+    const row = rows[index] ?? [];
+    const nonEmptyCells = row.filter((cell) => cell.trim());
+    const textLikeCells = nonEmptyCells.filter((cell) => Number.isNaN(Number(cell.trim())));
+    const score = nonEmptyCells.length + textLikeCells.length;
+    if (nonEmptyCells.length > 0 && score > bestScore) {
+      bestScore = score;
+      bestIndex = index;
+    }
+  }
+  return bestIndex;
+}
+
+function rawRowsToSheet(name: string, rawRows: string[][]): DetectedExcelSheet {
+  const nonEmptyRows = rawRows.filter((row) => row.some((cell) => cell.trim()));
+  const headerIndex = pickHeaderRowIndex(nonEmptyRows);
+  const headerRow = nonEmptyRows[headerIndex] ?? [];
+  const dataRows = nonEmptyRows.slice(headerIndex + 1);
+  const columnCount = Math.max(headerRow.length, ...dataRows.map((row) => row.length), 0);
+  const columns: DetectedExcelColumn[] = Array.from({ length: columnCount }, (_, index) => ({
+    id: `col_${index}`,
+    label: headerRow[index]?.trim() || `คอลัมน์ ${excelColumnLabel(index)}`,
+  }));
+  const rows = dataRows.map((row) => Object.fromEntries(columns.map((column, index) => [column.id, row[index]?.trim() ?? ""])));
+  return { name, columns, rows };
+}
+
+function listXlsxSheetsRaw(entries: Map<string, string>): { name: string; rows: string[][] }[] {
+  const sharedStringsXml = entries.get("xl/sharedStrings.xml");
+  const sharedStrings = sharedStringsXml
+    ? Array.from(new DOMParser().parseFromString(sharedStringsXml, "application/xml").getElementsByTagName("si")).map((item) => Array.from(item.getElementsByTagName("t")).map((text) => text.textContent ?? "").join(""))
+    : [];
+
+  const workbookXml = entries.get("xl/workbook.xml");
+  const relsXml = entries.get("xl/_rels/workbook.xml.rels");
+  const idToTarget = new Map<string, string>();
+  if (relsXml) {
+    Array.from(new DOMParser().parseFromString(relsXml, "application/xml").getElementsByTagName("Relationship")).forEach((el) => {
+      idToTarget.set(el.getAttribute("Id") ?? "", el.getAttribute("Target") ?? "");
+    });
+  }
+
+  const sheetFiles: { name: string; path: string }[] = [];
+  if (workbookXml) {
+    Array.from(new DOMParser().parseFromString(workbookXml, "application/xml").getElementsByTagName("sheet")).forEach((el, index) => {
+      const rId = el.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id") || el.getAttribute("r:id") || "";
+      const target = idToTarget.get(rId);
+      const path = target ? (target.startsWith("/") ? target.slice(1) : `xl/${target}`) : `xl/worksheets/sheet${index + 1}.xml`;
+      sheetFiles.push({ name: el.getAttribute("name") || `Sheet${index + 1}`, path });
+    });
+  }
+  if (!sheetFiles.length) {
+    Array.from(entries.keys())
+      .filter((name) => /^xl\/worksheets\/sheet\d+\.xml$/.test(name))
+      .sort((a, b) => Number(a.match(/(\d+)/)?.[1] ?? 0) - Number(b.match(/(\d+)/)?.[1] ?? 0))
+      .forEach((path, index) => sheetFiles.push({ name: `Sheet${index + 1}`, path }));
+  }
+
+  return sheetFiles
+    .map(({ name, path }) => {
+      const xml = entries.get(path);
+      return xml ? { name, rows: parseSheetXmlToRawRows(xml, sharedStrings) } : null;
+    })
+    .filter((sheet): sheet is { name: string; rows: string[][] } => sheet !== null);
+}
+
+export async function readExcelWorkbookForMapping(file: File): Promise<DetectedExcelWorkbook> {
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  if (extension === "xlsx") {
+    const entries = await readZipEntries(await file.arrayBuffer());
+    const rawSheets = listXlsxSheetsRaw(entries);
+    if (!rawSheets.length) throw new Error("ไม่พบ sheet สำหรับนำเข้า");
+    return { sheets: rawSheets.map(({ name, rows }) => rawRowsToSheet(name, rows)) };
+  }
+
+  const text = await file.text();
+  const documentHtml = new DOMParser().parseFromString(text, "text/html");
+  const tableRows = Array.from(documentHtml.querySelectorAll("tr")).map((row) => Array.from(row.querySelectorAll("th,td")).map((cell) => cell.textContent?.trim() ?? ""));
+  const rawRows = tableRows.length > 0 ? tableRows : text.split(/\r?\n/).filter(Boolean).map((line) => line.split(line.includes("\t") ? "\t" : ",").map((cell) => cell.trim()));
+  return { sheets: [rawRowsToSheet("Sheet1", rawRows)] };
 }
 
 function formatExportDatePartsTh() {

@@ -143,6 +143,39 @@ export type AssetImportInsertSummary = {
   errorCount: number;
 };
 
+// Excel files uploaded to the admin importer make no assumption about header
+// text — each sheet's columns get a synthetic id (col_0, col_1, ...) plus a
+// human-readable label (the detected header text, or "คอลัมน์ A"/"B"/... when
+// blank), and the admin manually maps those ids to system fields below.
+export type DetectedExcelColumn = { id: string; label: string };
+export type DetectedExcelSheet = {
+  name: string;
+  columns: DetectedExcelColumn[];
+  rows: Record<string, string>[];
+};
+export type DetectedExcelWorkbook = { sheets: DetectedExcelSheet[] };
+
+export type AdminImportFieldKey =
+  | "assetName"
+  | "assetNumber"
+  | "universityAssetNumber"
+  | "fiscalYear"
+  | "assetStructureType"
+  | "assetType"
+  | "assetDescription"
+  | "purchaseProject"
+  | "recordDate"
+  | "status"
+  | "note"
+  | "organization"
+  | "location"
+  | "responsiblePerson"
+  | "responsiblePhone";
+
+// Maps a system field to the id of the Excel column the admin picked for it
+// (or null/absent for "ไม่ใช้คอลัมน์นี้" — not mapped).
+export type AdminImportColumnMapping = Partial<Record<AdminImportFieldKey, string | null>>;
+
 export type HistoryFieldRow = {
   label: string;
   value: string;

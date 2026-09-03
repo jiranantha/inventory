@@ -3,7 +3,7 @@ import { assetTypeOptions } from "@/constants/options";
 import { allowedAssetStatuses } from "@/constants/statuses";
 import { formatThaiDate, formatThaiDateTimeWithSeconds } from "@/lib/dates";
 import { getOrganizationType, normalizeOrganizationName } from "@/lib/organizations";
-import { AdminAssetImportRow, AdminAssetImportStatus, AdminAssetImportSummary, AnnualInspection, AssetImportPreviewRow, AssetImportRow, AssetListRow, ReportColumn } from "@/types";
+import { AdminAssetImportRow, AdminAssetImportStatus, AdminAssetImportSummary, AdminImportColumnMapping, AdminImportFieldKey, AnnualInspection, AssetImportPreviewRow, AssetImportRow, AssetListRow, DetectedExcelColumn, ReportColumn } from "@/types";
 
 export const ASSET_NUMBER_PREFIX = "ค.อ.มช.";
 
@@ -321,33 +321,67 @@ export function createAssetFromImportRow(row: AssetImportRow, index: number): As
 // richer per-row status bucket (ready / duplicate / incomplete / invalid), so it
 // gets its own preview builder rather than reusing/changing validateAssetImportRows.
 
-// Column names accepted as the asset-name field. Files rarely use the exact
-// template header ("ชื่อรายการครุภัณฑ์"), so any of these aliases is accepted —
-// matched case-insensitively (for the English ones) after collapsing whitespace.
-export const ASSET_NAME_HEADER_ALIASES = [
-  "ชื่อรายการครุภัณฑ์",
-  "ชื่อครุภัณฑ์",
-  "รายการครุภัณฑ์",
-  "รายการ",
-  "ชื่อรายการ",
-  "รายการพัสดุ",
-  "รายการทรัพย์สิน",
-  "ชื่อพัสดุ",
-  "assetName",
-  "asset_name",
-  "name",
+// The system no longer requires any fixed Excel column name — the admin maps
+// each of these fields to whichever column in their file holds that data (or
+// leaves it unmapped as "ไม่ใช้คอลัมน์นี้"). Order here drives the mapping UI.
+export const ADMIN_IMPORT_FIELD_DEFINITIONS: { key: AdminImportFieldKey; label: string }[] = [
+  { key: "assetName", label: "ชื่อครุภัณฑ์" },
+  { key: "assetNumber", label: "หมายเลขครุภัณฑ์กิจกรรมนักศึกษา" },
+  { key: "universityAssetNumber", label: "เลขครุภัณฑ์มหาวิทยาลัย" },
+  { key: "fiscalYear", label: "ปีงบประมาณ" },
+  { key: "assetStructureType", label: "ลักษณะครุภัณฑ์" },
+  { key: "assetType", label: "ประเภทครุภัณฑ์" },
+  { key: "assetDescription", label: "ข้อมูลจำเพาะ" },
+  { key: "purchaseProject", label: "จัดซื้อในโครงการ" },
+  { key: "recordDate", label: "วันที่ได้รับครุภัณฑ์" },
+  { key: "status", label: "สถานะครุภัณฑ์" },
+  { key: "note", label: "หมายเหตุ" },
+  { key: "organization", label: "หน่วยงานที่รับผิดชอบ" },
+  { key: "location", label: "สถานที่จัดเก็บ" },
+  { key: "responsiblePerson", label: "ชื่อผู้รับผิดชอบ" },
+  { key: "responsiblePhone", label: "เบอร์โทรผู้รับผิดชอบ" },
 ];
 
-function normalizeHeaderKey(header: string): string {
-  return header.trim().replace(/\s+/g, " ").toLowerCase();
+// Keyword hints used only to *prefill* the mapping dropdowns as a convenience —
+// the admin can freely override any of them, and nothing here blocks import if
+// a field can't be guessed. This is what keeps the importer from depending on
+// any fixed column name: a wrong or missing guess never rejects the file.
+const ADMIN_IMPORT_FIELD_KEYWORDS: Record<AdminImportFieldKey, string[]> = {
+  assetName: ["ชื่อครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "รายการครุภัณฑ์", "รายการ", "ชื่อรายการ", "รายการพัสดุ", "รายการทรัพย์สิน", "ชื่อพัสดุ", "assetname", "asset_name", "name"],
+  assetNumber: ["หมายเลขครุภัณฑ์กิจกรรมนักศึกษา", "หมายเลขครุภัณฑ์", "เลขครุภัณฑ์กิจกรรม", "assetnumber", "asset_number"],
+  universityAssetNumber: ["เลขครุภัณฑ์มหาวิทยาลัย", "universityassetnumber", "university_asset_number"],
+  fiscalYear: ["ปีงบประมาณ", "fiscalyear", "fiscal_year", "year"],
+  assetStructureType: ["ลักษณะครุภัณฑ์"],
+  assetType: ["ประเภทครุภัณฑ์"],
+  assetDescription: ["ข้อมูลจำเพาะ", "รายละเอียดครุภัณฑ์", "รายละเอียด"],
+  purchaseProject: ["จัดซื้อในโครงการ", "โครงการจัดซื้อ", "purchaseproject"],
+  recordDate: ["วันที่ได้รับครุภัณฑ์", "วันที่รับ", "recorddate"],
+  status: ["สถานะครุภัณฑ์", "สถานะ", "status"],
+  note: ["หมายเหตุ", "note"],
+  organization: ["หน่วยงานที่รับผิดชอบ", "หน่วยงาน", "ฝ่าย/ชมรมที่รับผิดชอบ", "organization"],
+  location: ["สถานที่จัดเก็บ", "location"],
+  responsiblePerson: ["ชื่อผู้รับผิดชอบ", "ผู้รับผิดชอบ", "responsibleperson"],
+  responsiblePhone: ["เบอร์โทรผู้รับผิดชอบ", "เบอร์โทร", "โทรศัพท์", "responsiblephone"],
+};
+
+function normalizeColumnLabel(label: string): string {
+  return label.trim().replace(/\s+/g, "").toLowerCase();
 }
 
-const ASSET_NAME_HEADER_ALIASES_NORMALIZED = new Set(ASSET_NAME_HEADER_ALIASES.map(normalizeHeaderKey));
-
-// Returns the actual header text (as it appears in the file) that should be
-// used as the asset-name column, or null if the file has none of the aliases.
-export function findAssetNameHeader(headers: string[]): string | null {
-  return headers.find((header) => ASSET_NAME_HEADER_ALIASES_NORMALIZED.has(normalizeHeaderKey(header))) ?? null;
+export function guessColumnMapping(columns: DetectedExcelColumn[]): AdminImportColumnMapping {
+  const mapping: AdminImportColumnMapping = {};
+  const usedColumnIds = new Set<string>();
+  (Object.keys(ADMIN_IMPORT_FIELD_KEYWORDS) as AdminImportFieldKey[]).forEach((field) => {
+    const keywords = ADMIN_IMPORT_FIELD_KEYWORDS[field].map(normalizeColumnLabel);
+    const match =
+      columns.find((column) => !usedColumnIds.has(column.id) && keywords.includes(normalizeColumnLabel(column.label))) ??
+      columns.find((column) => !usedColumnIds.has(column.id) && keywords.some((keyword) => normalizeColumnLabel(column.label).includes(keyword)));
+    if (match) {
+      mapping[field] = match.id;
+      usedColumnIds.add(match.id);
+    }
+  });
+  return mapping;
 }
 
 export const ADMIN_IMPORT_TEMPLATE_COLUMNS = [
@@ -381,10 +415,14 @@ const ADMIN_IMPORT_STATUS_LABEL: Record<AdminAssetImportStatus, string> = {
 };
 
 // Builds the preview rows shown in /setting before an admin confirms the import.
+// `rows` are keyed by the synthetic column ids from readExcelWorkbookForMapping
+// (not header text), and `mapping` says which column id (if any) holds each
+// system field — the admin sets this manually, so no column name is assumed.
 // `existingAssets` should be the live (non-deleted) asset list so duplicate
 // detection reflects the real database, not just this file's own contents.
 export function buildAdminAssetImportPreview(
   rows: AssetImportRow[],
+  mapping: AdminImportColumnMapping,
   existingAssets: AssetListRow[],
   defaultFiscalYear: string,
 ): AdminAssetImportRow[] {
@@ -398,31 +436,41 @@ export function buildAdminAssetImportPreview(
   );
   const seenAssetNumbers = new Set<string>();
   const seenUniversityNumbers = new Set<string>();
-  const assetNameHeader = findAssetNameHeader(Object.keys(rows[0] ?? {}));
+
+  const mapped = (row: AssetImportRow, field: AdminImportFieldKey): string => {
+    const columnId = mapping[field];
+    if (!columnId) return "";
+    return row[columnId]?.trim() ?? "";
+  };
 
   return rows.map((row, index) => {
     const rowNumber = index + 2;
-    const assetName = (assetNameHeader ? row[assetNameHeader] : undefined)?.trim() ?? "";
-    const assetNumber = row["หมายเลขครุภัณฑ์"]?.trim() ?? "";
-    const universityAssetNumber = row["เลขครุภัณฑ์มหาวิทยาลัย"]?.trim() ?? "";
-    const fiscalYearRaw = row["ปีงบประมาณ"]?.trim() ?? "";
+    const assetName = mapped(row, "assetName");
+    const assetNumber = mapped(row, "assetNumber");
+    const universityAssetNumber = mapped(row, "universityAssetNumber");
+    const fiscalYearRaw = mapped(row, "fiscalYear");
     const fiscalYearFormatValid = !fiscalYearRaw || /^[0-9]{4}$/.test(fiscalYearRaw);
     const fiscalYear = /^[0-9]{4}$/.test(fiscalYearRaw) ? fiscalYearRaw : defaultFiscalYear;
-    const assetStructureType = row["ลักษณะครุภัณฑ์"]?.trim() || "ครุภัณฑ์เดี่ยว";
-    const assetType = row["ประเภทครุภัณฑ์"]?.trim() || "-";
-    const organizationRaw = row["หน่วยงาน"]?.trim() || row["ฝ่าย/ชมรมที่รับผิดชอบ"]?.trim() || "-";
+    const assetStructureType = mapped(row, "assetStructureType") || "ครุภัณฑ์เดี่ยว";
+    const assetType = mapped(row, "assetType") || "-";
+    const organizationRaw = mapped(row, "organization") || "-";
     const organization = organizationRaw === "-" ? "-" : normalizeOrganizationName(organizationRaw) || organizationRaw;
-    const location = row["สถานที่จัดเก็บ"]?.trim() || "-";
-    const statusRaw = row["สถานะ"]?.trim() || row["สถานะครุภัณฑ์"]?.trim() || "";
+    const location = mapped(row, "location") || "-";
+    const statusRaw = mapped(row, "status");
     const status = statusRaw && allowedAssetStatuses.includes(statusRaw) ? statusRaw : "รอตรวจสอบ";
-    const note = row["หมายเหตุ"]?.trim() || "-";
+    const note = mapped(row, "note") || "-";
+    const assetDescription = mapped(row, "assetDescription") || assetName || "-";
+    const purchaseProject = mapped(row, "purchaseProject") || "-";
+    const recordDate = mapped(row, "recordDate") || "-";
+    const responsiblePerson = mapped(row, "responsiblePerson") || "-";
+    const responsiblePhone = mapped(row, "responsiblePhone") || "-";
     const registrationType = inferRegistrationType(assetNumber, universityAssetNumber);
 
     const reasons: string[] = [];
     let statusKind: AdminAssetImportStatus = "ready";
 
     if (!assetName) {
-      reasons.push("ไม่มีชื่อรายการครุภัณฑ์");
+      reasons.push("ไม่มีชื่อครุภัณฑ์");
       statusKind = "incomplete";
     } else if (!registrationType) {
       reasons.push("ไม่มีหมายเลขครุภัณฑ์หรือเลขครุภัณฑ์มหาวิทยาลัย");
@@ -449,25 +497,25 @@ export function buildAdminAssetImportPreview(
         id: generatedId,
         fiscalYear,
         budgetSource: "",
-        recordDate: "-",
+        recordDate,
         assetCode: `CMU-ASSET-IMPORT-${String(generatedId).slice(-6)}`,
         assetNumber: assetNumber || "-",
         assetName,
-        assetDescription: assetName,
+        assetDescription,
         organization,
         organizationType: getOrganizationType(organization),
         assetType,
         location,
         building: "-",
         room: "-",
-        responsiblePerson: "-",
-        purchaseProject: "-",
+        responsiblePerson,
+        purchaseProject,
         purchaseMonth: "-",
         numberPlacement: "-",
         quantity: "1",
         unit: "-",
         price: "",
-        responsiblePhone: "-",
+        responsiblePhone,
         status,
         latestInspectionDate: "",
         inspectionResult: "",
