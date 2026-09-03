@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CloseIconButton, DetailInfoItem, Field, SelectField } from "@/components/ui";
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
@@ -36,28 +36,90 @@ function ActiveToggle({ checked, onChange, disabled, ariaLabel }: {
   );
 }
 
-function MasterDataPanel({ title, description, items, onChange, addLabel }: { title: string; description: string; items: MasterDataItem[]; onChange: (items: MasterDataItem[]) => void; addLabel: string }) {
+function normalizeMasterDataName(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function MasterDataPanel({ title, description, items, onChange, addLabel, searchPlaceholder }: { title: string; description: string; items: MasterDataItem[]; onChange: (items: MasterDataItem[]) => void; addLabel: string; searchPlaceholder: string }) {
+  const { showToast } = useAppData();
   const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+  // No createdAt column exists on master_data/organizations (and we're not adding one
+  // just for ordering), so "newest first" is tracked purely client-side for this
+  // session — normalized names, most-recently-added first.
+  const [recentNames, setRecentNames] = useState<string[]>([]);
+
   const save = () => {
     const name = draft.trim();
-    if (!name) return;
-    if (editingId === null) onChange([...items, { id: Date.now(), name, active: true }]);
-    else onChange(items.map((item) => item.id === editingId ? { ...item, name } : item));
+    if (!name) {
+      showToast("กรุณากรอกชื่อรายการ");
+      return;
+    }
+    const normalized = normalizeMasterDataName(name);
+    const duplicate = items.find((item) => item.id !== editingId && normalizeMasterDataName(item.name) === normalized);
+    if (duplicate) {
+      showToast(duplicate.active ? "มีรายการนี้อยู่ในระบบแล้ว" : "มีรายการนี้อยู่แล้ว แต่ถูกปิดใช้งานอยู่ กรุณาเปิดใช้งานรายการเดิม");
+      return;
+    }
+    if (editingId === null) {
+      onChange([...items, { id: Date.now(), name, active: true }]);
+      setRecentNames((names) => [normalized, ...names]);
+      showToast("เพิ่มรายการเรียบร้อยแล้ว");
+    } else {
+      onChange(items.map((item) => item.id === editingId ? { ...item, name } : item));
+    }
     setDraft("");
     setEditingId(null);
   };
+
+  const visibleItems = useMemo(() => {
+    const recentIndex = new Map(recentNames.map((name, index) => [name, index]));
+    const sorted = [...items].sort((a, b) => {
+      const rankA = recentIndex.get(normalizeMasterDataName(a.name)) ?? Number.POSITIVE_INFINITY;
+      const rankB = recentIndex.get(normalizeMasterDataName(b.name)) ?? Number.POSITIVE_INFINITY;
+      return rankA - rankB;
+    });
+    const cleanSearch = normalizeMasterDataName(search);
+    if (!cleanSearch) return sorted;
+    return sorted.filter((item) => normalizeMasterDataName(item.name).includes(cleanSearch));
+  }, [items, recentNames, search]);
+
   return (
     <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-6">
       <h2 className="text-xl font-bold text-ink">{title}</h2>
       <p className="mt-2 text-sm text-muted">{description}</p>
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+      <div className="relative mt-5">
+        <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="m14 14 3.5 3.5M8.5 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={searchPlaceholder}
+          className="min-h-11 w-full rounded-lg border border-lineStrong bg-surface py-2 pl-9 pr-10 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
+        />
+        {search.trim() && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-sm font-bold text-muted hover:text-ink"
+            aria-label="ล้างคำค้นหา"
+          >
+            x
+          </button>
+        )}
+      </div>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row">
         <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={addLabel} className="min-h-11 flex-1 rounded-lg border border-lineStrong bg-surface px-4 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-primary" />
         <button type="button" onClick={save} className="min-h-11 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white hover:bg-primary-hover">{editingId === null ? "เพิ่มรายการ" : "บันทึก"}</button>
         {editingId !== null && <button type="button" onClick={() => { setEditingId(null); setDraft(""); }} className="min-h-11 rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink">ยกเลิก</button>}
       </div>
       <div className="mt-5 divide-y divide-line overflow-hidden rounded-lg border border-line">
-        {items.map((item) => (
+        {visibleItems.length === 0 && search.trim() && (
+          <p className="bg-surfaceSoft px-5 py-6 text-center text-sm text-muted">ไม่พบรายการที่ค้นหา</p>
+        )}
+        {visibleItems.map((item) => (
           <div key={item.id} className="flex flex-wrap items-center justify-between gap-4 bg-surfaceSoft px-5 py-4">
             <div className="min-w-0"><p className={`break-words font-semibold ${item.active ? "text-ink" : "text-muted"}`}>{item.name}</p><p className="mt-1 text-xs text-muted">{item.active ? "ใช้งานอยู่" : "ปิดใช้งาน"}</p></div>
             <div className="flex shrink-0 items-center gap-3">
@@ -250,9 +312,9 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
         </section>
       )}
 
-      {activeTab === "organizations" && <MasterDataPanel title="จัดการองค์กร/หน่วยงาน" description="จัดการรายชื่อองค์กร หน่วยงาน ฝ่าย และชมรมที่ใช้ในระบบ" items={organizationItems} onChange={onOrganizationItemsChange} addLabel="ระบุชื่อองค์กรหรือหน่วยงาน" />}
-      {activeTab === "locations" && <MasterDataPanel title="จัดการสถานที่จัดเก็บ" description="จัดการสถานที่จัดเก็บครุภัณฑ์ที่ใช้ในฟอร์มบันทึกข้อมูลและการตรวจสอบ" items={locationItems} onChange={onLocationItemsChange} addLabel="ระบุสถานที่จัดเก็บ" />}
-      {activeTab === "types" && <MasterDataPanel title="จัดการประเภทครุภัณฑ์" description="จัดการหมวดหมู่ครุภัณฑ์ที่ใช้ในฟอร์ม ตาราง รายงาน และตัวกรองข้อมูล" items={equipmentTypeItems} onChange={onEquipmentTypeItemsChange} addLabel="ระบุประเภทครุภัณฑ์" />}
+      {activeTab === "organizations" && <MasterDataPanel title="จัดการองค์กร/หน่วยงาน" description="จัดการรายชื่อองค์กร หน่วยงาน ฝ่าย และชมรมที่ใช้ในระบบ" items={organizationItems} onChange={onOrganizationItemsChange} addLabel="ระบุชื่อองค์กรหรือหน่วยงาน" searchPlaceholder="ค้นหาหน่วยงาน" />}
+      {activeTab === "locations" && <MasterDataPanel title="จัดการสถานที่จัดเก็บ" description="จัดการสถานที่จัดเก็บครุภัณฑ์ที่ใช้ในฟอร์มบันทึกข้อมูลและการตรวจสอบ" items={locationItems} onChange={onLocationItemsChange} addLabel="ระบุสถานที่จัดเก็บ" searchPlaceholder="ค้นหาสถานที่จัดเก็บ" />}
+      {activeTab === "types" && <MasterDataPanel title="จัดการประเภทครุภัณฑ์" description="จัดการหมวดหมู่ครุภัณฑ์ที่ใช้ในฟอร์ม ตาราง รายงาน และตัวกรองข้อมูล" items={equipmentTypeItems} onChange={onEquipmentTypeItemsChange} addLabel="ระบุประเภทครุภัณฑ์" searchPlaceholder="ค้นหาประเภทครุภัณฑ์" />}
       {activeTab === "numbers" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-6"><h2 className="text-xl font-bold text-white">ตั้งค่าการออกเลขครุภัณฑ์</h2><p className="mt-2 text-sm text-muted">กำหนดรูปแบบและเลขลำดับล่าสุดสำหรับการออกหมายเลขครุภัณฑ์อัตโนมัติ</p><div className="mt-5 grid gap-4 md:grid-cols-3"><DetailInfoItem label="คำนำหน้าเลขครุภัณฑ์" value="ค.อ.มช." /><DetailInfoItem label="เลขลำดับล่าสุด" value={String(latestSequence).padStart(4, "0")} /><DetailInfoItem label="ตัวอย่างรูปแบบหมายเลขครุภัณฑ์" value={`ค.อ.มช.${String(latestSequence + 1).padStart(4, "0")}/${currentThaiYear}`} /></div><p className="mt-4 rounded-lg border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">ข้อมูลส่วนนี้เป็นแบบอ่านอย่างเดียว เพื่อป้องกันหมายเลขครุภัณฑ์ซ้ำหรือผิดลำดับ</p></section>}
 
       {editingUser && (
