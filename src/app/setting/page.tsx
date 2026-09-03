@@ -346,20 +346,21 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
 
           <div className="mt-4">
             <p className="text-sm font-semibold text-ink">ตัวอย่างข้อมูลดิบจากไฟล์</p>
-            <div className="mt-2 max-h-56 overflow-auto rounded-lg border border-line">
-              <table className="w-full min-w-[800px] border-collapse text-left text-xs">
-                <thead className="sticky top-0 bg-surfaceSoft text-ink">
+            <p className="mt-1 text-xs text-muted">เลื่อนซ้าย-ขวา และบน-ล่าง เพื่อดูข้อมูลทั้งหมด</p>
+            <div className="mt-2 h-[480px] overflow-auto rounded-lg border border-line">
+              <table className="w-full min-w-[800px] border-collapse text-left text-sm">
+                <thead className="sticky top-0 z-10 bg-surfaceSoft text-ink">
                   <tr>
                     {activeSheet.columns.map((column) => (
-                      <th key={column.id} className="border-b border-line px-3 py-2 font-semibold">{column.label}</th>
+                      <th key={column.id} className="border-b border-line px-3 py-2.5 font-semibold">{column.label}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
-                  {activeSheet.rows.slice(0, 5).map((row, index) => (
+                  {activeSheet.rows.slice(0, 20).map((row, index) => (
                     <tr key={index}>
                       {activeSheet.columns.map((column) => (
-                        <td key={column.id} className="px-3 py-2" title={row[column.id]}>{row[column.id] || "-"}</td>
+                        <td key={column.id} className="px-3 py-2.5" title={row[column.id]}>{row[column.id] || "-"}</td>
                       ))}
                     </tr>
                   ))}
