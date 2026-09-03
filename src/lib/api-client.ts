@@ -1,5 +1,5 @@
 import type { AppUser, RoleDefinition } from "@/lib/permissions";
-import type { ActivityLog, AnnualInspection, AssetListRow, MasterDataItem } from "@/types";
+import type { ActivityLog, AnnualInspection, AssetImportInsertSummary, AssetListRow, MasterDataItem } from "@/types";
 
 export type ActivityLogInput = Omit<ActivityLog, "id" | "createdAt">;
 export type MasterDataCategory = "organization" | "location" | "equipment_type";
@@ -38,6 +38,11 @@ export const api = {
     req<{ asset: AssetListRow; log: ActivityLog | null }>(`/api/assets/${id}`, {
       method: "DELETE",
       body: JSON.stringify({ log }),
+    }),
+  importAssets: (assets: AssetListRow[]) =>
+    req<{ inserted: AssetListRow[]; summary: AssetImportInsertSummary }>("/api/assets/import", {
+      method: "POST",
+      body: JSON.stringify({ assets }),
     }),
 
   // inspections

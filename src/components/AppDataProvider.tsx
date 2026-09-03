@@ -18,7 +18,7 @@ import {
   getPermissions,
   initialRoleDefinitions,
 } from "@/lib/permissions";
-import { ActivityLog, AnnualInspection, AssetListRow, MasterDataItem, Organization } from "@/types";
+import { ActivityLog, AnnualInspection, AssetImportInsertSummary, AssetListRow, MasterDataItem, Organization } from "@/types";
 
 // Everything every page needs, lifted out of the old single-page component and
 // shared through context so navigating between routes never refetches the data.
@@ -44,6 +44,7 @@ type AppData = {
   onEditAsset: (asset: AssetListRow) => void;
   onGoToRecord: () => void;
   onCreateAsset: (asset: AssetListRow) => void;
+  onImportAssets: (rows: AssetListRow[]) => Promise<AssetImportInsertSummary>;
   onSaveAnnualInspection: (inspection: AnnualInspection) => void;
   onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => void;
   onSaveAsset: (asset: AssetListRow, oldAsset: AssetListRow) => void;
@@ -514,6 +515,22 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     }
   };
 
+  // /setting > นำเข้าข้อมูล Excel (admin-only). Rows are already client-validated
+  // "ready" rows from the preview step; the server independently re-validates and
+  // re-checks duplicates against live data before inserting. Throws on failure so
+  // the setting page's own try/catch can show the error inline next to the import
+  // controls, in addition to the toast here.
+  const handleImportAssets = async (rows: AssetListRow[]) => {
+    if (!permissions.canImportAssets) {
+      showToast("ไม่มีสิทธิ์นำเข้าข้อมูลครุภัณฑ์");
+      throw new Error("ไม่มีสิทธิ์นำเข้าข้อมูลครุภัณฑ์");
+    }
+    const { inserted, summary } = await api.importAssets(rows);
+    if (inserted.length > 0) setAssets((items) => [...inserted, ...items]);
+    showToast(`นำเข้าข้อมูลสำเร็จ ${summary.insertedCount} รายการ`);
+    return summary;
+  };
+
   if (!dataReady) return <LoadingScreen message="กำลังโหลดข้อมูลจากระบบ..." />;
 
   const visibleAssets = assets.filter((asset) => !asset.deletedAt && canAccessAsset(currentUser, permissions, asset));
@@ -545,6 +562,7 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     onEditAsset: handleEditAsset,
     onGoToRecord: handleGoToRecord,
     onCreateAsset: handleCreateAsset,
+    onImportAssets: handleImportAssets,
     onSaveAnnualInspection: handleSaveAnnualInspection,
     onCancelAnnualInspection: handleCancelAnnualInspection,
     onSaveAsset: handleSaveAsset,

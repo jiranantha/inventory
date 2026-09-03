@@ -102,6 +102,47 @@ export type AssetImportPreviewRow = {
   errors: string[];
 };
 
+// /setting > นำเข้าข้อมูล Excel (admin-only bulk import) — a separate, richer preview
+// shape from AssetImportPreviewRow above (which backs the existing /record importer)
+// since this flow needs per-row status buckets and registration-type inference.
+export type AdminAssetImportStatus = "ready" | "duplicate" | "incomplete" | "invalid";
+export type AdminAssetImportRow = {
+  rowNumber: number;
+  fiscalYear: string;
+  assetNumber: string;
+  universityAssetNumber: string;
+  registrationType: string;
+  assetName: string;
+  assetStructureType: string;
+  assetType: string;
+  organization: string;
+  location: string;
+  status: string;
+  inspectionResult: string;
+  note: string;
+  statusKind: AdminAssetImportStatus;
+  statusLabel: string;
+  reasons: string[];
+  asset?: AssetListRow;
+};
+export type AdminAssetImportSummary = {
+  totalRows: number;
+  ready: number;
+  duplicate: number;
+  incomplete: number;
+  invalid: number;
+};
+// Returned by POST /api/assets/import after the server re-validated/re-checked
+// duplicates against live data and actually inserted rows (see AdminAssetImportSummary
+// above for the client-side preview-time counts shown before confirming).
+export type AssetImportInsertSummary = {
+  totalRows: number;
+  insertedCount: number;
+  duplicateCount: number;
+  invalidCount: number;
+  errorCount: number;
+};
+
 export type HistoryFieldRow = {
   label: string;
   value: string;

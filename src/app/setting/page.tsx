@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { CloseIconButton, DetailInfoItem, Field, SelectField } from "@/components/ui";
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 import { AppUser, Permissions, RoleDefinition, UserRole, getPermissionLabel, getRoleDefinition, noPermissions } from "@/lib/permissions";
-import { getLatestAssetSequenceForYear } from "@/lib/assets";
+import { ADMIN_IMPORT_TEMPLATE_COLUMNS, buildAdminAssetImportPreview, getLatestAssetSequenceForYear, summarizeAdminAssetImport } from "@/lib/assets";
+import { downloadReportFile, readAssetRowsFromFile } from "@/lib/import-export";
 import { uniqueSorted } from "@/lib/utils";
-import { AssetListRow, MasterDataItem } from "@/types";
+import { AdminAssetImportRow, AssetImportInsertSummary, AssetListRow, MasterDataItem } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 function ActiveToggle({ checked, onChange, disabled, ariaLabel }: {
@@ -133,7 +134,250 @@ function MasterDataPanel({ title, description, items, onChange, addLabel, search
   );
 }
 
-function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, currentUser, roles, onRolesChange, permissions, organizationItems, onOrganizationItemsChange, locationItems, onLocationItemsChange, equipmentTypeItems, onEquipmentTypeItemsChange, assets }: {
+const IMPORT_STATUS_BADGE_CLASS: Record<AdminAssetImportRow["statusKind"], string> = {
+  ready: "border-emerald-300/40 bg-emerald-400/10 text-emerald-200",
+  duplicate: "border-amber-300/40 bg-amber-400/10 text-amber-200",
+  incomplete: "border-red-300/40 bg-red-400/10 text-red-200",
+  invalid: "border-red-300/40 bg-red-400/10 text-red-200",
+};
+
+function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; onImportAssets: (rows: AssetListRow[]) => Promise<AssetImportInsertSummary> }) {
+  const { showToast } = useAppData();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const currentThaiYear = new Date().getFullYear() + 543;
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [defaultFiscalYear, setDefaultFiscalYear] = useState(String(currentThaiYear));
+  const [previewRows, setPreviewRows] = useState<AdminAssetImportRow[] | null>(null);
+  const [checkError, setCheckError] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [insertSummary, setInsertSummary] = useState<AssetImportInsertSummary | null>(null);
+
+  const previewSummary = useMemo(() => (previewRows ? summarizeAdminAssetImport(previewRows) : null), [previewRows]);
+  const readyRows = useMemo(() => previewRows?.filter((row) => row.statusKind === "ready" && row.asset) ?? [], [previewRows]);
+
+  const resetPreview = () => {
+    setPreviewRows(null);
+    setCheckError("");
+    setInsertSummary(null);
+  };
+
+  const handleFileChange = (file: File | null) => {
+    setSelectedFile(file);
+    resetPreview();
+  };
+
+  const handleCheckFile = async () => {
+    if (!selectedFile) {
+      showToast("กรุณาเลือกไฟล์ Excel ก่อน");
+      return;
+    }
+    const extension = selectedFile.name.split(".").pop()?.toLowerCase();
+    if (extension !== "xlsx" && extension !== "xls") {
+      setCheckError("รองรับเฉพาะไฟล์ .xlsx และ .xls เท่านั้น");
+      return;
+    }
+    if (!/^[0-9]{4}$/.test(defaultFiscalYear)) {
+      setCheckError("กรุณาระบุปีงบประมาณเริ่มต้นเป็นตัวเลข 4 หลัก");
+      return;
+    }
+    setChecking(true);
+    resetPreview();
+    try {
+      const rows = await readAssetRowsFromFile(selectedFile);
+      const headers = Object.keys(rows[0] ?? {});
+      if (!headers.includes("ชื่อรายการครุภัณฑ์")) {
+        setCheckError("ไฟล์นี้ไม่มีคอลัมน์ \"ชื่อรายการครุภัณฑ์\" กรุณาตรวจสอบไฟล์หรือดาวน์โหลดแบบฟอร์มใหม่");
+        return;
+      }
+      const preview = buildAdminAssetImportPreview(rows, assets, defaultFiscalYear);
+      setPreviewRows(preview);
+    } catch (error) {
+      setCheckError(error instanceof Error ? error.message : "ไม่สามารถอ่านไฟล์ Excel ได้");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (readyRows.length === 0) return;
+    setImporting(true);
+    try {
+      const summary = await onImportAssets(readyRows.map((row) => row.asset as AssetListRow));
+      setInsertSummary(summary);
+      setPreviewRows(null);
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "นำเข้าข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const headerRow = `<tr>${ADMIN_IMPORT_TEMPLATE_COLUMNS.map((label) => `<th>${label}</th>`).join("")}</tr>`;
+    const html = `<html><head><meta charset="utf-8" /></head><body><table>${headerRow}</table></body></html>`;
+    downloadReportFile("แบบฟอร์มนำเข้าข้อมูลครุภัณฑ์.xls", "application/vnd.ms-excel;charset=utf-8", html);
+  };
+
+  return (
+    <section className="mx-auto w-full max-w-screen-2xl space-y-5">
+      <div className="rounded-lg border border-line bg-surface p-6">
+        <h2 className="text-xl font-bold text-ink">นำเข้าข้อมูล Excel</h2>
+        <p className="mt-2 text-sm text-muted">นำเข้าข้อมูลครุภัณฑ์จำนวนมากจากไฟล์ Excel เข้าสู่ระบบโดยตรง เฉพาะผู้ดูแลระบบเท่านั้น</p>
+        <p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-100">
+          การนำเข้าข้อมูลจะเพิ่มข้อมูลใหม่เข้าสู่ระบบจริง กรุณาตรวจสอบข้อมูลก่อนยืนยัน
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-line bg-surface p-6">
+        <h3 className="text-base font-bold text-ink">คำแนะนำการนำเข้า</h3>
+        <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-muted">
+          <li>รองรับเฉพาะไฟล์ .xlsx และ .xls เท่านั้น</li>
+          <li>ต้องมีคอลัมน์ &quot;ชื่อรายการครุภัณฑ์&quot; อย่างน้อยในไฟล์</li>
+          <li>แต่ละแถวต้องมีหมายเลขครุภัณฑ์ หรือเลขครุภัณฑ์มหาวิทยาลัย อย่างน้อยหนึ่งอย่าง ระบบจะกำหนดประเภทการขึ้นทะเบียนให้อัตโนมัติ</li>
+          <li>หากไม่ระบุปีงบประมาณในไฟล์ ระบบจะใช้ปีงบประมาณเริ่มต้นที่กำหนดไว้ด้านล่าง</li>
+          <li>ข้อมูลที่ซ้ำกับระบบ หรือข้อมูลไม่ครบ/ผิดรูปแบบ จะไม่ถูกนำเข้า</li>
+        </ul>
+        <button type="button" onClick={handleDownloadTemplate} className="mt-4 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">
+          ดาวน์โหลดแบบฟอร์ม Excel
+        </button>
+      </div>
+
+      <div className="rounded-lg border border-line bg-surface p-6">
+        <h3 className="text-base font-bold text-ink">เลือกไฟล์ Excel</h3>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <label className="block sm:flex-[1_1_50%]">
+            <span className="text-sm font-semibold text-ink">ไฟล์ Excel (.xlsx, .xls)</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
+              className="mt-2 w-full rounded-lg border border-lineStrong bg-surface px-3 py-2 text-sm text-ink file:mr-3 file:rounded-md file:border-0 file:bg-gold file:px-3 file:py-1.5 file:font-bold file:text-white"
+            />
+          </label>
+          <label className="block sm:w-48">
+            <span className="text-sm font-semibold text-ink">ปีงบประมาณเริ่มต้น (ถ้าไม่มีในไฟล์)</span>
+            <input
+              value={defaultFiscalYear}
+              onChange={(event) => setDefaultFiscalYear(event.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+              inputMode="numeric"
+              className="mt-2 min-h-11 w-full rounded-lg border border-lineStrong bg-surface px-4 py-2 text-sm text-ink outline-none focus:border-primary"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={handleCheckFile}
+            disabled={!selectedFile || checking}
+            className="min-h-11 shrink-0 whitespace-nowrap rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {checking ? "กำลังตรวจสอบ..." : "ตรวจสอบไฟล์"}
+          </button>
+        </div>
+        {checkError && <p className="mt-3 rounded-md border border-red-400/30 bg-red-400/10 px-3 py-2 text-sm font-semibold text-red-200">{checkError}</p>}
+      </div>
+
+      {previewSummary && (
+        <div className="rounded-lg border border-line bg-surface p-6">
+          <h3 className="text-base font-bold text-ink">สรุปผลการตรวจสอบไฟล์</h3>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <div className="rounded-lg border border-line bg-surfaceSoft p-3 text-center">
+              <p className="text-xs text-muted">จำนวนแถวทั้งหมด</p>
+              <p className="mt-1 text-xl font-extrabold text-ink">{previewSummary.totalRows}</p>
+            </div>
+            <div className="rounded-lg border border-emerald-300/30 bg-emerald-400/10 p-3 text-center">
+              <p className="text-xs text-emerald-200">พร้อมนำเข้า</p>
+              <p className="mt-1 text-xl font-extrabold text-emerald-100">{previewSummary.ready}</p>
+            </div>
+            <div className="rounded-lg border border-amber-300/30 bg-amber-400/10 p-3 text-center">
+              <p className="text-xs text-amber-200">ข้อมูลซ้ำ</p>
+              <p className="mt-1 text-xl font-extrabold text-amber-100">{previewSummary.duplicate}</p>
+            </div>
+            <div className="rounded-lg border border-red-300/30 bg-red-400/10 p-3 text-center">
+              <p className="text-xs text-red-200">ข้อมูลไม่ครบ</p>
+              <p className="mt-1 text-xl font-extrabold text-red-100">{previewSummary.incomplete}</p>
+            </div>
+            <div className="rounded-lg border border-red-300/30 bg-red-400/10 p-3 text-center">
+              <p className="text-xs text-red-200">ผิดรูปแบบ</p>
+              <p className="mt-1 text-xl font-extrabold text-red-100">{previewSummary.invalid}</p>
+            </div>
+          </div>
+          {previewSummary.duplicate > 0 && (
+            <p className="mt-3 text-sm font-semibold text-amber-200">ข้อมูลซ้ำในระบบ จะไม่ถูกนำเข้า</p>
+          )}
+        </div>
+      )}
+
+      {previewRows && previewRows.length > 0 && (
+        <div className="rounded-lg border border-line bg-surface p-6">
+          <h3 className="text-base font-bold text-ink">ตัวอย่างข้อมูลก่อนนำเข้า</h3>
+          <div className="mt-3 max-h-[480px] overflow-auto rounded-lg border border-line">
+            <table className="w-full min-w-[1200px] border-collapse text-left text-xs">
+              <thead className="sticky top-0 bg-surfaceSoft text-ink">
+                <tr>
+                  {["ลำดับ", "ปีงบประมาณ", "หมายเลขครุภัณฑ์", "เลขครุภัณฑ์มหาวิทยาลัย", "ประเภทการขึ้นทะเบียน", "ชื่อรายการครุภัณฑ์", "ลักษณะครุภัณฑ์", "ประเภทครุภัณฑ์", "หน่วยงาน", "สถานที่จัดเก็บ", "สถานะ", "ผลการตรวจสอบ", "หมายเหตุ", "สถานะการตรวจสอบข้อมูล"].map((label) => (
+                    <th key={label} className="border-b border-line px-3 py-2 font-semibold">{label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
+                {previewRows.map((row) => (
+                  <tr key={row.rowNumber}>
+                    <td className="px-3 py-2 text-muted">{row.rowNumber - 1}</td>
+                    <td className="px-3 py-2">{row.fiscalYear}</td>
+                    <td className="px-3 py-2" title={row.assetNumber}>{row.assetNumber}</td>
+                    <td className="px-3 py-2" title={row.universityAssetNumber}>{row.universityAssetNumber}</td>
+                    <td className="px-3 py-2">{row.registrationType}</td>
+                    <td className="px-3 py-2" title={row.assetName}>{row.assetName}</td>
+                    <td className="px-3 py-2">{row.assetStructureType}</td>
+                    <td className="px-3 py-2">{row.assetType}</td>
+                    <td className="px-3 py-2" title={row.organization}>{row.organization}</td>
+                    <td className="px-3 py-2">{row.location}</td>
+                    <td className="px-3 py-2">{row.status}</td>
+                    <td className="px-3 py-2">{row.inspectionResult}</td>
+                    <td className="px-3 py-2" title={row.note}>{row.note}</td>
+                    <td className="px-3 py-2">
+                      <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-bold ${IMPORT_STATUS_BADGE_CLASS[row.statusKind]}`} title={row.reasons.join(", ")}>
+                        {row.statusLabel}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-line pt-4">
+            <button
+              type="button"
+              onClick={handleConfirmImport}
+              disabled={readyRows.length === 0 || importing}
+              className="min-h-11 rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {importing ? "กำลังนำเข้าข้อมูล..." : `ยืนยันนำเข้าข้อมูล (${readyRows.length} รายการ)`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {insertSummary && (
+        <div className="rounded-lg border border-emerald-300/30 bg-emerald-400/10 p-6">
+          <h3 className="text-base font-bold text-emerald-100">ผลการนำเข้าข้อมูล</h3>
+          <ul className="mt-3 space-y-1 text-sm text-emerald-100">
+            <li>นำเข้าสำเร็จ {insertSummary.insertedCount} รายการ</li>
+            <li>ข้อมูลซ้ำ {insertSummary.duplicateCount} รายการ</li>
+            <li>ข้อมูลไม่ถูกต้อง {insertSummary.invalidCount} รายการ</li>
+            <li>ข้ามรายการ {insertSummary.duplicateCount + insertSummary.invalidCount} รายการ</li>
+            <li>ข้อผิดพลาด {insertSummary.errorCount} รายการ</li>
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, currentUser, roles, onRolesChange, permissions, organizationItems, onOrganizationItemsChange, locationItems, onLocationItemsChange, equipmentTypeItems, onEquipmentTypeItemsChange, assets, onImportAssets }: {
   users: AppUser[];
   onAddUser: (user: AppUser) => void;
   onUpdateUser: (user: AppUser) => void;
@@ -149,12 +393,13 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
   equipmentTypeItems: MasterDataItem[];
   onEquipmentTypeItemsChange: (items: MasterDataItem[]) => void;
   assets: AssetListRow[];
+  onImportAssets: (rows: AssetListRow[]) => Promise<AssetImportInsertSummary>;
 }) {
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
   const [userModalMode, setUserModalMode] = useState<"add" | "edit">("edit");
   const [editingRole, setEditingRole] = useState<RoleDefinition | null>(null);
   const [roleModalMode, setRoleModalMode] = useState<"add" | "edit">("edit");
-  const [activeTab, setActiveTab] = useState<"users" | "roles" | "organizations" | "locations" | "types" | "numbers">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "roles" | "organizations" | "locations" | "types" | "numbers" | "import">("users");
   const [deleteCandidate, setDeleteCandidate] = useState<AppUser | null>(null);
   const [deleteError, setDeleteError] = useState("");
   const { t } = useLanguage();
@@ -206,9 +451,13 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
   const organizationOptions = ["กองพัฒนานักศึกษามหาวิทยาลัยเชียงใหม่", "-", ...organizationItems.map((item) => item.name)];
   const currentThaiYear = new Date().getFullYear() + 543;
   const latestSequence = getLatestAssetSequenceForYear(assets, String(currentThaiYear));
-  type TabKey = "users" | "roles" | "organizations" | "locations" | "types" | "numbers";
+  type TabKey = "users" | "roles" | "organizations" | "locations" | "types" | "numbers" | "import";
   const tabs: [TabKey, string][] = [
     ["users", t("set.tabUsers")], ["roles", t("set.tabRoles")], ["organizations", t("set.tabOrgs")], ["locations", t("set.tabLocations")], ["types", t("set.tabTypes")], ["numbers", t("set.tabNumbers")],
+    // Admin-only — hidden from the tab bar (not just disabled) for every other role.
+    // The server independently re-checks this via requirePermission("importAssets")
+    // on /api/assets/import, so hiding the tab is a UX nicety, not the real gate.
+    ...(permissions.canImportAssets ? [["import", "นำเข้าข้อมูล Excel"] as [TabKey, string]] : []),
   ];
 
   return (
@@ -316,6 +565,7 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
       {activeTab === "locations" && <MasterDataPanel title="จัดการสถานที่จัดเก็บ" description="จัดการสถานที่จัดเก็บครุภัณฑ์ที่ใช้ในฟอร์มบันทึกข้อมูลและการตรวจสอบ" items={locationItems} onChange={onLocationItemsChange} addLabel="ระบุสถานที่จัดเก็บ" searchPlaceholder="ค้นหาสถานที่จัดเก็บ" />}
       {activeTab === "types" && <MasterDataPanel title="จัดการประเภทครุภัณฑ์" description="จัดการหมวดหมู่ครุภัณฑ์ที่ใช้ในฟอร์ม ตาราง รายงาน และตัวกรองข้อมูล" items={equipmentTypeItems} onChange={onEquipmentTypeItemsChange} addLabel="ระบุประเภทครุภัณฑ์" searchPlaceholder="ค้นหาประเภทครุภัณฑ์" />}
       {activeTab === "numbers" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-6"><h2 className="text-xl font-bold text-white">ตั้งค่าการออกเลขครุภัณฑ์</h2><p className="mt-2 text-sm text-muted">กำหนดรูปแบบและเลขลำดับล่าสุดสำหรับการออกหมายเลขครุภัณฑ์อัตโนมัติ</p><div className="mt-5 grid gap-4 md:grid-cols-3"><DetailInfoItem label="คำนำหน้าเลขครุภัณฑ์" value="ค.อ.มช." /><DetailInfoItem label="เลขลำดับล่าสุด" value={String(latestSequence).padStart(4, "0")} /><DetailInfoItem label="ตัวอย่างรูปแบบหมายเลขครุภัณฑ์" value={`ค.อ.มช.${String(latestSequence + 1).padStart(4, "0")}/${currentThaiYear}`} /></div><p className="mt-4 rounded-lg border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">ข้อมูลส่วนนี้เป็นแบบอ่านอย่างเดียว เพื่อป้องกันหมายเลขครุภัณฑ์ซ้ำหรือผิดลำดับ</p></section>}
+      {activeTab === "import" && permissions.canImportAssets && <ExcelImportPanel assets={assets} onImportAssets={onImportAssets} />}
 
       {editingUser && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
@@ -353,7 +603,7 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
           </div>
         </div>
       )}
-      {editingRole && <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4"><div className="w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"><div className="flex items-start justify-between gap-3 border-b border-line p-5"><div><h3 className="text-xl font-bold text-white">{roleModalMode === "add" ? "เพิ่มบทบาท" : "แก้ไขบทบาท"}</h3><p className="mt-1 text-sm text-muted">กำหนดชื่อ คำอธิบาย และสิทธิ์การใช้งาน</p></div><CloseIconButton onClick={() => setEditingRole(null)} /></div><div className="space-y-4 p-5"><Field label="ชื่อบทบาท" value={editingRole.name} onChange={(event) => setEditingRole({ ...editingRole, name: event.target.value })} /><Field label="คำอธิบายบทบาท" value={editingRole.description} onChange={(event) => setEditingRole({ ...editingRole, description: event.target.value })} /><div><p className="text-sm font-semibold text-white">สิทธิ์การใช้งาน</p><div className="mt-2 grid gap-2 sm:grid-cols-2">{([{ key: "canViewDashboard", label: "หน้าภาพรวม" }, { key: "canViewList", label: "แสดงรายการ" }, { key: "canInspect", label: "ตรวจสอบประจำปี" }, { key: "canCreate", label: "บันทึกข้อมูล" }, { key: "canViewReports", label: "รายงาน" }, { key: "canManageUsers", label: "ตั้งค่า" }, { key: "canEdit", label: "แก้ไขข้อมูลครุภัณฑ์" }, { key: "canDelete", label: "ลบข้อมูลครุภัณฑ์" }] as { key: keyof Permissions; label: string }[]).map((option) => <label key={option.key} className="flex items-center gap-3 rounded-lg border border-line bg-slate-950/30 px-3 py-2 text-sm text-ink"><input type="checkbox" checked={Boolean(editingRole.permissions[option.key])} onChange={(event) => setEditingRole({ ...editingRole, permissions: { ...editingRole.permissions, [option.key]: event.target.checked } })} className="h-4 w-4 accent-yellow-400" />{option.label}</label>)}</div></div><label className="flex items-center justify-between gap-4 rounded-lg border border-line bg-slate-950/30 px-4 py-3"><span className="text-sm font-semibold text-white">อนุญาตส่งออก</span><input type="checkbox" checked={editingRole.allowExport} onChange={(event) => setEditingRole({ ...editingRole, allowExport: event.target.checked, permissions: { ...editingRole.permissions, canExport: event.target.checked } })} className="h-5 w-5 accent-yellow-400" /></label><div className="flex justify-end gap-3 border-t border-line pt-4"><button type="button" onClick={() => setEditingRole(null)} className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink">ยกเลิก</button><button type="button" onClick={saveRole} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950">บันทึก</button></div></div></div></div>}
+      {editingRole && <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4"><div className="w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"><div className="flex items-start justify-between gap-3 border-b border-line p-5"><div><h3 className="text-xl font-bold text-white">{roleModalMode === "add" ? "เพิ่มบทบาท" : "แก้ไขบทบาท"}</h3><p className="mt-1 text-sm text-muted">กำหนดชื่อ คำอธิบาย และสิทธิ์การใช้งาน</p></div><CloseIconButton onClick={() => setEditingRole(null)} /></div><div className="space-y-4 p-5"><Field label="ชื่อบทบาท" value={editingRole.name} onChange={(event) => setEditingRole({ ...editingRole, name: event.target.value })} /><Field label="คำอธิบายบทบาท" value={editingRole.description} onChange={(event) => setEditingRole({ ...editingRole, description: event.target.value })} /><div><p className="text-sm font-semibold text-white">สิทธิ์การใช้งาน</p><div className="mt-2 grid gap-2 sm:grid-cols-2">{([{ key: "canViewDashboard", label: "หน้าภาพรวม" }, { key: "canViewList", label: "แสดงรายการ" }, { key: "canInspect", label: "ตรวจสอบประจำปี" }, { key: "canCreate", label: "บันทึกข้อมูล" }, { key: "canViewReports", label: "รายงาน" }, { key: "canManageUsers", label: "ตั้งค่า" }, { key: "canImportAssets", label: "นำเข้าข้อมูล Excel" }, { key: "canEdit", label: "แก้ไขข้อมูลครุภัณฑ์" }, { key: "canDelete", label: "ลบข้อมูลครุภัณฑ์" }] as { key: keyof Permissions; label: string }[]).map((option) => <label key={option.key} className="flex items-center gap-3 rounded-lg border border-line bg-slate-950/30 px-3 py-2 text-sm text-ink"><input type="checkbox" checked={Boolean(editingRole.permissions[option.key])} onChange={(event) => setEditingRole({ ...editingRole, permissions: { ...editingRole.permissions, [option.key]: event.target.checked } })} className="h-4 w-4 accent-yellow-400" />{option.label}</label>)}</div></div><label className="flex items-center justify-between gap-4 rounded-lg border border-line bg-slate-950/30 px-4 py-3"><span className="text-sm font-semibold text-white">อนุญาตส่งออก</span><input type="checkbox" checked={editingRole.allowExport} onChange={(event) => setEditingRole({ ...editingRole, allowExport: event.target.checked, permissions: { ...editingRole.permissions, canExport: event.target.checked } })} className="h-5 w-5 accent-yellow-400" /></label><div className="flex justify-end gap-3 border-t border-line pt-4"><button type="button" onClick={() => setEditingRole(null)} className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink">ยกเลิก</button><button type="button" onClick={saveRole} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950">บันทึก</button></div></div></div></div>}
 
       {deleteCandidate && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
@@ -401,6 +651,7 @@ export default function SettingRoute() {
     onOrganizationItemsChange,
     onLocationItemsChange,
     onEquipmentTypeItemsChange,
+    onImportAssets,
   } = useAppData();
   if (!permissions.canManageUsers) return <PlaceholderPage title="ไม่มีสิทธิ์เข้าถึงการตั้งค่า" />;
   return (
@@ -420,6 +671,7 @@ export default function SettingRoute() {
       equipmentTypeItems={equipmentTypeItems}
       onEquipmentTypeItemsChange={onEquipmentTypeItemsChange}
       assets={assets}
+      onImportAssets={onImportAssets}
     />
   );
 }

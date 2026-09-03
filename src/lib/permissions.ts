@@ -13,6 +13,9 @@ export type Permissions = {
   canManageUsers: boolean;
   canViewAllOrganizations: boolean;
   canEditLimitedFields: boolean;
+  // Bulk Excel import of asset records from /setting — deliberately separate from
+  // canCreate so this stays admin-only even for roles that can create single assets.
+  canImportAssets: boolean;
 };
 
 export type RoleDefinition = {
@@ -42,7 +45,8 @@ export type PermissionAction =
   | "delete"
   | "export"
   | "inspect"
-  | "manageUsers";
+  | "manageUsers"
+  | "importAssets";
 
 export type ApiUser = {
   role: UserRole;
@@ -57,7 +61,7 @@ export type ApiAssetScope = {
 export const noPermissions: Permissions = {
   canViewDashboard: false, canViewList: false, canCreate: false, canEdit: false, canDelete: false, canExport: false,
   canInspect: false, canManageUsers: false, canViewAllOrganizations: true,
-  canEditLimitedFields: false,
+  canEditLimitedFields: false, canImportAssets: false,
 };
 
 export const initialRoleDefinitions: RoleDefinition[] = [
@@ -72,6 +76,7 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canManageUsers: true,
       canViewAllOrganizations: true,
       canEditLimitedFields: false,
+      canImportAssets: true,
   } },
   { key: "Staff", name: "เจ้าหน้าที่พัสดุ", description: "จัดการข้อมูลครุภัณฑ์และตรวจสอบประจำปี", allowExport: true, active: true, permissions: {
       canViewDashboard: true,
@@ -84,6 +89,7 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canManageUsers: false,
       canViewAllOrganizations: true,
       canEditLimitedFields: true,
+      canImportAssets: false,
   } },
   { key: "Committee", name: "คณะกรรมการนักศึกษา", description: "ดูรายการและรายละเอียดครุภัณฑ์ทั้งหมดในระบบ", allowExport: false, active: true, permissions: {
       canViewDashboard: false,
@@ -96,6 +102,7 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canManageUsers: false,
       canViewAllOrganizations: true,
       canEditLimitedFields: false,
+      canImportAssets: false,
   } },
   { key: "Viewer", name: "ผู้ดูรายงาน", description: "ดูหน้าภาพรวมและรายการครุภัณฑ์", allowExport: false, active: true, permissions: {
       ...noPermissions, canViewDashboard: true, canViewList: true, canViewAllOrganizations: true,
@@ -138,6 +145,7 @@ export function getPermissionLabel(permissions: Permissions) {
     permissions.canEdit && "แก้ไขข้อมูลครุภัณฑ์",
     permissions.canDelete && "ลบข้อมูลครุภัณฑ์",
     permissions.canExport && "ส่งออกข้อมูล",
+    permissions.canImportAssets && "นำเข้าข้อมูล Excel",
   ].filter(Boolean);
   return labels.join(", ");
 }
@@ -161,6 +169,7 @@ const ACTION_PERMISSION: Record<PermissionAction, keyof Permissions> = {
   export: "canExport",
   inspect: "canInspect",
   manageUsers: "canManageUsers",
+  importAssets: "canImportAssets",
 };
 
 export function hasPermission(

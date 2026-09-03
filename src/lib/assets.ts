@@ -3,7 +3,7 @@ import { assetTypeOptions } from "@/constants/options";
 import { allowedAssetStatuses } from "@/constants/statuses";
 import { formatThaiDate, formatThaiDateTimeWithSeconds } from "@/lib/dates";
 import { getOrganizationType, normalizeOrganizationName } from "@/lib/organizations";
-import { AnnualInspection, AssetImportPreviewRow, AssetImportRow, AssetListRow, ReportColumn } from "@/types";
+import { AdminAssetImportRow, AdminAssetImportStatus, AdminAssetImportSummary, AnnualInspection, AssetImportPreviewRow, AssetImportRow, AssetListRow, ReportColumn } from "@/types";
 
 export const ASSET_NUMBER_PREFIX = "ค.อ.มช.";
 
@@ -312,6 +312,178 @@ export function createAssetFromImportRow(row: AssetImportRow, index: number): As
     assetSetItems: [],
     updatedAt: now,
     deletedAt: null,
+  };
+}
+
+// --- /setting > นำเข้าข้อมูล Excel (admin-only bulk import) --------------------
+// Separate from the functions above, which back the existing /record Excel
+// importer — this flow needs registration-type inference from asset numbers and a
+// richer per-row status bucket (ready / duplicate / incomplete / invalid), so it
+// gets its own preview builder rather than reusing/changing validateAssetImportRows.
+
+export const ADMIN_IMPORT_REQUIRED_HEADERS = ["ชื่อรายการครุภัณฑ์"];
+
+export const ADMIN_IMPORT_TEMPLATE_COLUMNS = [
+  "ปีงบประมาณ",
+  "หมายเลขครุภัณฑ์",
+  "เลขครุภัณฑ์มหาวิทยาลัย",
+  "ชื่อรายการครุภัณฑ์",
+  "ลักษณะครุภัณฑ์",
+  "ประเภทครุภัณฑ์",
+  "หน่วยงาน",
+  "สถานที่จัดเก็บ",
+  "สถานะ",
+  "หมายเหตุ",
+];
+
+// Requirement 5: infer registration type purely from which asset number(s) a row has.
+export function inferRegistrationType(assetNumber: string, universityAssetNumber: string): string | null {
+  const hasActivityNumber = Boolean(assetNumber && assetNumber !== "-");
+  const hasUniversityNumber = Boolean(universityAssetNumber && universityAssetNumber !== "-");
+  if (hasActivityNumber && hasUniversityNumber) return "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย";
+  if (hasUniversityNumber) return "ครุภัณฑ์มหาวิทยาลัย";
+  if (hasActivityNumber) return "ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา";
+  return null;
+}
+
+const ADMIN_IMPORT_STATUS_LABEL: Record<AdminAssetImportStatus, string> = {
+  ready: "พร้อมนำเข้า",
+  duplicate: "ซ้ำ",
+  incomplete: "ข้อมูลไม่ครบ",
+  invalid: "ผิดรูปแบบ",
+};
+
+// Builds the preview rows shown in /setting before an admin confirms the import.
+// `existingAssets` should be the live (non-deleted) asset list so duplicate
+// detection reflects the real database, not just this file's own contents.
+export function buildAdminAssetImportPreview(
+  rows: AssetImportRow[],
+  existingAssets: AssetListRow[],
+  defaultFiscalYear: string,
+): AdminAssetImportRow[] {
+  const existingAssetNumbers = new Set(
+    existingAssets.map((asset) => asset.assetNumber.trim()).filter((value) => value && value !== "-"),
+  );
+  const existingUniversityNumbers = new Set(
+    existingAssets
+      .map((asset) => asset.universityAssetNumber?.trim() ?? "")
+      .filter((value) => value && value !== "-"),
+  );
+  const seenAssetNumbers = new Set<string>();
+  const seenUniversityNumbers = new Set<string>();
+
+  return rows.map((row, index) => {
+    const rowNumber = index + 2;
+    const assetName = row["ชื่อรายการครุภัณฑ์"]?.trim() ?? "";
+    const assetNumber = row["หมายเลขครุภัณฑ์"]?.trim() ?? "";
+    const universityAssetNumber = row["เลขครุภัณฑ์มหาวิทยาลัย"]?.trim() ?? "";
+    const fiscalYearRaw = row["ปีงบประมาณ"]?.trim() ?? "";
+    const fiscalYearFormatValid = !fiscalYearRaw || /^[0-9]{4}$/.test(fiscalYearRaw);
+    const fiscalYear = /^[0-9]{4}$/.test(fiscalYearRaw) ? fiscalYearRaw : defaultFiscalYear;
+    const assetStructureType = row["ลักษณะครุภัณฑ์"]?.trim() || "ครุภัณฑ์เดี่ยว";
+    const assetType = row["ประเภทครุภัณฑ์"]?.trim() || "-";
+    const organizationRaw = row["หน่วยงาน"]?.trim() || row["ฝ่าย/ชมรมที่รับผิดชอบ"]?.trim() || "-";
+    const organization = organizationRaw === "-" ? "-" : normalizeOrganizationName(organizationRaw) || organizationRaw;
+    const location = row["สถานที่จัดเก็บ"]?.trim() || "-";
+    const statusRaw = row["สถานะ"]?.trim() || row["สถานะครุภัณฑ์"]?.trim() || "";
+    const status = statusRaw && allowedAssetStatuses.includes(statusRaw) ? statusRaw : "รอตรวจสอบ";
+    const note = row["หมายเหตุ"]?.trim() || "-";
+    const registrationType = inferRegistrationType(assetNumber, universityAssetNumber);
+
+    const reasons: string[] = [];
+    let statusKind: AdminAssetImportStatus = "ready";
+
+    if (!assetName) {
+      reasons.push("ไม่มีชื่อรายการครุภัณฑ์");
+      statusKind = "incomplete";
+    } else if (!registrationType) {
+      reasons.push("ไม่มีหมายเลขครุภัณฑ์หรือเลขครุภัณฑ์มหาวิทยาลัย");
+      statusKind = "incomplete";
+    } else if (!fiscalYearFormatValid) {
+      reasons.push("ปีงบประมาณต้องเป็นตัวเลข 4 หลัก");
+      statusKind = "invalid";
+    } else {
+      const duplicateAssetNumber = Boolean(assetNumber) && (existingAssetNumbers.has(assetNumber) || seenAssetNumbers.has(assetNumber));
+      const duplicateUniversityNumber = Boolean(universityAssetNumber && universityAssetNumber !== "-")
+        && (existingUniversityNumbers.has(universityAssetNumber) || seenUniversityNumbers.has(universityAssetNumber));
+      if (duplicateAssetNumber) reasons.push("หมายเลขครุภัณฑ์ซ้ำ");
+      if (duplicateUniversityNumber) reasons.push("เลขครุภัณฑ์มหาวิทยาลัยซ้ำ");
+      if (duplicateAssetNumber || duplicateUniversityNumber) statusKind = "duplicate";
+    }
+
+    if (assetNumber) seenAssetNumbers.add(assetNumber);
+    if (universityAssetNumber && universityAssetNumber !== "-") seenUniversityNumbers.add(universityAssetNumber);
+
+    let asset: AssetListRow | undefined;
+    if (statusKind === "ready" && registrationType) {
+      const generatedId = Date.now() + index + 1;
+      asset = {
+        id: generatedId,
+        fiscalYear,
+        budgetSource: "",
+        recordDate: "-",
+        assetCode: `CMU-ASSET-IMPORT-${String(generatedId).slice(-6)}`,
+        assetNumber: assetNumber || "-",
+        assetName,
+        assetDescription: assetName,
+        organization,
+        organizationType: getOrganizationType(organization),
+        assetType,
+        location,
+        building: "-",
+        room: "-",
+        responsiblePerson: "-",
+        purchaseProject: "-",
+        purchaseMonth: "-",
+        numberPlacement: "-",
+        quantity: "1",
+        unit: "-",
+        price: "",
+        responsiblePhone: "-",
+        status,
+        latestInspectionDate: "",
+        inspectionResult: "",
+        isInspected: false,
+        imageCount: 0,
+        assetImages: [],
+        note,
+        registrationType,
+        universityAssetNumber: universityAssetNumber || "-",
+        assetStructureType: assetStructureType.includes("ชุด") ? "set" : "single",
+        assetSetItems: [],
+        deletedAt: null,
+      };
+    }
+
+    return {
+      rowNumber,
+      fiscalYear,
+      assetNumber: assetNumber || "-",
+      universityAssetNumber: universityAssetNumber || "-",
+      registrationType: registrationType ?? "-",
+      assetName: assetName || "-",
+      assetStructureType,
+      assetType,
+      organization,
+      location,
+      status,
+      inspectionResult: "ยังไม่ได้ตรวจ",
+      note,
+      statusKind,
+      statusLabel: ADMIN_IMPORT_STATUS_LABEL[statusKind],
+      reasons,
+      asset,
+    };
+  });
+}
+
+export function summarizeAdminAssetImport(rows: AdminAssetImportRow[]): AdminAssetImportSummary {
+  return {
+    totalRows: rows.length,
+    ready: rows.filter((row) => row.statusKind === "ready").length,
+    duplicate: rows.filter((row) => row.statusKind === "duplicate").length,
+    incomplete: rows.filter((row) => row.statusKind === "incomplete").length,
+    invalid: rows.filter((row) => row.statusKind === "invalid").length,
   };
 }
 
