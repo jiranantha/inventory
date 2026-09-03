@@ -396,19 +396,6 @@ export function guessColumnMapping(columns: DetectedExcelColumn[]): AdminImportC
   return mapping;
 }
 
-export const ADMIN_IMPORT_TEMPLATE_COLUMNS = [
-  "ปีงบประมาณที่จัดซื้อ",
-  "เลขทะเบียนควบคุมกิจกรรมนักศึกษา",
-  "เลขครุภัณฑ์มหาวิทยาลัย",
-  "ชื่อรายการครุภัณฑ์",
-  "ลักษณะครุภัณฑ์",
-  "ประเภทครุภัณฑ์",
-  "องค์กรนักศึกษา/หน่วยงานที่รับผิดชอบ",
-  "สถานที่จัดเก็บ",
-  "สถานะการใช้งาน",
-  "หมายเหตุ",
-];
-
 // Requirement 5: infer registration type purely from which asset number(s) a row has.
 export function inferRegistrationType(assetNumber: string, universityAssetNumber: string): string | null {
   const hasActivityNumber = Boolean(assetNumber && assetNumber !== "-");

@@ -5,8 +5,8 @@ import { CloseIconButton, DetailInfoItem, Field, SelectField } from "@/component
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 import { AppUser, Permissions, RoleDefinition, UserRole, getPermissionLabel, getRoleDefinition, noPermissions } from "@/lib/permissions";
-import { ADMIN_IMPORT_FIELD_DEFINITIONS, ADMIN_IMPORT_TEMPLATE_COLUMNS, buildAdminAssetImportPreview, getLatestAssetSequenceForYear, guessColumnMapping, summarizeAdminAssetImport } from "@/lib/assets";
-import { downloadReportFile, readExcelWorkbookForMapping } from "@/lib/import-export";
+import { ADMIN_IMPORT_FIELD_DEFINITIONS, buildAdminAssetImportPreview, getLatestAssetSequenceForYear, guessColumnMapping, summarizeAdminAssetImport } from "@/lib/assets";
+import { readExcelWorkbookForMapping } from "@/lib/import-export";
 import { uniqueSorted } from "@/lib/utils";
 import { AdminAssetImportRow, AdminImportColumnMapping, AssetImportInsertSummary, AssetListRow, DetectedExcelWorkbook, MasterDataItem } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -133,6 +133,8 @@ function MasterDataPanel({ title, description, items, onChange, addLabel, search
     </section>
   );
 }
+
+const ADMIN_IMPORT_TEMPLATE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1KkhtOcCl9N9OPIUkzt1KnnsBl4qEmkvC64SyedcEfNY/edit?usp=sharing";
 
 const IMPORT_STATUS_BADGE_CLASS: Record<AdminAssetImportRow["statusKind"], string> = {
   ready: "border-emerald-300/40 bg-emerald-400/10 text-emerald-200",
@@ -266,12 +268,6 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
     }
   };
 
-  const handleDownloadTemplate = () => {
-    const headerRow = `<tr>${ADMIN_IMPORT_TEMPLATE_COLUMNS.map((label) => `<th>${label}</th>`).join("")}</tr>`;
-    const html = `<html><head><meta charset="utf-8" /></head><body><table>${headerRow}</table></body></html>`;
-    downloadReportFile("แบบฟอร์มนำเข้าข้อมูลครุภัณฑ์.xls", "application/vnd.ms-excel;charset=utf-8", html);
-  };
-
   return (
     <section className="mx-auto w-full max-w-screen-2xl space-y-5">
       <div className="rounded-lg border border-line bg-surface p-6">
@@ -292,9 +288,14 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
           <li>ข้อมูลที่ซ้ำกับระบบ หรือข้อมูลไม่ครบ จะไม่ถูกนำเข้า</li>
           <li className="font-semibold text-ink">กรุณาตรวจสอบตัวอย่างข้อมูลก่อนกดยืนยันนำเข้า เพราะข้อมูลจะถูกเพิ่มเข้าสู่ฐานข้อมูลจริง</li>
         </ul>
-        <button type="button" onClick={handleDownloadTemplate} className="mt-4 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">
-          ดาวน์โหลดแบบฟอร์ม Excel
-        </button>
+        <a
+          href={ADMIN_IMPORT_TEMPLATE_SHEET_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 inline-block rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary"
+        >
+          เปิดแบบฟอร์ม Google Sheet
+        </a>
       </div>
 
       <div className="rounded-lg border border-line bg-surface p-6">
