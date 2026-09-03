@@ -5,7 +5,7 @@ import { CloseIconButton, DetailInfoItem, Field, SelectField } from "@/component
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 import { AppUser, Permissions, RoleDefinition, UserRole, getPermissionLabel, getRoleDefinition, noPermissions } from "@/lib/permissions";
-import { ADMIN_IMPORT_TEMPLATE_COLUMNS, buildAdminAssetImportPreview, getLatestAssetSequenceForYear, summarizeAdminAssetImport } from "@/lib/assets";
+import { ADMIN_IMPORT_TEMPLATE_COLUMNS, buildAdminAssetImportPreview, findAssetNameHeader, getLatestAssetSequenceForYear, summarizeAdminAssetImport } from "@/lib/assets";
 import { downloadReportFile, readAssetRowsFromFile } from "@/lib/import-export";
 import { uniqueSorted } from "@/lib/utils";
 import { AdminAssetImportRow, AssetImportInsertSummary, AssetListRow, MasterDataItem } from "@/types";
@@ -186,8 +186,8 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
     try {
       const rows = await readAssetRowsFromFile(selectedFile);
       const headers = Object.keys(rows[0] ?? {});
-      if (!headers.includes("ชื่อรายการครุภัณฑ์")) {
-        setCheckError("ไฟล์นี้ไม่มีคอลัมน์ \"ชื่อรายการครุภัณฑ์\" กรุณาตรวจสอบไฟล์หรือดาวน์โหลดแบบฟอร์มใหม่");
+      if (!findAssetNameHeader(headers)) {
+        setCheckError("ไม่พบคอลัมน์ที่ใช้เป็นชื่อครุภัณฑ์ กรุณาตรวจสอบว่ามีคอลัมน์ เช่น รายการ, ชื่อครุภัณฑ์ หรือ ชื่อรายการครุภัณฑ์");
         return;
       }
       const preview = buildAdminAssetImportPreview(rows, assets, defaultFiscalYear);
@@ -235,7 +235,7 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
         <h3 className="text-base font-bold text-ink">คำแนะนำการนำเข้า</h3>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-muted">
           <li>รองรับเฉพาะไฟล์ .xlsx และ .xls เท่านั้น</li>
-          <li>ต้องมีคอลัมน์ &quot;ชื่อรายการครุภัณฑ์&quot; อย่างน้อยในไฟล์</li>
+          <li>ระบบรองรับชื่อคอลัมน์ได้หลายรูปแบบ เช่น รายการ, ชื่อครุภัณฑ์ หรือ ชื่อรายการครุภัณฑ์</li>
           <li>แต่ละแถวต้องมีหมายเลขครุภัณฑ์ หรือเลขครุภัณฑ์มหาวิทยาลัย อย่างน้อยหนึ่งอย่าง ระบบจะกำหนดประเภทการขึ้นทะเบียนให้อัตโนมัติ</li>
           <li>หากไม่ระบุปีงบประมาณในไฟล์ ระบบจะใช้ปีงบประมาณเริ่มต้นที่กำหนดไว้ด้านล่าง</li>
           <li>ข้อมูลที่ซ้ำกับระบบ หรือข้อมูลไม่ครบ/ผิดรูปแบบ จะไม่ถูกนำเข้า</li>

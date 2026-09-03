@@ -321,7 +321,34 @@ export function createAssetFromImportRow(row: AssetImportRow, index: number): As
 // richer per-row status bucket (ready / duplicate / incomplete / invalid), so it
 // gets its own preview builder rather than reusing/changing validateAssetImportRows.
 
-export const ADMIN_IMPORT_REQUIRED_HEADERS = ["ชื่อรายการครุภัณฑ์"];
+// Column names accepted as the asset-name field. Files rarely use the exact
+// template header ("ชื่อรายการครุภัณฑ์"), so any of these aliases is accepted —
+// matched case-insensitively (for the English ones) after collapsing whitespace.
+export const ASSET_NAME_HEADER_ALIASES = [
+  "ชื่อรายการครุภัณฑ์",
+  "ชื่อครุภัณฑ์",
+  "รายการครุภัณฑ์",
+  "รายการ",
+  "ชื่อรายการ",
+  "รายการพัสดุ",
+  "รายการทรัพย์สิน",
+  "ชื่อพัสดุ",
+  "assetName",
+  "asset_name",
+  "name",
+];
+
+function normalizeHeaderKey(header: string): string {
+  return header.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+const ASSET_NAME_HEADER_ALIASES_NORMALIZED = new Set(ASSET_NAME_HEADER_ALIASES.map(normalizeHeaderKey));
+
+// Returns the actual header text (as it appears in the file) that should be
+// used as the asset-name column, or null if the file has none of the aliases.
+export function findAssetNameHeader(headers: string[]): string | null {
+  return headers.find((header) => ASSET_NAME_HEADER_ALIASES_NORMALIZED.has(normalizeHeaderKey(header))) ?? null;
+}
 
 export const ADMIN_IMPORT_TEMPLATE_COLUMNS = [
   "ปีงบประมาณ",
@@ -371,10 +398,11 @@ export function buildAdminAssetImportPreview(
   );
   const seenAssetNumbers = new Set<string>();
   const seenUniversityNumbers = new Set<string>();
+  const assetNameHeader = findAssetNameHeader(Object.keys(rows[0] ?? {}));
 
   return rows.map((row, index) => {
     const rowNumber = index + 2;
-    const assetName = row["ชื่อรายการครุภัณฑ์"]?.trim() ?? "";
+    const assetName = (assetNameHeader ? row[assetNameHeader] : undefined)?.trim() ?? "";
     const assetNumber = row["หมายเลขครุภัณฑ์"]?.trim() ?? "";
     const universityAssetNumber = row["เลขครุภัณฑ์มหาวิทยาลัย"]?.trim() ?? "";
     const fiscalYearRaw = row["ปีงบประมาณ"]?.trim() ?? "";
