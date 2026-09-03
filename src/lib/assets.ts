@@ -322,24 +322,30 @@ export function createAssetFromImportRow(row: AssetImportRow, index: number): As
 // gets its own preview builder rather than reusing/changing validateAssetImportRows.
 
 // The system no longer requires any fixed Excel column name — the admin maps
-// each of these fields to whichever column in their file holds that data (or
-// leaves it unmapped as "ไม่ใช้คอลัมน์นี้"). Order here drives the mapping UI.
+// each of these fields to whichever column in their file holds that data, or
+// leaves the dropdown blank (its placeholder option) to mean "unused". Labels
+// here match the /record add-asset form's field labels exactly (src/lib/i18n.ts
+// rec.label.* / rec.modal.numberLocation), per that page being the source of
+// truth for field naming. Order here drives the mapping UI.
 export const ADMIN_IMPORT_FIELD_DEFINITIONS: { key: AdminImportFieldKey; label: string }[] = [
-  { key: "assetName", label: "ชื่อครุภัณฑ์" },
-  { key: "assetNumber", label: "หมายเลขครุภัณฑ์กิจกรรมนักศึกษา" },
+  { key: "registrationType", label: "ประเภทการลงทะเบียนครุภัณฑ์" },
+  { key: "assetNumber", label: "เลขทะเบียนควบคุมกิจกรรมนักศึกษา" },
   { key: "universityAssetNumber", label: "เลขครุภัณฑ์มหาวิทยาลัย" },
-  { key: "fiscalYear", label: "ปีงบประมาณ" },
+  { key: "numberPlacement", label: "ระบุตำแหน่งที่ประทับหมายเลขครุภัณฑ์" },
+  { key: "assetName", label: "ชื่อรายการครุภัณฑ์" },
   { key: "assetStructureType", label: "ลักษณะครุภัณฑ์" },
   { key: "assetType", label: "ประเภทครุภัณฑ์" },
-  { key: "assetDescription", label: "ข้อมูลจำเพาะ" },
+  { key: "assetDescription", label: "ข้อมูลจำเพาะ / คุณลักษณะของครุภัณฑ์" },
+  { key: "fiscalYear", label: "ปีงบประมาณที่จัดซื้อ" },
+  { key: "budgetSource", label: "แหล่งงบประมาณที่ใช้" },
   { key: "purchaseProject", label: "จัดซื้อในโครงการ" },
   { key: "recordDate", label: "วันที่ได้รับครุภัณฑ์" },
-  { key: "status", label: "สถานะครุภัณฑ์" },
+  { key: "status", label: "สถานะการใช้งาน" },
   { key: "note", label: "หมายเหตุ" },
-  { key: "organization", label: "หน่วยงานที่รับผิดชอบ" },
+  { key: "organization", label: "องค์กรนักศึกษา/หน่วยงานที่รับผิดชอบ" },
   { key: "location", label: "สถานที่จัดเก็บ" },
-  { key: "responsiblePerson", label: "ชื่อผู้รับผิดชอบ" },
-  { key: "responsiblePhone", label: "เบอร์โทรผู้รับผิดชอบ" },
+  { key: "responsiblePerson", label: "ผู้รับผิดชอบ" },
+  { key: "responsiblePhone", label: "หมายเลขโทรศัพท์" },
 ];
 
 // Keyword hints used only to *prefill* the mapping dropdowns as a convenience —
@@ -347,21 +353,24 @@ export const ADMIN_IMPORT_FIELD_DEFINITIONS: { key: AdminImportFieldKey; label: 
 // a field can't be guessed. This is what keeps the importer from depending on
 // any fixed column name: a wrong or missing guess never rejects the file.
 const ADMIN_IMPORT_FIELD_KEYWORDS: Record<AdminImportFieldKey, string[]> = {
-  assetName: ["ชื่อครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "รายการครุภัณฑ์", "รายการ", "ชื่อรายการ", "รายการพัสดุ", "รายการทรัพย์สิน", "ชื่อพัสดุ", "assetname", "asset_name", "name"],
-  assetNumber: ["หมายเลขครุภัณฑ์กิจกรรมนักศึกษา", "หมายเลขครุภัณฑ์", "เลขครุภัณฑ์กิจกรรม", "assetnumber", "asset_number"],
+  registrationType: ["ประเภทการลงทะเบียนครุภัณฑ์", "ประเภทการขึ้นทะเบียน", "registrationtype"],
+  assetName: ["ชื่อรายการครุภัณฑ์", "ชื่อครุภัณฑ์", "รายการครุภัณฑ์", "รายการ", "ชื่อรายการ", "รายการพัสดุ", "รายการทรัพย์สิน", "ชื่อพัสดุ", "assetname", "asset_name", "name"],
+  assetNumber: ["เลขทะเบียนควบคุมกิจกรรมนักศึกษา", "หมายเลขครุภัณฑ์กิจกรรมนักศึกษา", "หมายเลขครุภัณฑ์", "เลขครุภัณฑ์กิจกรรม", "assetnumber", "asset_number"],
   universityAssetNumber: ["เลขครุภัณฑ์มหาวิทยาลัย", "universityassetnumber", "university_asset_number"],
-  fiscalYear: ["ปีงบประมาณ", "fiscalyear", "fiscal_year", "year"],
+  numberPlacement: ["ตำแหน่งที่ประทับหมายเลขครุภัณฑ์", "ตำแหน่งที่ติด", "ตำแหน่งประทับ", "numberplacement"],
+  fiscalYear: ["ปีงบประมาณที่จัดซื้อ", "ปีงบประมาณ", "fiscalyear", "fiscal_year", "year"],
   assetStructureType: ["ลักษณะครุภัณฑ์"],
   assetType: ["ประเภทครุภัณฑ์"],
-  assetDescription: ["ข้อมูลจำเพาะ", "รายละเอียดครุภัณฑ์", "รายละเอียด"],
+  assetDescription: ["ข้อมูลจำเพาะ", "คุณลักษณะของครุภัณฑ์", "รายละเอียดครุภัณฑ์", "รายละเอียด"],
+  budgetSource: ["แหล่งงบประมาณที่ใช้", "แหล่งงบประมาณ", "budgetsource"],
   purchaseProject: ["จัดซื้อในโครงการ", "โครงการจัดซื้อ", "purchaseproject"],
   recordDate: ["วันที่ได้รับครุภัณฑ์", "วันที่รับ", "recorddate"],
-  status: ["สถานะครุภัณฑ์", "สถานะ", "status"],
+  status: ["สถานะการใช้งาน", "สถานะครุภัณฑ์", "สถานะ", "status"],
   note: ["หมายเหตุ", "note"],
-  organization: ["หน่วยงานที่รับผิดชอบ", "หน่วยงาน", "ฝ่าย/ชมรมที่รับผิดชอบ", "organization"],
+  organization: ["องค์กรนักศึกษา/หน่วยงานที่รับผิดชอบ", "หน่วยงานที่รับผิดชอบ", "หน่วยงาน", "ฝ่าย/ชมรมที่รับผิดชอบ", "organization"],
   location: ["สถานที่จัดเก็บ", "location"],
   responsiblePerson: ["ชื่อผู้รับผิดชอบ", "ผู้รับผิดชอบ", "responsibleperson"],
-  responsiblePhone: ["เบอร์โทรผู้รับผิดชอบ", "เบอร์โทร", "โทรศัพท์", "responsiblephone"],
+  responsiblePhone: ["เบอร์โทรผู้รับผิดชอบ", "หมายเลขโทรศัพท์", "เบอร์โทร", "โทรศัพท์", "responsiblephone"],
 };
 
 function normalizeColumnLabel(label: string): string {
@@ -385,15 +394,15 @@ export function guessColumnMapping(columns: DetectedExcelColumn[]): AdminImportC
 }
 
 export const ADMIN_IMPORT_TEMPLATE_COLUMNS = [
-  "ปีงบประมาณ",
-  "หมายเลขครุภัณฑ์",
+  "ปีงบประมาณที่จัดซื้อ",
+  "เลขทะเบียนควบคุมกิจกรรมนักศึกษา",
   "เลขครุภัณฑ์มหาวิทยาลัย",
   "ชื่อรายการครุภัณฑ์",
   "ลักษณะครุภัณฑ์",
   "ประเภทครุภัณฑ์",
-  "หน่วยงาน",
+  "องค์กรนักศึกษา/หน่วยงานที่รับผิดชอบ",
   "สถานที่จัดเก็บ",
-  "สถานะ",
+  "สถานะการใช้งาน",
   "หมายเหตุ",
 ];
 
@@ -407,12 +416,11 @@ export function inferRegistrationType(assetNumber: string, universityAssetNumber
   return null;
 }
 
-const ADMIN_IMPORT_STATUS_LABEL: Record<AdminAssetImportStatus, string> = {
-  ready: "พร้อมนำเข้า",
-  duplicate: "ซ้ำ",
-  incomplete: "ข้อมูลไม่ครบ",
-  invalid: "ผิดรูปแบบ",
-};
+const VALID_REGISTRATION_TYPES = [
+  "ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา",
+  "ครุภัณฑ์มหาวิทยาลัย",
+  "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย",
+];
 
 // Builds the preview rows shown in /setting before an admin confirms the import.
 // `rows` are keyed by the synthetic column ids from readExcelWorkbookForMapping
@@ -420,6 +428,10 @@ const ADMIN_IMPORT_STATUS_LABEL: Record<AdminAssetImportStatus, string> = {
 // system field — the admin sets this manually, so no column name is assumed.
 // `existingAssets` should be the live (non-deleted) asset list so duplicate
 // detection reflects the real database, not just this file's own contents.
+//
+// Asset numbers always come straight from the mapped Excel column — this never
+// calls getNextAssetNumber/getLatestAssetSequenceForYear, so the ค.อ.มช. running
+// sequence is neither consumed nor reset by this import path.
 export function buildAdminAssetImportPreview(
   rows: AssetImportRow[],
   mapping: AdminImportColumnMapping,
@@ -448,9 +460,11 @@ export function buildAdminAssetImportPreview(
     const assetName = mapped(row, "assetName");
     const assetNumber = mapped(row, "assetNumber");
     const universityAssetNumber = mapped(row, "universityAssetNumber");
+    const hasActivityNumber = Boolean(assetNumber && assetNumber !== "-");
+    const hasUniversityNumber = Boolean(universityAssetNumber && universityAssetNumber !== "-");
     const fiscalYearRaw = mapped(row, "fiscalYear");
-    const fiscalYearFormatValid = !fiscalYearRaw || /^[0-9]{4}$/.test(fiscalYearRaw);
     const fiscalYear = /^[0-9]{4}$/.test(fiscalYearRaw) ? fiscalYearRaw : defaultFiscalYear;
+    const numberPlacement = mapped(row, "numberPlacement") || "-";
     const assetStructureType = mapped(row, "assetStructureType") || "ครุภัณฑ์เดี่ยว";
     const assetType = mapped(row, "assetType") || "-";
     const organizationRaw = mapped(row, "organization") || "-";
@@ -460,35 +474,44 @@ export function buildAdminAssetImportPreview(
     const status = statusRaw && allowedAssetStatuses.includes(statusRaw) ? statusRaw : "รอตรวจสอบ";
     const note = mapped(row, "note") || "-";
     const assetDescription = mapped(row, "assetDescription") || assetName || "-";
+    const budgetSource = mapped(row, "budgetSource");
     const purchaseProject = mapped(row, "purchaseProject") || "-";
     const recordDate = mapped(row, "recordDate") || "-";
     const responsiblePerson = mapped(row, "responsiblePerson") || "-";
     const responsiblePhone = mapped(row, "responsiblePhone") || "-";
-    const registrationType = inferRegistrationType(assetNumber, universityAssetNumber);
+
+    // Requirement 7: an explicitly mapped, valid registration type wins; otherwise
+    // infer it from whichever asset number(s) the row actually has.
+    const registrationTypeRaw = mapped(row, "registrationType");
+    const inferredRegistrationType = inferRegistrationType(assetNumber, universityAssetNumber);
+    const registrationType = VALID_REGISTRATION_TYPES.includes(registrationTypeRaw) ? registrationTypeRaw : inferredRegistrationType;
 
     const reasons: string[] = [];
     let statusKind: AdminAssetImportStatus = "ready";
+    let statusLabel = "พร้อมนำเข้า";
 
     if (!assetName) {
-      reasons.push("ไม่มีชื่อครุภัณฑ์");
       statusKind = "incomplete";
-    } else if (!registrationType) {
-      reasons.push("ไม่มีหมายเลขครุภัณฑ์หรือเลขครุภัณฑ์มหาวิทยาลัย");
+      statusLabel = "ข้อมูลไม่ครบ: ไม่มีชื่อรายการครุภัณฑ์";
+      reasons.push("ไม่มีชื่อรายการครุภัณฑ์");
+    } else if (!hasActivityNumber && !hasUniversityNumber) {
       statusKind = "incomplete";
-    } else if (!fiscalYearFormatValid) {
-      reasons.push("ปีงบประมาณต้องเป็นตัวเลข 4 หลัก");
-      statusKind = "invalid";
+      statusLabel = "ข้อมูลไม่ครบ: ไม่มีเลขครุภัณฑ์";
+      reasons.push("ไม่มีเลขครุภัณฑ์");
     } else {
-      const duplicateAssetNumber = Boolean(assetNumber) && (existingAssetNumbers.has(assetNumber) || seenAssetNumbers.has(assetNumber));
-      const duplicateUniversityNumber = Boolean(universityAssetNumber && universityAssetNumber !== "-")
+      const duplicateAssetNumber = hasActivityNumber && (existingAssetNumbers.has(assetNumber) || seenAssetNumbers.has(assetNumber));
+      const duplicateUniversityNumber = hasUniversityNumber
         && (existingUniversityNumbers.has(universityAssetNumber) || seenUniversityNumbers.has(universityAssetNumber));
-      if (duplicateAssetNumber) reasons.push("หมายเลขครุภัณฑ์ซ้ำ");
+      if (duplicateAssetNumber) reasons.push("เลขทะเบียนควบคุมกิจกรรมนักศึกษาซ้ำ");
       if (duplicateUniversityNumber) reasons.push("เลขครุภัณฑ์มหาวิทยาลัยซ้ำ");
-      if (duplicateAssetNumber || duplicateUniversityNumber) statusKind = "duplicate";
+      if (duplicateAssetNumber || duplicateUniversityNumber) {
+        statusKind = "duplicate";
+        statusLabel = "ข้อมูลซ้ำในระบบ";
+      }
     }
 
-    if (assetNumber) seenAssetNumbers.add(assetNumber);
-    if (universityAssetNumber && universityAssetNumber !== "-") seenUniversityNumbers.add(universityAssetNumber);
+    if (hasActivityNumber) seenAssetNumbers.add(assetNumber);
+    if (hasUniversityNumber) seenUniversityNumbers.add(universityAssetNumber);
 
     let asset: AssetListRow | undefined;
     if (statusKind === "ready" && registrationType) {
@@ -496,7 +519,7 @@ export function buildAdminAssetImportPreview(
       asset = {
         id: generatedId,
         fiscalYear,
-        budgetSource: "",
+        budgetSource,
         recordDate,
         assetCode: `CMU-ASSET-IMPORT-${String(generatedId).slice(-6)}`,
         assetNumber: assetNumber || "-",
@@ -511,7 +534,7 @@ export function buildAdminAssetImportPreview(
         responsiblePerson,
         purchaseProject,
         purchaseMonth: "-",
-        numberPlacement: "-",
+        numberPlacement,
         quantity: "1",
         unit: "-",
         price: "",
@@ -537,6 +560,7 @@ export function buildAdminAssetImportPreview(
       assetNumber: assetNumber || "-",
       universityAssetNumber: universityAssetNumber || "-",
       registrationType: registrationType ?? "-",
+      numberPlacement,
       assetName: assetName || "-",
       assetStructureType,
       assetType,
@@ -546,7 +570,7 @@ export function buildAdminAssetImportPreview(
       inspectionResult: "ยังไม่ได้ตรวจ",
       note,
       statusKind,
-      statusLabel: ADMIN_IMPORT_STATUS_LABEL[statusKind],
+      statusLabel,
       reasons,
       asset,
     };

@@ -141,8 +141,6 @@ const IMPORT_STATUS_BADGE_CLASS: Record<AdminAssetImportRow["statusKind"], strin
   invalid: "border-red-300/40 bg-red-400/10 text-red-200",
 };
 
-const NO_COLUMN_VALUE = "__none__";
-
 function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; onImportAssets: (rows: AssetListRow[]) => Promise<AssetImportInsertSummary> }) {
   const { showToast } = useAppData();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -219,7 +217,9 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
   };
 
   const handleMappingChange = (field: (typeof ADMIN_IMPORT_FIELD_DEFINITIONS)[number]["key"], columnId: string) => {
-    setMapping((current) => ({ ...current, [field]: columnId === NO_COLUMN_VALUE ? null : columnId }));
+    // A blank selection (columnId === "") means the field is simply unused —
+    // there is no separate "ไม่ใช้คอลัมน์นี้" sentinel value.
+    setMapping((current) => ({ ...current, [field]: columnId || null }));
     setPreviewRows(null);
     setMappingError("");
     setInsertSummary(null);
@@ -228,7 +228,7 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
   const handleShowPreview = () => {
     if (!activeSheet) return;
     if (!mapping.assetName || (!mapping.assetNumber && !mapping.universityAssetNumber)) {
-      setMappingError("กรุณาจับคู่คอลัมน์อย่างน้อย \"ชื่อครุภัณฑ์\" และหมายเลขครุภัณฑ์อย่างใดอย่างหนึ่ง (กิจกรรมนักศึกษา หรือ มหาวิทยาลัย) ก่อนแสดงตัวอย่าง");
+      setMappingError("กรุณาจับคู่คอลัมน์ที่จำเป็นก่อนแสดงตัวอย่างข้อมูล");
       return;
     }
     setMappingError("");
@@ -275,9 +275,9 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-muted">
           <li>รองรับเฉพาะไฟล์ .xlsx และ .xls เท่านั้น</li>
           <li>ระบบไม่บังคับชื่อคอลัมน์ในไฟล์ Excel ผู้ดูแลระบบสามารถเลือกจับคู่คอลัมน์จากไฟล์กับข้อมูลในระบบก่อนนำเข้าได้</li>
-          <li>แต่ละแถวต้องจับคู่ชื่อครุภัณฑ์ และหมายเลขครุภัณฑ์อย่างน้อยหนึ่งอย่าง (กิจกรรมนักศึกษา หรือ มหาวิทยาลัย) ระบบจะกำหนดประเภทการขึ้นทะเบียนให้อัตโนมัติ</li>
+          <li>ไฟล์นำเข้าควรมีเลขครุภัณฑ์อย่างน้อยหนึ่งประเภท ได้แก่ เลขทะเบียนควบคุมกิจกรรมนักศึกษา หรือเลขครุภัณฑ์มหาวิทยาลัย ระบบจะใช้เลขจากไฟล์โดยตรงและจะไม่รันเลขใหม่ระหว่างนำเข้า</li>
           <li>หากไม่จับคู่คอลัมน์ปีงบประมาณ ระบบจะใช้ปีงบประมาณเริ่มต้นที่กำหนดไว้ด้านล่าง</li>
-          <li>ข้อมูลที่ซ้ำกับระบบ หรือข้อมูลไม่ครบ/ผิดรูปแบบ จะไม่ถูกนำเข้า</li>
+          <li>ข้อมูลที่ซ้ำกับระบบ หรือข้อมูลไม่ครบ จะไม่ถูกนำเข้า</li>
           <li className="font-semibold text-ink">กรุณาตรวจสอบตัวอย่างข้อมูลก่อนกดยืนยันนำเข้า เพราะข้อมูลจะถูกเพิ่มเข้าสู่ฐานข้อมูลจริง</li>
         </ul>
         <button type="button" onClick={handleDownloadTemplate} className="mt-4 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">
@@ -321,9 +321,12 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
 
       {workbook && activeSheet && (
         <div className="rounded-lg border border-line bg-surface p-6">
-          <h3 className="text-base font-bold text-ink">จับคู่คอลัมน์จากไฟล์ Excel</h3>
+          <h3 className="text-base font-bold text-ink">จับคู่คอลัมน์</h3>
           <p className="mt-2 rounded-md border border-sky-300/30 bg-sky-400/10 px-3 py-2 text-sm font-semibold text-sky-100">
             กรุณาจับคู่คอลัมน์จากไฟล์ Excel กับข้อมูลในระบบก่อนนำเข้า
+          </p>
+          <p className="mt-2 text-xs text-muted">
+            ช่องที่มีเครื่องหมาย <span className="text-red-300">*</span> จำเป็นต้องจับคู่: ชื่อรายการครุภัณฑ์ และเลขครุภัณฑ์อย่างน้อยหนึ่งอย่าง (เลขทะเบียนควบคุมกิจกรรมนักศึกษา หรือ เลขครุภัณฑ์มหาวิทยาลัย) — ช่องอื่นเว้นว่างได้หากไม่มีในไฟล์
           </p>
 
           {workbook.sheets.length > 1 && (
@@ -370,14 +373,14 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
               <label key={field.key} className="block">
                 <span className="text-sm font-semibold text-ink">
                   {field.label}
-                  {(field.key === "assetName") && <span className="text-red-300"> *</span>}
+                  {(field.key === "assetName" || field.key === "assetNumber" || field.key === "universityAssetNumber") && <span className="text-red-300"> *</span>}
                 </span>
                 <select
-                  value={mapping[field.key] ?? NO_COLUMN_VALUE}
+                  value={mapping[field.key] ?? ""}
                   onChange={(event) => handleMappingChange(field.key, event.target.value)}
                   className="mt-2 min-h-11 w-full rounded-lg border border-lineStrong bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
                 >
-                  <option value={NO_COLUMN_VALUE}>ไม่ใช้คอลัมน์นี้</option>
+                  <option value="">เลือกคอลัมน์จาก Excel</option>
                   {activeSheet.columns.map((column) => (
                     <option key={column.id} value={column.id}>{column.label}</option>
                   ))}
@@ -403,7 +406,7 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
       {previewSummary && (
         <div className="rounded-lg border border-line bg-surface p-6">
           <h3 className="text-base font-bold text-ink">สรุปผลการตรวจสอบไฟล์</h3>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-lg border border-line bg-surfaceSoft p-3 text-center">
               <p className="text-xs text-muted">จำนวนแถวทั้งหมด</p>
               <p className="mt-1 text-xl font-extrabold text-ink">{previewSummary.totalRows}</p>
@@ -413,16 +416,12 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
               <p className="mt-1 text-xl font-extrabold text-emerald-100">{previewSummary.ready}</p>
             </div>
             <div className="rounded-lg border border-amber-300/30 bg-amber-400/10 p-3 text-center">
-              <p className="text-xs text-amber-200">ข้อมูลซ้ำ</p>
+              <p className="text-xs text-amber-200">ข้อมูลซ้ำในระบบ</p>
               <p className="mt-1 text-xl font-extrabold text-amber-100">{previewSummary.duplicate}</p>
             </div>
             <div className="rounded-lg border border-red-300/30 bg-red-400/10 p-3 text-center">
               <p className="text-xs text-red-200">ข้อมูลไม่ครบ</p>
               <p className="mt-1 text-xl font-extrabold text-red-100">{previewSummary.incomplete}</p>
-            </div>
-            <div className="rounded-lg border border-red-300/30 bg-red-400/10 p-3 text-center">
-              <p className="text-xs text-red-200">ผิดรูปแบบ</p>
-              <p className="mt-1 text-xl font-extrabold text-red-100">{previewSummary.invalid}</p>
             </div>
           </div>
           {previewSummary.duplicate > 0 && (
@@ -438,7 +437,7 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
             <table className="w-full min-w-[1200px] border-collapse text-left text-xs">
               <thead className="sticky top-0 bg-surfaceSoft text-ink">
                 <tr>
-                  {["ลำดับ", "ปีงบประมาณ", "หมายเลขครุภัณฑ์กิจกรรมนักศึกษา", "เลขครุภัณฑ์มหาวิทยาลัย", "ประเภทการขึ้นทะเบียน", "ชื่อครุภัณฑ์", "ลักษณะครุภัณฑ์", "ประเภทครุภัณฑ์", "หน่วยงาน", "สถานที่จัดเก็บ", "สถานะ", "หมายเหตุ", "ผลการตรวจสอบแถว"].map((label) => (
+                  {["ลำดับ", "ประเภทการขึ้นทะเบียน", "เลขทะเบียนควบคุมกิจกรรมนักศึกษา", "เลขครุภัณฑ์มหาวิทยาลัย", "ตำแหน่งที่ติด/ประทับหมายเลขครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "ลักษณะครุภัณฑ์", "ประเภทครุภัณฑ์", "ปีงบประมาณที่จัดซื้อ", "สถานะการใช้งาน", "องค์กรนักศึกษา/หน่วยงานที่รับผิดชอบ", "สถานที่จัดเก็บ", "ผลการตรวจสอบข้อมูล"].map((label) => (
                     <th key={label} className="border-b border-line px-3 py-2 font-semibold">{label}</th>
                   ))}
                 </tr>
@@ -447,17 +446,17 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
                 {previewRows.map((row) => (
                   <tr key={row.rowNumber}>
                     <td className="px-3 py-2 text-muted">{row.rowNumber - 1}</td>
-                    <td className="px-3 py-2">{row.fiscalYear}</td>
+                    <td className="px-3 py-2">{row.registrationType}</td>
                     <td className="px-3 py-2" title={row.assetNumber}>{row.assetNumber}</td>
                     <td className="px-3 py-2" title={row.universityAssetNumber}>{row.universityAssetNumber}</td>
-                    <td className="px-3 py-2">{row.registrationType}</td>
+                    <td className="px-3 py-2" title={row.numberPlacement}>{row.numberPlacement}</td>
                     <td className="px-3 py-2" title={row.assetName}>{row.assetName}</td>
                     <td className="px-3 py-2">{row.assetStructureType}</td>
                     <td className="px-3 py-2">{row.assetType}</td>
+                    <td className="px-3 py-2">{row.fiscalYear}</td>
+                    <td className="px-3 py-2">{row.status}</td>
                     <td className="px-3 py-2" title={row.organization}>{row.organization}</td>
                     <td className="px-3 py-2">{row.location}</td>
-                    <td className="px-3 py-2">{row.status}</td>
-                    <td className="px-3 py-2" title={row.note}>{row.note}</td>
                     <td className="px-3 py-2">
                       <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-bold ${IMPORT_STATUS_BADGE_CLASS[row.statusKind]}`} title={row.reasons.join(", ")}>
                         {row.statusLabel}

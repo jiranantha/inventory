@@ -112,6 +112,7 @@ export type AdminAssetImportRow = {
   assetNumber: string;
   universityAssetNumber: string;
   registrationType: string;
+  numberPlacement: string;
   assetName: string;
   assetStructureType: string;
   assetType: string;
@@ -156,13 +157,16 @@ export type DetectedExcelSheet = {
 export type DetectedExcelWorkbook = { sheets: DetectedExcelSheet[] };
 
 export type AdminImportFieldKey =
+  | "registrationType"
   | "assetName"
   | "assetNumber"
   | "universityAssetNumber"
+  | "numberPlacement"
   | "fiscalYear"
   | "assetStructureType"
   | "assetType"
   | "assetDescription"
+  | "budgetSource"
   | "purchaseProject"
   | "recordDate"
   | "status"
