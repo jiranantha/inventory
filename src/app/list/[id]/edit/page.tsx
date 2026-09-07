@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AssetSetItemsEditor,
   BackIconButton,
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui";
 import { budgetSourceOptions, registrationTypeOptions } from "@/constants/options";
 import {
+  extractFiscalYearFromUniversityAssetNumber,
   getAssetDerivedValues,
   getNumberPlacementValue,
   getPurchaseProjectValue,
@@ -131,6 +132,7 @@ function AssetEditPage({
   );
   const [fiscalYear, setFiscalYear] = useState(asset.fiscalYear);
   const [fiscalYearError, setFiscalYearError] = useState("");
+  const [fiscalYearTouched, setFiscalYearTouched] = useState(false);
   const [budgetSource, setBudgetSource] = useState(asset.budgetSource ?? "");
   const recordDate = toDateInputValue(asset.recordDate);
   const [receivedDate, setReceivedDate] = useState(toDateInputValue(asset.purchaseMonth));
@@ -163,6 +165,16 @@ function AssetEditPage({
   // Alert dialog
   const [dialog, setDialog] = useState<DialogConfig | null>(null);
   const closeDialog = () => setDialog(null);
+
+  // Non-blocking hint only — never overrides fiscalYear once the admin has
+  // typed a value themselves, and never affects validation/saving.
+  const universityAssetNumberFiscalYearWarning = useMemo(() => {
+    const needsUniversityAssetNumber = registrationType === "ครุภัณฑ์มหาวิทยาลัย" || registrationType === "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย";
+    if (!needsUniversityAssetNumber) return "";
+    const extractedYear = extractFiscalYearFromUniversityAssetNumber(universityAssetNumber);
+    if (extractedYear === null || String(extractedYear) === fiscalYear) return "";
+    return `ปีงบประมาณจากเลขครุภัณฑ์มหาวิทยาลัยคือ ${extractedYear}`;
+  }, [registrationType, universityAssetNumber, fiscalYear]);
 
   // ── Validation ──────────────────────────────────────────────────────────────
   const validate = (): boolean => {
@@ -484,7 +496,19 @@ function AssetEditPage({
             <Field
               label="เลขครุภัณฑ์มหาวิทยาลัย"
               value={universityAssetNumber}
-              onChange={(event) => setUniversityAssetNumber(event.target.value)}
+              onChange={(event) => {
+                const value = event.target.value;
+                setUniversityAssetNumber(value);
+                // Auto-fill only while the admin hasn't typed their own fiscal year —
+                // once they have, we just warn instead of silently overwriting it.
+                if (!fiscalYearTouched) {
+                  const extractedYear = extractFiscalYearFromUniversityAssetNumber(value);
+                  if (extractedYear !== null) {
+                    setFiscalYear(String(extractedYear));
+                    setFiscalYearError("");
+                  }
+                }
+              }}
               disabled={!isAdmin}
               placeholder="กรอกเลขครุภัณฑ์มหาวิทยาลัย"
             />
@@ -612,6 +636,7 @@ function AssetEditPage({
                 value={fiscalYear}
                 onChange={(value) => {
                   setFiscalYear(value);
+                  setFiscalYearTouched(true);
                   if (/^[0-9]{4}$/.test(value)) setFiscalYearError("");
                 }}
                 error={fiscalYearError}
@@ -625,6 +650,9 @@ function AssetEditPage({
                 disabled={permissions.canEditLimitedFields}
               />
               <FieldError message={fiscalYearError} />
+              {universityAssetNumberFiscalYearWarning && (
+                <p className="mt-1.5 text-xs font-semibold text-amber-600">{universityAssetNumberFiscalYearWarning}</p>
+              )}
             </div>
             <SelectField
               label="แหล่งงบประมาณที่ใช้"

@@ -6,7 +6,7 @@ import { PlaceholderPage } from "@/components/StatusPages";
 import { useState, useMemo } from "react";
 import { AssetSetItemsEditor, CloseIconButton, Field, FieldError, FiscalYearField, PhoneField, RecordFormSection, SearchableOrganizationSelect, SelectField, TextAreaField, ThaiDateField, isValidDateInput } from "@/components/ui";
 import { budgetSourceOptions, registrationTypeOptions } from "@/constants/options";
-import { createAssetFromImportRow, getNextAssetNumber, validateAssetImportRows } from "@/lib/assets";
+import { createAssetFromImportRow, extractFiscalYearFromUniversityAssetNumber, getNextAssetNumber, validateAssetImportRows } from "@/lib/assets";
 import { uploadImage } from "@/lib/image-upload";
 import { formatThaiDate } from "@/lib/dates";
 import { readAssetRowsFromFile } from "@/lib/import-export";
@@ -44,6 +44,7 @@ function RecordPage({
   const [price, setPrice] = useState("");
   const [fiscalYear, setFiscalYear] = useState(String(currentFiscalYear));
   const [fiscalYearError, setFiscalYearError] = useState("");
+  const [fiscalYearTouched, setFiscalYearTouched] = useState(false);
   const [budgetSource, setBudgetSource] = useState("");
   const [recordDate, setRecordDate] = useState(today);
   const [receivedDate, setReceivedDate] = useState(today);
@@ -77,6 +78,16 @@ function RecordPage({
       maximumFractionDigits: 2,
     });
   }, [price]);
+
+  // Non-blocking hint only — never overrides fiscalYear once the admin has
+  // typed a value themselves, and never affects validation/saving.
+  const universityAssetNumberFiscalYearWarning = useMemo(() => {
+    const needsUniversityAssetNumber = registrationType === "ครุภัณฑ์มหาวิทยาลัย" || registrationType === "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย";
+    if (!needsUniversityAssetNumber) return "";
+    const extractedYear = extractFiscalYearFromUniversityAssetNumber(universityAssetNumber);
+    if (extractedYear === null || String(extractedYear) === fiscalYear) return "";
+    return `ปีงบประมาณจากเลขครุภัณฑ์มหาวิทยาลัยคือ ${extractedYear}`;
+  }, [registrationType, universityAssetNumber, fiscalYear]);
 
   const validateMainForm = () => {
     const errors: Record<string, string> = {};
@@ -471,7 +482,21 @@ function RecordPage({
                   label={t("rec.label.universityAssetNumber")}
                   required
                   value={universityAssetNumber}
-                  onChange={(event) => { setUniversityAssetNumber(event.target.value); setMainFormErrors((errors) => ({ ...errors, universityAssetNumber: "" })); }}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setUniversityAssetNumber(value);
+                    setMainFormErrors((errors) => ({ ...errors, universityAssetNumber: "" }));
+                    // Auto-fill only while the admin hasn't typed their own fiscal year —
+                    // once they have, we just warn instead of silently overwriting it.
+                    if (!fiscalYearTouched) {
+                      const extractedYear = extractFiscalYearFromUniversityAssetNumber(value);
+                      if (extractedYear !== null) {
+                        setFiscalYear(String(extractedYear));
+                        setFiscalYearError("");
+                        setMainFormErrors((errors) => ({ ...errors, fiscalYear: "" }));
+                      }
+                    }
+                  }}
                   placeholder={t("rec.ph.universityAssetNumber")}
                   className={mainFormErrors.universityAssetNumber ? "border-red-400 focus:border-red-400" : ""}
                 />
@@ -501,22 +526,28 @@ function RecordPage({
               placeholder={t("rec.ph.specs")}
               autoResize
             />
-            <FiscalYearField
-              required
-              value={fiscalYear}
-              onChange={(value) => {
-                setFiscalYear(value);
-                setMainFormErrors((errors) => ({ ...errors, fiscalYear: "" }));
-                if (/^[0-9]{4}$/.test(value)) setFiscalYearError("");
-              }}
-              error={fiscalYearError}
-              onInvalidInput={() => setFiscalYearError("กรุณากรอกปีงบประมาณเป็นตัวเลข 4 หลัก")}
-              onBlur={() => {
-                if (!/^[0-9]{4}$/.test(fiscalYear)) {
-                  setFiscalYearError("กรุณากรอกปีงบประมาณเป็นตัวเลข 4 หลัก");
-                }
-              }}
-            />
+            <div>
+              <FiscalYearField
+                required
+                value={fiscalYear}
+                onChange={(value) => {
+                  setFiscalYear(value);
+                  setFiscalYearTouched(true);
+                  setMainFormErrors((errors) => ({ ...errors, fiscalYear: "" }));
+                  if (/^[0-9]{4}$/.test(value)) setFiscalYearError("");
+                }}
+                error={fiscalYearError}
+                onInvalidInput={() => setFiscalYearError("กรุณากรอกปีงบประมาณเป็นตัวเลข 4 หลัก")}
+                onBlur={() => {
+                  if (!/^[0-9]{4}$/.test(fiscalYear)) {
+                    setFiscalYearError("กรุณากรอกปีงบประมาณเป็นตัวเลข 4 หลัก");
+                  }
+                }}
+              />
+              {universityAssetNumberFiscalYearWarning && (
+                <p className="mt-1.5 text-xs font-semibold text-amber-600">{universityAssetNumberFiscalYearWarning}</p>
+              )}
+            </div>
             <div>
               <SelectField label={t("rec.label.budgetSource")} value={budgetSource} onChange={(value) => { setBudgetSource(value); setMainFormErrors((errors) => ({ ...errors, budgetSource: "" })); }} options={budgetSourceOptions} placeholder={t("rec.ph.budgetSource")} error={mainFormErrors.budgetSource} />
             </div>

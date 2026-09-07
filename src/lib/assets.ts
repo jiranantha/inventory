@@ -26,6 +26,19 @@ export function getNextAssetNumber(assets: AssetListRow[], fiscalYear: string) {
   return `${ASSET_NUMBER_PREFIX}${String(latestSequence + 1).padStart(4, "0")}/${fiscalYear}`;
 }
 
+// University asset numbers (e.g. "70.77100360009.ร59001") encode the Buddhist
+// fiscal year as 2 digits right after a Thai letter in the last dot-separated
+// segment — the letter itself varies (ร/บ/ก/...), so this only reads that
+// segment, it never generates or reserves any asset number.
+export function extractFiscalYearFromUniversityAssetNumber(universityAssetNumber: string): number | null {
+  const trimmed = universityAssetNumber?.trim() ?? "";
+  if (!trimmed) return null;
+  const lastSegment = trimmed.split(".").pop() ?? "";
+  const match = lastSegment.match(/[ก-ฮ]+([0-9]{2})/);
+  if (!match) return null;
+  return 2500 + Number(match[1]);
+}
+
 export function normalizeAssetType(value: string | null | undefined, context = "") {
   const rawValue = `${value ?? ""} ${context}`.trim();
   if (!rawValue) return assetTypeOptions[5];
@@ -453,7 +466,17 @@ export function buildAdminAssetImportPreview(
     const hasActivityNumber = Boolean(assetNumber && assetNumber !== "-");
     const hasUniversityNumber = Boolean(universityAssetNumber && universityAssetNumber !== "-");
     const fiscalYearRaw = mapped(row, "fiscalYear");
-    const fiscalYear = /^[0-9]{4}$/.test(fiscalYearRaw) ? fiscalYearRaw : defaultFiscalYear;
+    const fiscalYearRawValid = /^[0-9]{4}$/.test(fiscalYearRaw);
+    // Requirement: when the fiscal year column isn't mapped or the cell is
+    // empty/invalid, fall back to the year encoded in the university asset
+    // number (e.g. "...ร59001" → 2559) before falling back to the page's
+    // default fiscal year input.
+    const universityFiscalYear = hasUniversityNumber ? extractFiscalYearFromUniversityAssetNumber(universityAssetNumber) : null;
+    const fiscalYear = fiscalYearRawValid
+      ? fiscalYearRaw
+      : universityFiscalYear !== null
+        ? String(universityFiscalYear)
+        : defaultFiscalYear;
     const numberPlacement = mapped(row, "numberPlacement") || "-";
     const assetStructureType = mapped(row, "assetStructureType") || "ครุภัณฑ์เดี่ยว";
     const assetType = mapped(row, "assetType") || "-";
@@ -477,6 +500,13 @@ export function buildAdminAssetImportPreview(
     const registrationType = VALID_REGISTRATION_TYPES.includes(registrationTypeRaw) ? registrationTypeRaw : inferredRegistrationType;
 
     const reasons: string[] = [];
+    // Non-blocking mismatch hint: an explicitly mapped fiscal year that
+    // disagrees with the year encoded in the university asset number doesn't
+    // change the row's ready/duplicate/incomplete outcome, it's just surfaced
+    // so the admin can double-check which one is right.
+    if (fiscalYearRawValid && universityFiscalYear !== null && fiscalYearRaw !== String(universityFiscalYear)) {
+      reasons.push("ปีงบประมาณไม่ตรงกับเลขครุภัณฑ์มหาวิทยาลัย");
+    }
     let statusKind: AdminAssetImportStatus = "ready";
     let statusLabel = "พร้อมนำเข้า";
 
