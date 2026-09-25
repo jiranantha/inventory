@@ -191,12 +191,6 @@ function DashboardPage({
       ...dashboardCardColors.missing,
     },
     {
-      label: t("dash.notFound"),
-      value: countByStatus("ไม่พบ"),
-      note: t("dash.notFoundNote"),
-      ...dashboardCardColors.notFound,
-    },
-    {
       label: t("dash.disposed"),
       value: countByStatus("จำหน่ายแล้ว"),
       note: t("dash.disposedNote"),
