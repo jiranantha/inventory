@@ -22,6 +22,13 @@
       "when": 1784533219153,
       "tag": "0002_motionless_tempest",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790320535914,
+      "tag": "0003_cheerful_golden_guardian",
+      "breakpoints": true
     }
   ]
 }

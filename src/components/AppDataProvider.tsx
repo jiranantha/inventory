@@ -18,7 +18,7 @@ import {
   getPermissions,
   initialRoleDefinitions,
 } from "@/lib/permissions";
-import { ActivityLog, AnnualInspection, AssetImportInsertSummary, AssetListRow, MasterDataItem, Organization } from "@/types";
+import { ActivityLog, AnnualInspection, AssetImportInsertSummary, AssetListRow, MasterDataItem, Organization, UnitResponsiblePerson } from "@/types";
 
 // Everything every page needs, lifted out of the old single-page component and
 // shared through context so navigating between routes never refetches the data.
@@ -33,6 +33,7 @@ type AppData = {
   organizationItems: MasterDataItem[];
   locationItems: MasterDataItem[];
   equipmentTypeItems: MasterDataItem[];
+  unitResponsiblePersons: UnitResponsiblePerson[];
   activeOrganizations: Organization[];
   activeLocations: string[];
   activeEquipmentTypes: string[];
@@ -45,6 +46,7 @@ type AppData = {
   onGoToRecord: () => void;
   onCreateAsset: (asset: AssetListRow) => void;
   onImportAssets: (rows: AssetListRow[]) => Promise<AssetImportInsertSummary>;
+  onBulkUpdateResponsible: (payload: { organization: string; responsiblePerson: string; responsiblePhone: string; note: string }) => Promise<number>;
   onSaveAnnualInspection: (inspection: AnnualInspection) => void;
   onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => void;
   onSaveAsset: (asset: AssetListRow, oldAsset: AssetListRow) => void;
@@ -168,6 +170,7 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
   const [organizationItems, setOrganizationItems] = useState<MasterDataItem[]>([]);
   const [locationItems, setLocationItems] = useState<MasterDataItem[]>([]);
   const [equipmentTypeItems, setEquipmentTypeItems] = useState<MasterDataItem[]>([]);
+  const [unitResponsiblePersons, setUnitResponsiblePersons] = useState<UnitResponsiblePerson[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [assets, setAssets] = useState<AssetListRow[]>([]);
   const [annualInspections, setAnnualInspections] = useState<AnnualInspection[]>([]);
@@ -184,12 +187,13 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     let cancelled = false;
     (async () => {
       try {
-        const [assetsData, inspectionsData, rolesData, masterData, logsData] = await Promise.all([
+        const [assetsData, inspectionsData, rolesData, masterData, logsData, unitResponsibleData] = await Promise.all([
           api.getAssets(),
           api.getInspections(),
           api.getRoles(),
           api.getMasterData(),
           api.getActivityLogs().catch(() => [] as ActivityLog[]),
+          api.getUnitResponsiblePersons().catch(() => [] as UnitResponsiblePerson[]),
         ]);
         if (cancelled) return;
         setAssets(assetsData);
@@ -202,6 +206,7 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
         setLocationItems(masterData.locations);
         setEquipmentTypeItems(masterData.equipmentTypes);
         setActivityLogs(logsData);
+        setUnitResponsiblePersons(unitResponsibleData);
       } catch (error) {
         if (!cancelled) {
           setToast(`โหลดข้อมูลไม่สำเร็จ: ${(error as Error).message}`);
@@ -531,6 +536,33 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     return summary;
   };
 
+  // /setting > เปลี่ยนผู้รับผิดชอบของหน่วยงาน (admin-only). Saves the unit's new
+  // "current" responsible person and rewrites responsiblePerson/responsiblePhone
+  // on every asset under that unit, across all fiscal years, in one server
+  // transaction. Throws on failure so the panel's own try/catch can show the
+  // error inline, in addition to the toast here.
+  const handleBulkUpdateResponsible = async (payload: { organization: string; responsiblePerson: string; responsiblePhone: string; note: string }) => {
+    if (!permissions.canBulkUpdateResponsible) {
+      showToast("ไม่มีสิทธิ์เปลี่ยนผู้รับผิดชอบของหน่วยงาน");
+      throw new Error("ไม่มีสิทธิ์เปลี่ยนผู้รับผิดชอบของหน่วยงาน");
+    }
+    const { unitResponsiblePerson, updatedCount, log } = await api.bulkUpdateUnitResponsible(payload);
+    setUnitResponsiblePersons((items) => [
+      ...items.filter((item) => item.organization !== unitResponsiblePerson.organization),
+      unitResponsiblePerson,
+    ]);
+    setAssets((items) =>
+      items.map((item) =>
+        item.organization === unitResponsiblePerson.organization
+          ? { ...item, responsiblePerson: unitResponsiblePerson.responsiblePerson, responsiblePhone: unitResponsiblePerson.responsiblePhone }
+          : item,
+      ),
+    );
+    prependLog(log);
+    showToast(`อัปเดตผู้รับผิดชอบของหน่วยงาน "${unitResponsiblePerson.organization}" แล้ว ${updatedCount} รายการ`);
+    return updatedCount;
+  };
+
   if (!dataReady) return <LoadingScreen message="กำลังโหลดข้อมูลจากระบบ..." />;
 
   const visibleAssets = assets.filter((asset) => !asset.deletedAt && canAccessAsset(currentUser, permissions, asset));
@@ -551,6 +583,7 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     organizationItems,
     locationItems,
     equipmentTypeItems,
+    unitResponsiblePersons,
     activeOrganizations,
     activeLocations,
     activeEquipmentTypes,
@@ -563,6 +596,7 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     onGoToRecord: handleGoToRecord,
     onCreateAsset: handleCreateAsset,
     onImportAssets: handleImportAssets,
+    onBulkUpdateResponsible: handleBulkUpdateResponsible,
     onSaveAnnualInspection: handleSaveAnnualInspection,
     onCancelAnnualInspection: handleCancelAnnualInspection,
     onSaveAsset: handleSaveAsset,

@@ -54,7 +54,7 @@ export type AssetSetItem = {
 export type ActivityLog = {
   id: number;
   userName: string;
-  actionType: "แก้ไข" | "ลบ" | "กู้คืน" | "ยกเลิกผลตรวจ";
+  actionType: "แก้ไข" | "ลบ" | "กู้คืน" | "ยกเลิกผลตรวจ" | "อัปเดตผู้รับผิดชอบ";
   targetId: number;
   targetTable: "assets";
   detail: string;
@@ -62,6 +62,17 @@ export type ActivityLog = {
   newValue: string;
   note?: string;
   createdAt: string;
+};
+// Current responsible person for a unit/organization — see unitResponsiblePersons
+// in src/db/schema.ts. One active row per organization; /record and Excel import
+// auto-fill from this, and /setting's bulk-update feature writes to it.
+export type UnitResponsiblePerson = {
+  id: number;
+  organization: string;
+  responsiblePerson: string;
+  responsiblePhone: string;
+  note: string;
+  updatedAt?: string;
 };
 export type AnnualInspection = {
   id: string;

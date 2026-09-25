@@ -1,5 +1,5 @@
 import type { AppUser, RoleDefinition } from "@/lib/permissions";
-import type { ActivityLog, AnnualInspection, AssetImportInsertSummary, AssetListRow, MasterDataItem } from "@/types";
+import type { ActivityLog, AnnualInspection, AssetImportInsertSummary, AssetListRow, MasterDataItem, UnitResponsiblePerson } from "@/types";
 
 export type ActivityLogInput = Omit<ActivityLog, "id" | "createdAt">;
 export type MasterDataCategory = "organization" | "location" | "equipment_type";
@@ -92,4 +92,15 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ category, items }),
     }),
+
+  // unit responsible persons ("current" responsible person per unit)
+  getUnitResponsiblePersons: () =>
+    req<{ unitResponsiblePersons: UnitResponsiblePerson[] }>("/api/unit-responsible-persons").then(
+      (r) => r.unitResponsiblePersons,
+    ),
+  bulkUpdateUnitResponsible: (payload: { organization: string; responsiblePerson: string; responsiblePhone?: string; note?: string }) =>
+    req<{ unitResponsiblePerson: UnitResponsiblePerson; updatedCount: number; log: ActivityLog | null }>(
+      "/api/unit-responsible-persons",
+      { method: "POST", body: JSON.stringify(payload) },
+    ),
 };

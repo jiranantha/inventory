@@ -3,7 +3,18 @@ import { assetTypeOptions } from "@/constants/options";
 import { allowedAssetStatuses } from "@/constants/statuses";
 import { formatThaiDate, formatThaiDateTimeWithSeconds } from "@/lib/dates";
 import { getOrganizationType, normalizeOrganizationName } from "@/lib/organizations";
-import { AdminAssetImportRow, AdminAssetImportStatus, AdminAssetImportSummary, AdminImportColumnMapping, AdminImportFieldKey, AnnualInspection, AssetImportPreviewRow, AssetImportRow, AssetListRow, DetectedExcelColumn, ReportColumn } from "@/types";
+import { AdminAssetImportRow, AdminAssetImportStatus, AdminAssetImportSummary, AdminImportColumnMapping, AdminImportFieldKey, AnnualInspection, AssetImportPreviewRow, AssetImportRow, AssetListRow, DetectedExcelColumn, ReportColumn, UnitResponsiblePerson } from "@/types";
+
+// Looked up by (normalized) organization name when an Excel import row leaves
+// responsiblePerson/responsiblePhone empty — see requirement 10: an explicit
+// value in the file always wins, this only fills the gap when there isn't one.
+export type UnitResponsibleLookup = Map<string, { responsiblePerson: string; responsiblePhone: string }>;
+
+export function buildUnitResponsibleLookup(entries: UnitResponsiblePerson[]): UnitResponsibleLookup {
+  return new Map(
+    entries.map((entry) => [normalizeOrganizationName(entry.organization), { responsiblePerson: entry.responsiblePerson, responsiblePhone: entry.responsiblePhone }]),
+  );
+}
 
 export const ASSET_NUMBER_PREFIX = "ค.อ.มช.";
 
@@ -279,13 +290,15 @@ export function validateAssetImportRows(rows: AssetImportRow[], assets: AssetLis
   });
 }
 
-export function createAssetFromImportRow(row: AssetImportRow, index: number): AssetListRow {
+export function createAssetFromImportRow(row: AssetImportRow, index: number, unitResponsibleLookup?: UnitResponsibleLookup): AssetListRow {
   const now = formatThaiDateTimeWithSeconds(new Date().toISOString());
   const generatedId = Date.now() + index + 1;
   const organization = normalizeOrganizationName(row["ฝ่าย/ชมรมที่รับผิดชอบ"] || "") || "ยังไม่ได้ระบุ";
   const price = (row["มูลค่าทรัพย์สิน"] ?? row["ราคา"])?.trim() || "0";
   const budgetSource = row["แหล่งงบประมาณ"]?.trim() || "";
-  const phone = row["เบอร์โทรผู้รับผิดชอบ"]?.trim() || "-";
+  const currentResponsible = unitResponsibleLookup?.get(organization);
+  const responsiblePerson = row["ชื่อผู้รับผิดชอบ"]?.trim() || currentResponsible?.responsiblePerson || "ยังไม่ได้ระบุ";
+  const phone = row["เบอร์โทรผู้รับผิดชอบ"]?.trim() || currentResponsible?.responsiblePhone || "-";
   const structureText = row["ลักษณะครุภัณฑ์"]?.trim() || "ครุภัณฑ์เดี่ยว";
   const purchaseProject = row["จัดซื้อในโครงการ"]?.trim() || "-";
   const numberPlacement = row["ตำแหน่งที่ประทับหมายเลขครุภัณฑ์"]?.trim() || "-";
@@ -305,7 +318,7 @@ export function createAssetFromImportRow(row: AssetImportRow, index: number): As
     location: row["สถานที่จัดเก็บ"]?.trim() || "ยังไม่ได้ระบุ",
     building: "-",
     room: "-",
-    responsiblePerson: row["ชื่อผู้รับผิดชอบ"]?.trim() || "ยังไม่ได้ระบุ",
+    responsiblePerson,
     purchaseProject,
     purchaseMonth: formatThaiDate(row["วันที่ได้รับครุภัณฑ์"] || new Date().toISOString()),
     numberPlacement,
@@ -440,6 +453,7 @@ export function buildAdminAssetImportPreview(
   mapping: AdminImportColumnMapping,
   existingAssets: AssetListRow[],
   defaultFiscalYear: string,
+  unitResponsibleLookup?: UnitResponsibleLookup,
 ): AdminAssetImportRow[] {
   const existingAssetNumbers = new Set(
     existingAssets.map((asset) => asset.assetNumber.trim()).filter((value) => value && value !== "-"),
@@ -490,8 +504,9 @@ export function buildAdminAssetImportPreview(
     const budgetSource = mapped(row, "budgetSource");
     const purchaseProject = mapped(row, "purchaseProject") || "-";
     const recordDate = mapped(row, "recordDate") || "-";
-    const responsiblePerson = mapped(row, "responsiblePerson") || "-";
-    const responsiblePhone = mapped(row, "responsiblePhone") || "-";
+    const currentResponsible = organization !== "-" ? unitResponsibleLookup?.get(organization) : undefined;
+    const responsiblePerson = mapped(row, "responsiblePerson") || currentResponsible?.responsiblePerson || "-";
+    const responsiblePhone = mapped(row, "responsiblePhone") || currentResponsible?.responsiblePhone || "-";
 
     // Requirement 7: an explicitly mapped, valid registration type wins; otherwise
     // infer it from whichever asset number(s) the row actually has.

@@ -6,11 +6,12 @@ import { PlaceholderPage } from "@/components/StatusPages";
 import { useState, useMemo } from "react";
 import { AssetSetItemsEditor, CloseIconButton, Field, FieldError, FiscalYearField, PhoneField, RecordFormSection, SearchableOrganizationSelect, SelectField, TextAreaField, ThaiDateField, isValidDateInput } from "@/components/ui";
 import { budgetSourceOptions, registrationTypeOptions } from "@/constants/options";
-import { createAssetFromImportRow, extractFiscalYearFromUniversityAssetNumber, getNextAssetNumber, validateAssetImportRows } from "@/lib/assets";
+import { buildUnitResponsibleLookup, createAssetFromImportRow, extractFiscalYearFromUniversityAssetNumber, getNextAssetNumber, validateAssetImportRows } from "@/lib/assets";
+import { normalizeOrganizationName } from "@/lib/organizations";
 import { uploadImage } from "@/lib/image-upload";
 import { formatThaiDate } from "@/lib/dates";
 import { readAssetRowsFromFile } from "@/lib/import-export";
-import { AssetImportPreviewRow, AssetListRow, AssetSetItem, EvidenceImage, Organization } from "@/types";
+import { AssetImportPreviewRow, AssetListRow, AssetSetItem, EvidenceImage, Organization, UnitResponsiblePerson } from "@/types";
 import { allowedAssetStatuses } from "@/constants/statuses";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateOption } from "@/lib/i18n";
@@ -21,12 +22,14 @@ function RecordPage({
   organizationOptions,
   equipmentTypeOptions,
   locationOptions,
+  unitResponsiblePersons,
 }: {
   assets: AssetListRow[];
   onCreateAsset: (asset: AssetListRow) => void;
   organizationOptions: Organization[];
   equipmentTypeOptions: string[];
   locationOptions: string[];
+  unitResponsiblePersons: UnitResponsiblePerson[];
 }) {
   const { lang, t } = useLanguage();
   const today = new Date().toISOString().slice(0, 10);
@@ -54,6 +57,7 @@ function RecordPage({
   const [responsiblePhone, setResponsiblePhone] = useState("");
   const [responsiblePhoneError, setResponsiblePhoneError] = useState("");
   const [status, setStatus] = useState("ใช้งานได้");
+  const unitResponsibleLookup = useMemo(() => buildUnitResponsibleLookup(unitResponsiblePersons), [unitResponsiblePersons]);
   const [imagePreviews, setImagePreviews] = useState<EvidenceImage[]>([]);
   const [note, setNote] = useState("");
   const [toast, setToast] = useState("");
@@ -319,7 +323,7 @@ function RecordPage({
       setImportMessage("กรุณาแก้ไขรายการที่มีปัญหาก่อนนำเข้าข้อมูล");
       return;
     }
-    importReadyRows.forEach((row, index) => onCreateAsset(createAssetFromImportRow(row.data, index)));
+    importReadyRows.forEach((row, index) => onCreateAsset(createAssetFromImportRow(row.data, index, unitResponsibleLookup)));
     setToast(`นำเข้าข้อมูลสำเร็จ ${importReadyRows.length.toLocaleString("th-TH")} รายการ`);
     window.setTimeout(() => setToast(""), 3500);
     resetImportModal();
@@ -594,7 +598,19 @@ function RecordPage({
             <div>
               <SearchableOrganizationSelect
                 selected={selectedOrganization}
-                onSelect={(organization) => { setSelectedOrganization(organization); setMainFormErrors((errors) => ({ ...errors, organization: "" })); }}
+                onSelect={(organization) => {
+                  setSelectedOrganization(organization);
+                  setMainFormErrors((errors) => ({ ...errors, organization: "" }));
+                  // Requirement 8: the responsible person represents whoever currently
+                  // leads the unit, not the asset's fiscal year — auto-fill from the
+                  // unit's saved "current" responsible person when one exists.
+                  const current = unitResponsibleLookup.get(normalizeOrganizationName(organization.name));
+                  if (current) {
+                    setResponsiblePerson(current.responsiblePerson);
+                    setResponsiblePhone(/^[0-9]{9,10}$/.test(current.responsiblePhone) ? current.responsiblePhone : "");
+                    setResponsiblePhoneError("");
+                  }
+                }}
                 options={organizationOptions}
                 label={t("rec.label.org")}
                 required
@@ -708,7 +724,7 @@ function RecordPage({
 
 
 export default function RecordRoute() {
-  const { permissions, assets, onCreateAsset, activeOrganizations, activeEquipmentTypes, activeLocations } = useAppData();
+  const { permissions, assets, onCreateAsset, activeOrganizations, activeEquipmentTypes, activeLocations, unitResponsiblePersons } = useAppData();
   if (!permissions.canCreate) return <PlaceholderPage title="ไม่มีสิทธิ์เพิ่มข้อมูล" />;
   return (
     <RecordPage
@@ -717,6 +733,7 @@ export default function RecordRoute() {
       organizationOptions={activeOrganizations}
       equipmentTypeOptions={activeEquipmentTypes}
       locationOptions={activeLocations}
+      unitResponsiblePersons={unitResponsiblePersons}
     />
   );
 }

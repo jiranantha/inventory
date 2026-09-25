@@ -1,14 +1,15 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { CloseIconButton, DetailInfoItem, Field, SelectField } from "@/components/ui";
+import { CloseIconButton, DetailInfoItem, Field, PhoneField, SelectField, TextAreaField } from "@/components/ui";
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 import { AppUser, Permissions, RoleDefinition, UserRole, getPermissionLabel, getRoleDefinition, noPermissions } from "@/lib/permissions";
-import { ADMIN_IMPORT_FIELD_DEFINITIONS, buildAdminAssetImportPreview, getLatestAssetSequenceForYear, guessColumnMapping, summarizeAdminAssetImport } from "@/lib/assets";
+import { ADMIN_IMPORT_FIELD_DEFINITIONS, buildAdminAssetImportPreview, buildUnitResponsibleLookup, getLatestAssetSequenceForYear, guessColumnMapping, summarizeAdminAssetImport } from "@/lib/assets";
+import { normalizeOrganizationName } from "@/lib/organizations";
 import { readExcelWorkbookForMapping } from "@/lib/import-export";
 import { uniqueSorted } from "@/lib/utils";
-import { AdminAssetImportRow, AdminImportColumnMapping, AssetImportInsertSummary, AssetListRow, DetectedExcelWorkbook, MasterDataItem } from "@/types";
+import { AdminAssetImportRow, AdminImportColumnMapping, AssetImportInsertSummary, AssetListRow, DetectedExcelWorkbook, MasterDataItem, UnitResponsiblePerson } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 function ActiveToggle({ checked, onChange, disabled, ariaLabel }: {
@@ -149,8 +150,9 @@ const IMPORT_STATUS_BADGE_CLASS: Record<AdminAssetImportRow["statusKind"], strin
 const requiredImportFields = ADMIN_IMPORT_FIELD_DEFINITIONS.filter((field) => field.required);
 const optionalImportFields = ADMIN_IMPORT_FIELD_DEFINITIONS.filter((field) => !field.required);
 
-function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; onImportAssets: (rows: AssetListRow[]) => Promise<AssetImportInsertSummary> }) {
+function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { assets: AssetListRow[]; onImportAssets: (rows: AssetListRow[]) => Promise<AssetImportInsertSummary>; unitResponsiblePersons: UnitResponsiblePerson[] }) {
   const { showToast } = useAppData();
+  const unitResponsibleLookup = useMemo(() => buildUnitResponsibleLookup(unitResponsiblePersons), [unitResponsiblePersons]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentThaiYear = new Date().getFullYear() + 543;
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -246,7 +248,7 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
       return;
     }
     setMappingError("");
-    const preview = buildAdminAssetImportPreview(activeSheet.rows, mapping, assets, defaultFiscalYear);
+    const preview = buildAdminAssetImportPreview(activeSheet.rows, mapping, assets, defaultFiscalYear, unitResponsibleLookup);
     setPreviewRows(preview);
     setInsertSummary(null);
   };
@@ -545,7 +547,188 @@ function ExcelImportPanel({ assets, onImportAssets }: { assets: AssetListRow[]; 
   );
 }
 
-function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, currentUser, roles, onRolesChange, permissions, organizationItems, onOrganizationItemsChange, locationItems, onLocationItemsChange, equipmentTypeItems, onEquipmentTypeItemsChange, assets, onImportAssets }: {
+// /setting > เปลี่ยนผู้รับผิดชอบของหน่วยงาน (admin-only). Sets the unit's new
+// "current" responsible person and, on confirm, rewrites responsiblePerson/
+// responsiblePhone on every asset under that unit across all fiscal years —
+// see onBulkUpdateResponsible in AppDataProvider for the actual API call.
+function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsiblePersons, onBulkUpdateResponsible }: {
+  assets: AssetListRow[];
+  organizationItems: MasterDataItem[];
+  unitResponsiblePersons: UnitResponsiblePerson[];
+  onBulkUpdateResponsible: (payload: { organization: string; responsiblePerson: string; responsiblePhone: string; note: string }) => Promise<number>;
+}) {
+  const { showToast } = useAppData();
+  const [organization, setOrganization] = useState("");
+  const [responsiblePerson, setResponsiblePerson] = useState("");
+  const [responsiblePhone, setResponsiblePhone] = useState("");
+  const [note, setNote] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [lastResult, setLastResult] = useState<{ organization: string; count: number } | null>(null);
+
+  const organizationOptions = useMemo(
+    () => uniqueSorted([...organizationItems.map((item) => item.name), ...assets.map((asset) => asset.organization)]),
+    [organizationItems, assets],
+  );
+  const normalizedOrganization = organization ? normalizeOrganizationName(organization) : "";
+  const affectedCount = useMemo(
+    () => (normalizedOrganization ? assets.filter((asset) => asset.organization === normalizedOrganization).length : 0),
+    [assets, normalizedOrganization],
+  );
+  const currentResponsible = useMemo(
+    () => unitResponsiblePersons.find((item) => item.organization === normalizedOrganization) ?? null,
+    [unitResponsiblePersons, normalizedOrganization],
+  );
+
+  const canSubmit = Boolean(normalizedOrganization) && responsiblePerson.trim().length > 0 && !phoneError;
+
+  const resetForm = () => {
+    setResponsiblePerson("");
+    setResponsiblePhone("");
+    setNote("");
+    setPhoneError("");
+  };
+
+  const handleOpenConfirm = () => {
+    if (!canSubmit) {
+      showToast("กรุณาเลือกหน่วยงานและระบุชื่อผู้รับผิดชอบใหม่");
+      return;
+    }
+    setConfirmOpen(true);
+  };
+
+  const handleConfirm = async () => {
+    setSubmitting(true);
+    try {
+      const count = await onBulkUpdateResponsible({
+        organization: normalizedOrganization,
+        responsiblePerson: responsiblePerson.trim(),
+        responsiblePhone: responsiblePhone.trim(),
+        note: note.trim(),
+      });
+      setLastResult({ organization: normalizedOrganization, count });
+      setConfirmOpen(false);
+      resetForm();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "อัปเดตผู้รับผิดชอบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="mx-auto w-full max-w-screen-2xl space-y-5">
+      <div className="rounded-lg border border-line bg-surface p-6">
+        <h2 className="text-xl font-bold text-ink">เปลี่ยนผู้รับผิดชอบของหน่วยงาน</h2>
+        <p className="mt-2 text-sm text-muted">
+          เมื่อประธานชมรม/หัวหน้าหน่วยงานเปลี่ยน ให้กรอกชื่อผู้รับผิดชอบใหม่เพียงครั้งเดียว ระบบจะอัปเดตผู้รับผิดชอบและเบอร์โทรของครุภัณฑ์ทุกรายการในหน่วยงานนี้ให้ทันที
+          ไม่ว่าครุภัณฑ์จะจัดซื้อในปีงบประมาณใดก็ตาม เนื่องจากผู้รับผิดชอบหมายถึงผู้ดูแลหน่วยงานในปัจจุบัน ไม่ใช่ปีงบประมาณของครุภัณฑ์
+        </p>
+        <p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-100">
+          การยืนยันจะแก้ไขข้อมูลผู้รับผิดชอบและเบอร์โทรของครุภัณฑ์จริงในระบบ กรุณาตรวจสอบก่อนยืนยัน
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-line bg-surface p-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SelectField
+            label="หน่วยงาน"
+            required
+            value={organization}
+            onChange={(value) => setOrganization(value)}
+            options={organizationOptions}
+            placeholder="เลือกหน่วยงาน"
+          />
+          <Field
+            label="ชื่อผู้รับผิดชอบใหม่"
+            required
+            value={responsiblePerson}
+            onChange={(event) => setResponsiblePerson(event.target.value)}
+            placeholder="เช่น นาย ก"
+          />
+          <PhoneField
+            value={responsiblePhone}
+            onChange={(value) => { setResponsiblePhone(value); setPhoneError(""); }}
+            onInvalidInput={() => setPhoneError("กรุณากรอกหมายเลขโทรศัพท์เป็นตัวเลขเท่านั้น")}
+            onBlur={() => {
+              if (responsiblePhone && !/^[0-9]{9,10}$/.test(responsiblePhone)) setPhoneError("กรุณากรอกหมายเลขโทรศัพท์ให้ถูกต้อง 9-10 หลัก");
+            }}
+            error={phoneError}
+            label="หมายเลขโทรศัพท์"
+          />
+          <TextAreaField
+            label="หมายเหตุ"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="เช่น ประธานชมรมปี 2569"
+            compact
+          />
+        </div>
+
+        {normalizedOrganization && (
+          <div className="mt-4 space-y-2">
+            <p className="rounded-md border border-sky-300/30 bg-sky-400/10 px-3 py-2 text-sm font-semibold text-sky-100">
+              พบครุภัณฑ์ของหน่วยงานนี้จำนวน {affectedCount.toLocaleString("th-TH")} รายการ
+            </p>
+            <p className="text-xs text-muted">
+              ผู้รับผิดชอบปัจจุบัน: {currentResponsible ? `${currentResponsible.responsiblePerson}${currentResponsible.responsiblePhone && currentResponsible.responsiblePhone !== "-" ? ` (${currentResponsible.responsiblePhone})` : ""}` : "ยังไม่มีข้อมูลผู้รับผิดชอบปัจจุบันของหน่วยงานนี้"}
+            </p>
+          </div>
+        )}
+
+        <div className="mt-5 flex justify-end border-t border-line pt-4">
+          <button
+            type="button"
+            onClick={handleOpenConfirm}
+            className="min-h-11 rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-white hover:bg-primary-hover"
+          >
+            อัปเดตผู้รับผิดชอบของหน่วยงาน
+          </button>
+        </div>
+      </div>
+
+      {lastResult && (
+        <div className="rounded-lg border border-emerald-300/30 bg-emerald-400/10 p-6">
+          <h3 className="text-base font-bold text-emerald-100">อัปเดตสำเร็จ</h3>
+          <p className="mt-2 text-sm text-emerald-100">
+            อัปเดตผู้รับผิดชอบของหน่วยงาน &quot;{lastResult.organization}&quot; แล้ว {lastResult.count.toLocaleString("th-TH")} รายการ
+          </p>
+        </div>
+      )}
+
+      {confirmOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
+          <div className="w-full max-w-lg overflow-hidden rounded-xl border border-line bg-surface shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-line p-5">
+              <div>
+                <h3 className="text-xl font-bold text-white">ยืนยันการเปลี่ยนผู้รับผิดชอบ</h3>
+                <p className="mt-1 text-sm text-muted">ระบบจะอัปเดตผู้รับผิดชอบของครุภัณฑ์จำนวน {affectedCount.toLocaleString("th-TH")} รายการในหน่วยงานนี้</p>
+              </div>
+              <CloseIconButton onClick={() => setConfirmOpen(false)} />
+            </div>
+            <div className="space-y-3 p-5">
+              <div className="space-y-1 rounded-lg border border-line bg-slate-950/30 px-4 py-3 text-sm">
+                <p><span className="text-muted">หน่วยงาน: </span><span className="font-semibold text-white">{normalizedOrganization}</span></p>
+                <p><span className="text-muted">ผู้รับผิดชอบใหม่: </span><span className="font-semibold text-white">{responsiblePerson.trim()}</span></p>
+                <p><span className="text-muted">เบอร์โทร: </span><span className="font-semibold text-white">{responsiblePhone.trim() || "-"}</span></p>
+                <p><span className="text-muted">จำนวนครุภัณฑ์ที่ได้รับผลกระทบ: </span><span className="font-semibold text-white">{affectedCount.toLocaleString("th-TH")} รายการ</span></p>
+              </div>
+              <div className="flex justify-end gap-3 border-t border-line pt-4">
+                <button type="button" onClick={() => setConfirmOpen(false)} className="rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">ยกเลิก</button>
+                <button type="button" onClick={handleConfirm} disabled={submitting} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50">
+                  {submitting ? "กำลังอัปเดต..." : "ยืนยัน"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, currentUser, roles, onRolesChange, permissions, organizationItems, onOrganizationItemsChange, locationItems, onLocationItemsChange, equipmentTypeItems, onEquipmentTypeItemsChange, assets, onImportAssets, unitResponsiblePersons, onBulkUpdateResponsible }: {
   users: AppUser[];
   onAddUser: (user: AppUser) => void;
   onUpdateUser: (user: AppUser) => void;
@@ -562,12 +745,14 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
   onEquipmentTypeItemsChange: (items: MasterDataItem[]) => void;
   assets: AssetListRow[];
   onImportAssets: (rows: AssetListRow[]) => Promise<AssetImportInsertSummary>;
+  unitResponsiblePersons: UnitResponsiblePerson[];
+  onBulkUpdateResponsible: (payload: { organization: string; responsiblePerson: string; responsiblePhone: string; note: string }) => Promise<number>;
 }) {
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
   const [userModalMode, setUserModalMode] = useState<"add" | "edit">("edit");
   const [editingRole, setEditingRole] = useState<RoleDefinition | null>(null);
   const [roleModalMode, setRoleModalMode] = useState<"add" | "edit">("edit");
-  const [activeTab, setActiveTab] = useState<"users" | "roles" | "organizations" | "locations" | "types" | "numbers" | "import">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "roles" | "organizations" | "locations" | "types" | "numbers" | "import" | "bulkUpdate">("users");
   const [deleteCandidate, setDeleteCandidate] = useState<AppUser | null>(null);
   const [deleteError, setDeleteError] = useState("");
   const { t } = useLanguage();
@@ -619,13 +804,16 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
   const organizationOptions = ["กองพัฒนานักศึกษามหาวิทยาลัยเชียงใหม่", "-", ...organizationItems.map((item) => item.name)];
   const currentThaiYear = new Date().getFullYear() + 543;
   const latestSequence = getLatestAssetSequenceForYear(assets, String(currentThaiYear));
-  type TabKey = "users" | "roles" | "organizations" | "locations" | "types" | "numbers" | "import";
+  type TabKey = "users" | "roles" | "organizations" | "locations" | "types" | "numbers" | "import" | "bulkUpdate";
   const tabs: [TabKey, string][] = [
     ["users", t("set.tabUsers")], ["roles", t("set.tabRoles")], ["organizations", t("set.tabOrgs")], ["locations", t("set.tabLocations")], ["types", t("set.tabTypes")], ["numbers", t("set.tabNumbers")],
     // Admin-only — hidden from the tab bar (not just disabled) for every other role.
     // The server independently re-checks this via requirePermission("importAssets")
     // on /api/assets/import, so hiding the tab is a UX nicety, not the real gate.
     ...(permissions.canImportAssets ? [["import", "นำเข้าข้อมูล Excel"] as [TabKey, string]] : []),
+    // Admin-only — same doctrine as above; server re-checks via
+    // requirePermission("bulkUpdateResponsible") on /api/unit-responsible-persons.
+    ...(permissions.canBulkUpdateResponsible ? [["bulkUpdate", "เปลี่ยนผู้รับผิดชอบของหน่วยงาน"] as [TabKey, string]] : []),
   ];
 
   return (
@@ -733,7 +921,15 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
       {activeTab === "locations" && <MasterDataPanel title="จัดการสถานที่จัดเก็บ" description="จัดการสถานที่จัดเก็บครุภัณฑ์ที่ใช้ในฟอร์มบันทึกข้อมูลและการตรวจสอบ" items={locationItems} onChange={onLocationItemsChange} addLabel="ระบุสถานที่จัดเก็บ" searchPlaceholder="ค้นหาสถานที่จัดเก็บ" />}
       {activeTab === "types" && <MasterDataPanel title="จัดการประเภทครุภัณฑ์" description="จัดการหมวดหมู่ครุภัณฑ์ที่ใช้ในฟอร์ม ตาราง รายงาน และตัวกรองข้อมูล" items={equipmentTypeItems} onChange={onEquipmentTypeItemsChange} addLabel="ระบุประเภทครุภัณฑ์" searchPlaceholder="ค้นหาประเภทครุภัณฑ์" />}
       {activeTab === "numbers" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-6"><h2 className="text-xl font-bold text-white">ตั้งค่าการออกเลขครุภัณฑ์</h2><p className="mt-2 text-sm text-muted">กำหนดรูปแบบและเลขลำดับล่าสุดสำหรับการออกหมายเลขครุภัณฑ์อัตโนมัติ</p><div className="mt-5 grid gap-4 md:grid-cols-3"><DetailInfoItem label="คำนำหน้าเลขครุภัณฑ์" value="ค.อ.มช." /><DetailInfoItem label="เลขลำดับล่าสุด" value={String(latestSequence).padStart(4, "0")} /><DetailInfoItem label="ตัวอย่างรูปแบบหมายเลขครุภัณฑ์" value={`ค.อ.มช.${String(latestSequence + 1).padStart(4, "0")}/${currentThaiYear}`} /></div><p className="mt-4 rounded-lg border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">ข้อมูลส่วนนี้เป็นแบบอ่านอย่างเดียว เพื่อป้องกันหมายเลขครุภัณฑ์ซ้ำหรือผิดลำดับ</p></section>}
-      {activeTab === "import" && permissions.canImportAssets && <ExcelImportPanel assets={assets} onImportAssets={onImportAssets} />}
+      {activeTab === "import" && permissions.canImportAssets && <ExcelImportPanel assets={assets} onImportAssets={onImportAssets} unitResponsiblePersons={unitResponsiblePersons} />}
+      {activeTab === "bulkUpdate" && permissions.canBulkUpdateResponsible && (
+        <BulkUpdateResponsiblePanel
+          assets={assets}
+          organizationItems={organizationItems}
+          unitResponsiblePersons={unitResponsiblePersons}
+          onBulkUpdateResponsible={onBulkUpdateResponsible}
+        />
+      )}
 
       {editingUser && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
@@ -771,7 +967,7 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
           </div>
         </div>
       )}
-      {editingRole && <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4"><div className="w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"><div className="flex items-start justify-between gap-3 border-b border-line p-5"><div><h3 className="text-xl font-bold text-white">{roleModalMode === "add" ? "เพิ่มบทบาท" : "แก้ไขบทบาท"}</h3><p className="mt-1 text-sm text-muted">กำหนดชื่อ คำอธิบาย และสิทธิ์การใช้งาน</p></div><CloseIconButton onClick={() => setEditingRole(null)} /></div><div className="space-y-4 p-5"><Field label="ชื่อบทบาท" value={editingRole.name} onChange={(event) => setEditingRole({ ...editingRole, name: event.target.value })} /><Field label="คำอธิบายบทบาท" value={editingRole.description} onChange={(event) => setEditingRole({ ...editingRole, description: event.target.value })} /><div><p className="text-sm font-semibold text-white">สิทธิ์การใช้งาน</p><div className="mt-2 grid gap-2 sm:grid-cols-2">{([{ key: "canViewDashboard", label: "หน้าภาพรวม" }, { key: "canViewList", label: "แสดงรายการ" }, { key: "canInspect", label: "ตรวจสอบประจำปี" }, { key: "canCreate", label: "บันทึกข้อมูล" }, { key: "canViewReports", label: "รายงาน" }, { key: "canManageUsers", label: "ตั้งค่า" }, { key: "canImportAssets", label: "นำเข้าข้อมูล Excel" }, { key: "canEdit", label: "แก้ไขข้อมูลครุภัณฑ์" }, { key: "canDelete", label: "ลบข้อมูลครุภัณฑ์" }] as { key: keyof Permissions; label: string }[]).map((option) => <label key={option.key} className="flex items-center gap-3 rounded-lg border border-line bg-slate-950/30 px-3 py-2 text-sm text-ink"><input type="checkbox" checked={Boolean(editingRole.permissions[option.key])} onChange={(event) => setEditingRole({ ...editingRole, permissions: { ...editingRole.permissions, [option.key]: event.target.checked } })} className="h-4 w-4 accent-yellow-400" />{option.label}</label>)}</div></div><label className="flex items-center justify-between gap-4 rounded-lg border border-line bg-slate-950/30 px-4 py-3"><span className="text-sm font-semibold text-white">อนุญาตส่งออก</span><input type="checkbox" checked={editingRole.allowExport} onChange={(event) => setEditingRole({ ...editingRole, allowExport: event.target.checked, permissions: { ...editingRole.permissions, canExport: event.target.checked } })} className="h-5 w-5 accent-yellow-400" /></label><div className="flex justify-end gap-3 border-t border-line pt-4"><button type="button" onClick={() => setEditingRole(null)} className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink">ยกเลิก</button><button type="button" onClick={saveRole} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950">บันทึก</button></div></div></div></div>}
+      {editingRole && <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4"><div className="w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-surface shadow-2xl"><div className="flex items-start justify-between gap-3 border-b border-line p-5"><div><h3 className="text-xl font-bold text-white">{roleModalMode === "add" ? "เพิ่มบทบาท" : "แก้ไขบทบาท"}</h3><p className="mt-1 text-sm text-muted">กำหนดชื่อ คำอธิบาย และสิทธิ์การใช้งาน</p></div><CloseIconButton onClick={() => setEditingRole(null)} /></div><div className="space-y-4 p-5"><Field label="ชื่อบทบาท" value={editingRole.name} onChange={(event) => setEditingRole({ ...editingRole, name: event.target.value })} /><Field label="คำอธิบายบทบาท" value={editingRole.description} onChange={(event) => setEditingRole({ ...editingRole, description: event.target.value })} /><div><p className="text-sm font-semibold text-white">สิทธิ์การใช้งาน</p><div className="mt-2 grid gap-2 sm:grid-cols-2">{([{ key: "canViewDashboard", label: "หน้าภาพรวม" }, { key: "canViewList", label: "แสดงรายการ" }, { key: "canInspect", label: "ตรวจสอบประจำปี" }, { key: "canCreate", label: "บันทึกข้อมูล" }, { key: "canViewReports", label: "รายงาน" }, { key: "canManageUsers", label: "ตั้งค่า" }, { key: "canImportAssets", label: "นำเข้าข้อมูล Excel" }, { key: "canBulkUpdateResponsible", label: "เปลี่ยนผู้รับผิดชอบของหน่วยงาน" }, { key: "canEdit", label: "แก้ไขข้อมูลครุภัณฑ์" }, { key: "canDelete", label: "ลบข้อมูลครุภัณฑ์" }] as { key: keyof Permissions; label: string }[]).map((option) => <label key={option.key} className="flex items-center gap-3 rounded-lg border border-line bg-slate-950/30 px-3 py-2 text-sm text-ink"><input type="checkbox" checked={Boolean(editingRole.permissions[option.key])} onChange={(event) => setEditingRole({ ...editingRole, permissions: { ...editingRole.permissions, [option.key]: event.target.checked } })} className="h-4 w-4 accent-yellow-400" />{option.label}</label>)}</div></div><label className="flex items-center justify-between gap-4 rounded-lg border border-line bg-slate-950/30 px-4 py-3"><span className="text-sm font-semibold text-white">อนุญาตส่งออก</span><input type="checkbox" checked={editingRole.allowExport} onChange={(event) => setEditingRole({ ...editingRole, allowExport: event.target.checked, permissions: { ...editingRole.permissions, canExport: event.target.checked } })} className="h-5 w-5 accent-yellow-400" /></label><div className="flex justify-end gap-3 border-t border-line pt-4"><button type="button" onClick={() => setEditingRole(null)} className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink">ยกเลิก</button><button type="button" onClick={saveRole} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950">บันทึก</button></div></div></div></div>}
 
       {deleteCandidate && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
@@ -820,6 +1016,8 @@ export default function SettingRoute() {
     onLocationItemsChange,
     onEquipmentTypeItemsChange,
     onImportAssets,
+    unitResponsiblePersons,
+    onBulkUpdateResponsible,
   } = useAppData();
   if (!permissions.canManageUsers) return <PlaceholderPage title="ไม่มีสิทธิ์เข้าถึงการตั้งค่า" />;
   return (
@@ -840,6 +1038,8 @@ export default function SettingRoute() {
       onEquipmentTypeItemsChange={onEquipmentTypeItemsChange}
       assets={assets}
       onImportAssets={onImportAssets}
+      unitResponsiblePersons={unitResponsiblePersons}
+      onBulkUpdateResponsible={onBulkUpdateResponsible}
     />
   );
 }

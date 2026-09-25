@@ -1,7 +1,7 @@
-import type { ActivityLogRow, AssetRow, InspectionRow, RoleRow, UserRow } from "@/db/schema";
+import type { ActivityLogRow, AssetRow, InspectionRow, RoleRow, UnitResponsiblePersonRow, UserRow } from "@/db/schema";
 import { formatThaiDateTime, formatThaiDateTimeWithSeconds } from "@/lib/dates";
 import type { AppUser, RoleDefinition } from "@/lib/permissions";
-import type { ActivityLog, AnnualInspection, AssetListRow, EvidenceImage } from "@/types";
+import type { ActivityLog, AnnualInspection, AssetListRow, EvidenceImage, UnitResponsiblePerson } from "@/types";
 
 // --- assets -----------------------------------------------------------------
 
@@ -169,5 +169,18 @@ export function rowToRole(row: RoleRow): RoleDefinition {
     allowExport: row.allowExport,
     active: row.active,
     protected: row.protected,
+  };
+}
+
+// --- unit responsible persons -------------------------------------------------
+
+export function rowToUnitResponsiblePerson(row: UnitResponsiblePersonRow): UnitResponsiblePerson {
+  return {
+    id: row.id,
+    organization: row.organization,
+    responsiblePerson: row.responsiblePerson,
+    responsiblePhone: row.responsiblePhone,
+    note: row.note,
+    updatedAt: row.updatedAt ? formatThaiDateTimeWithSeconds(row.updatedAt.toISOString()) : undefined,
   };
 }

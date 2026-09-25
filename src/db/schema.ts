@@ -208,6 +208,31 @@ export const annualInspections = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// Current responsible person per unit/organization. Assets keep their own
+// (denormalized) responsiblePerson/responsiblePhone columns — this table only
+// tracks who the CURRENT president/person-in-charge of a unit is, so /record
+// and Excel import can auto-fill from it and /setting can bulk-push a change
+// onto every asset under that unit. One row per organization (unique), so
+// "save a new responsible person for a unit" is always an upsert, never a
+// second active row.
+// ---------------------------------------------------------------------------
+
+export const unitResponsiblePersons = pgTable(
+  "unit_responsible_persons",
+  {
+    id: serial("id").primaryKey(),
+    organization: text("organization").notNull().unique(),
+    responsiblePerson: text("responsible_person").notNull(),
+    responsiblePhone: text("responsible_phone").notNull().default("-"),
+    note: text("note").notNull().default("-"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_unit_responsible_persons_organization").on(t.organization)],
+);
+
+// ---------------------------------------------------------------------------
 // Activity log (audit trail for asset mutations).
 // ---------------------------------------------------------------------------
 
@@ -234,3 +259,4 @@ export type InspectionRow = typeof annualInspections.$inferSelect;
 export type ActivityLogRow = typeof activityLogs.$inferSelect;
 export type UserRow = typeof users.$inferSelect;
 export type RoleRow = typeof roles.$inferSelect;
+export type UnitResponsiblePersonRow = typeof unitResponsiblePersons.$inferSelect;
