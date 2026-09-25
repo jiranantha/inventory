@@ -57,7 +57,7 @@ function DashboardTable({
           <article key={row.join("-")} className="rounded-lg border border-line bg-surfaceSoft p-4">
             <div className="flex items-start justify-between gap-3">
               <p className="min-w-0 break-words text-sm font-semibold text-primary">{row[0]}</p>
-              {(row[row.length - 1] === "ใช้งานได้" || row[row.length - 1] === "รอตรวจสอบ" || row[row.length - 1] === "ชำรุด" || row[row.length - 1] === "รอซ่อม") ? (
+              {(row[row.length - 1] === "ใช้งานได้" || row[row.length - 1] === "รอตรวจสอบ" || row[row.length - 1] === "ชำรุด" || row[row.length - 1] === "รอซ่อม" || row[row.length - 1] === "ไม่พบ") ? (
                 <StatusBadge value={row[row.length - 1]} variant="soft" />
               ) : (
                 <span className="shrink-0 text-sm text-ink">{row[row.length - 1]}</span>
@@ -90,7 +90,7 @@ function DashboardTable({
               <tr key={row.join("-")} className="hover:bg-white/[0.03]">
                 {row.map((cell, index) => (
                   <td key={`${row[0]}-${cell}`} title={cell} className={`px-3 py-3 ${index === 0 ? "font-semibold text-primary" : ""}`}>
-                    {index === row.length - 1 && (cell === "ใช้งานได้" || cell === "รอตรวจสอบ" || cell === "ชำรุด" || cell === "รอซ่อม") ? (
+                    {index === row.length - 1 && (cell === "ใช้งานได้" || cell === "รอตรวจสอบ" || cell === "ชำรุด" || cell === "รอซ่อม" || cell === "ไม่พบ") ? (
                       <StatusBadge value={cell} variant="soft" />
                     ) : (
                       cell
@@ -189,6 +189,12 @@ function DashboardPage({
       value: countByStatus("สูญหาย"),
       note: t("dash.lostNote"),
       ...dashboardCardColors.missing,
+    },
+    {
+      label: t("dash.notFound"),
+      value: countByStatus("ไม่พบ"),
+      note: t("dash.notFoundNote"),
+      ...dashboardCardColors.notFound,
     },
     {
       label: t("dash.disposed"),

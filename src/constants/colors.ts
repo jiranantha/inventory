@@ -26,6 +26,7 @@ export const assetStatusColors: Record<string, { bg: string; text: string; borde
   โอนย้าย: { bg: "bg-[#EFF6FF]", text: "text-[#1D4ED8]", border: "ring-[#60A5FA]", dot: "bg-[#2563EB]", chart: "#2563EB" },
   จำหน่ายแล้ว: { bg: "bg-[#F1F5F9]", text: "text-[#475569]", border: "ring-[#94A3B8]", dot: "bg-[#64748B]", chart: "#64748B" },
   รอตรวจสอบ: { bg: "bg-[#FEFCE8]", text: "text-[#A16207]", border: "ring-[#FACC15]", dot: "bg-[#CA8A04]", chart: "#CA8A04" },
+  ไม่พบ: { bg: "bg-[#FFFBEB]", text: "text-[#B45309]", border: "ring-[#FBBF24]", dot: "bg-[#D97706]", chart: "#F59E0B" },
 };
 
 export const inspectionStatusColors = {
@@ -44,6 +45,7 @@ export const dashboardCardColors = {
   active:    { accent: "text-[#044377]", glow: "from-[#F0F8FF]", border: "border-[#C3E3FD]" },
   broken:    { accent: "text-[#032D50]", glow: "from-[#E1F1FE]", border: "border-[#9CD1FC]" },
   missing:   { accent: "text-[#032D50]", glow: "from-[#E1F1FE]", border: "border-[#9CD1FC]" },
+  notFound:  { accent: "text-[#032D50]", glow: "from-[#E1F1FE]", border: "border-[#9CD1FC]" },
   repair:    { accent: "text-[#044377]", glow: "from-[#F0F8FF]", border: "border-[#C3E3FD]" },
   disposed:  { accent: "text-[#508ABA]", glow: "from-[#F0F8FF]", border: "border-[#C3E3FD]" },
   inspected: { accent: "text-[#044377]", glow: "from-[#F0F8FF]", border: "border-[#C3E3FD]" },

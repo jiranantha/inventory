@@ -10,6 +10,7 @@ export const ASSET_STATUSES = [
   "โอนย้าย",
   "จำหน่ายแล้ว",
   "รอตรวจสอบ",
+  "ไม่พบ",
 ] as const;
 
 export type AssetStatus = (typeof ASSET_STATUSES)[number];
