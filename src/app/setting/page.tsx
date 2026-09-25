@@ -808,12 +808,12 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
   const tabs: [TabKey, string][] = [
     ["users", t("set.tabUsers")], ["roles", t("set.tabRoles")], ["organizations", t("set.tabOrgs")], ["locations", t("set.tabLocations")], ["types", t("set.tabTypes")], ["numbers", t("set.tabNumbers")],
     // Admin-only — hidden from the tab bar (not just disabled) for every other role.
-    // The server independently re-checks this via requirePermission("importAssets")
-    // on /api/assets/import, so hiding the tab is a UX nicety, not the real gate.
-    ...(permissions.canImportAssets ? [["import", "นำเข้าข้อมูล Excel"] as [TabKey, string]] : []),
+    // The server independently re-checks this via requirePermission("bulkUpdateResponsible")
+    // on /api/unit-responsible-persons, so hiding the tab is a UX nicety, not the real gate.
+    ...(permissions.canBulkUpdateResponsible ? [["bulkUpdate", "ผู้รับผิดชอบของหน่วยงาน"] as [TabKey, string]] : []),
     // Admin-only — same doctrine as above; server re-checks via
-    // requirePermission("bulkUpdateResponsible") on /api/unit-responsible-persons.
-    ...(permissions.canBulkUpdateResponsible ? [["bulkUpdate", "เปลี่ยนผู้รับผิดชอบของหน่วยงาน"] as [TabKey, string]] : []),
+    // requirePermission("importAssets") on /api/assets/import.
+    ...(permissions.canImportAssets ? [["import", "นำเข้าข้อมูล Excel"] as [TabKey, string]] : []),
   ];
 
   return (

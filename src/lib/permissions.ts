@@ -138,9 +138,17 @@ export function getPermissions(
 ): Permissions {
   const role = getRoleDefinition(user.role, roles);
   // A role row loaded from the database can have a null/partial `permissions`
-  // value (bad seed data, schema drift). Merge onto a full default so render-time
-  // reads like `permissions.canExport` can never throw and crash the whole app.
-  const rolePermissions: Permissions = { ...noPermissions, ...(role?.permissions ?? {}) };
+  // value (bad seed data, schema drift) — or it can simply predate a permission
+  // flag added to the Permissions type later, so the stored JSON never had that
+  // key at all. Falling back straight to noPermissions for a missing key would
+  // silently disable a brand-new feature for every already-provisioned role,
+  // including Admin, until someone reopens and resaves that exact role in the
+  // UI. So the fallback is this role KEY's seed defaults when one exists (a
+  // freshly added flag then starts at whatever initialRoleDefinitions ships for
+  // that role) and only genuinely unknown/custom role keys fail closed to
+  // noPermissions.
+  const seedDefaults = initialRoleDefinitions.find((seed) => seed.key === role.key)?.permissions ?? noPermissions;
+  const rolePermissions: Permissions = { ...seedDefaults, ...(role?.permissions ?? {}) };
   return { ...rolePermissions, canExport: rolePermissions.canExport && Boolean(user.viewerCanExport) };
 }
 
