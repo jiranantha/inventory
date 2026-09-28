@@ -760,28 +760,36 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
           <p className="mt-5 rounded-lg border border-line bg-surfaceSoft px-4 py-6 text-center text-sm text-muted">ยังไม่มีประวัติการอัปเดตผู้รับผิดชอบ</p>
         ) : (
           <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[820px] table-fixed border-collapse text-left text-sm">
+              <colgroup>
+                <col className="w-[16%]" />
+                <col className="w-[24%]" />
+                <col className="w-[18%]" />
+                <col className="w-[12%]" />
+                <col className="w-[18%]" />
+                <col className="w-[12%]" />
+              </colgroup>
               <thead className="sticky top-0 bg-surfaceSoft text-ink">
                 <tr>
                   {["วันที่อัปเดต", "หน่วยงาน", "ผู้รับผิดชอบใหม่", "จำนวนรายการ", "หมายเหตุ/วาระ", "จัดการ"].map((label) => (
-                    <th key={label} className="border-b border-line px-4 py-3 font-bold">{label}</th>
+                    <th key={label} className="truncate border-b border-line px-4 py-3 font-bold">{label}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
                 {history.map((record) => (
                   <tr key={record.id}>
-                    <td className="whitespace-nowrap px-4 py-3 align-top">
-                      <p>{record.updatedAt}</p>
-                      {record.updatedBy && <p className="mt-0.5 text-xs text-muted">โดย {record.updatedBy}</p>}
+                    <td className="px-4 py-3 align-top">
+                      <p className="truncate">{record.updatedAt}</p>
+                      {record.updatedBy && <p className="mt-0.5 truncate text-xs text-muted">โดย {record.updatedBy}</p>}
                     </td>
-                    <td className="max-w-[160px] truncate px-4 py-3 align-top" title={record.unitName}>{record.unitName}</td>
-                    <td className="max-w-[170px] px-4 py-3 align-top">
+                    <td className="truncate px-4 py-3 align-top" title={record.unitName}>{record.unitName}</td>
+                    <td className="px-4 py-3 align-top">
                       <p className="truncate" title={record.newResponsiblePerson}>{record.newResponsiblePerson}</p>
                       <p className="mt-0.5 truncate text-xs text-muted" title={record.newPhoneNumber}>{record.newPhoneNumber}</p>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 align-top">{record.affectedAssetCount.toLocaleString("th-TH")} รายการ</td>
-                    <td className="max-w-[180px] truncate px-4 py-3 align-top" title={record.note}>{record.note || "-"}</td>
+                    <td className="truncate px-4 py-3 align-top">{record.affectedAssetCount.toLocaleString("th-TH")} รายการ</td>
+                    <td className="truncate px-4 py-3 align-top" title={record.note}>{record.note || "-"}</td>
                     <td className="px-4 py-3 align-top">
                       <div className="flex flex-wrap items-center gap-2">
                         <button
