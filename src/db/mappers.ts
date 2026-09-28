@@ -1,7 +1,7 @@
-import type { ActivityLogRow, AssetRow, InspectionRow, RoleRow, UnitResponsiblePersonRow, UserRow } from "@/db/schema";
+import type { ActivityLogRow, AssetRow, InspectionRow, RoleRow, UnitResponsiblePersonRow, UnitResponsibleUpdateHistoryRow, UserRow } from "@/db/schema";
 import { formatThaiDateTime, formatThaiDateTimeWithSeconds } from "@/lib/dates";
 import type { AppUser, RoleDefinition } from "@/lib/permissions";
-import type { ActivityLog, AnnualInspection, AssetListRow, EvidenceImage, UnitResponsiblePerson } from "@/types";
+import type { ActivityLog, AnnualInspection, AssetListRow, EvidenceImage, UnitResponsiblePerson, UnitResponsibleUpdateHistory } from "@/types";
 
 // --- assets -----------------------------------------------------------------
 
@@ -182,5 +182,24 @@ export function rowToUnitResponsiblePerson(row: UnitResponsiblePersonRow): UnitR
     responsiblePhone: row.responsiblePhone,
     note: row.note,
     updatedAt: row.updatedAt ? formatThaiDateTimeWithSeconds(row.updatedAt.toISOString()) : undefined,
+  };
+}
+
+export function rowToUnitResponsibleUpdateHistory(row: UnitResponsibleUpdateHistoryRow): UnitResponsibleUpdateHistory {
+  return {
+    id: row.id,
+    unitName: row.unitName,
+    oldResponsiblePerson: row.oldResponsiblePerson,
+    oldPhoneNumber: row.oldPhoneNumber,
+    newResponsiblePerson: row.newResponsiblePerson,
+    newPhoneNumber: row.newPhoneNumber,
+    affectedAssetIds: (row.affectedAssetIds ?? []) as number[],
+    affectedAssetCount: row.affectedAssetCount,
+    note: row.note,
+    updatedBy: row.updatedBy,
+    updatedAt: row.updatedAt ? formatThaiDateTimeWithSeconds(row.updatedAt.toISOString()) : "",
+    rolledBack: row.rolledBack,
+    rolledBackAt: row.rolledBackAt ? formatThaiDateTimeWithSeconds(row.rolledBackAt.toISOString()) : undefined,
+    rolledBackBy: row.rolledBackBy ?? undefined,
   };
 }

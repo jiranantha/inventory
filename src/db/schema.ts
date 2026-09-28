@@ -233,6 +233,34 @@ export const unitResponsiblePersons = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// History of unit-responsible bulk updates — one row per batch, recording
+// exactly which asset ids were touched so a batch can be rolled back precisely
+// (not by re-matching on organization, which could pick up unrelated assets
+// added/edited after the fact).
+// ---------------------------------------------------------------------------
+
+export const unitResponsibleUpdateHistory = pgTable(
+  "unit_responsible_update_history",
+  {
+    id: serial("id").primaryKey(),
+    unitName: text("unit_name").notNull(),
+    oldResponsiblePerson: text("old_responsible_person").notNull().default("-"),
+    oldPhoneNumber: text("old_phone_number").notNull().default("-"),
+    newResponsiblePerson: text("new_responsible_person").notNull(),
+    newPhoneNumber: text("new_phone_number").notNull().default("-"),
+    affectedAssetIds: jsonb("affected_asset_ids").$type<number[]>().notNull().default(sql`'[]'::jsonb`),
+    affectedAssetCount: integer("affected_asset_count").notNull().default(0),
+    note: text("note").notNull().default("-"),
+    updatedBy: text("updated_by").notNull().default(""),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    rolledBack: boolean("rolled_back").notNull().default(false),
+    rolledBackAt: timestamp("rolled_back_at", { withTimezone: true }),
+    rolledBackBy: text("rolled_back_by"),
+  },
+  (t) => [index("idx_unit_responsible_update_history_unit_name").on(t.unitName)],
+);
+
+// ---------------------------------------------------------------------------
 // Activity log (audit trail for asset mutations).
 // ---------------------------------------------------------------------------
 
@@ -260,3 +288,4 @@ export type ActivityLogRow = typeof activityLogs.$inferSelect;
 export type UserRow = typeof users.$inferSelect;
 export type RoleRow = typeof roles.$inferSelect;
 export type UnitResponsiblePersonRow = typeof unitResponsiblePersons.$inferSelect;
+export type UnitResponsibleUpdateHistoryRow = typeof unitResponsibleUpdateHistory.$inferSelect;

@@ -1,5 +1,5 @@
 import type { AppUser, RoleDefinition } from "@/lib/permissions";
-import type { ActivityLog, AnnualInspection, AssetImportInsertSummary, AssetListRow, MasterDataItem, UnitResponsiblePerson } from "@/types";
+import type { ActivityLog, AnnualInspection, AssetImportInsertSummary, AssetListRow, MasterDataItem, UnitResponsiblePerson, UnitResponsibleUpdateHistory } from "@/types";
 
 export type ActivityLogInput = Omit<ActivityLog, "id" | "createdAt">;
 export type MasterDataCategory = "organization" | "location" | "equipment_type";
@@ -99,8 +99,16 @@ export const api = {
       (r) => r.unitResponsiblePersons,
     ),
   bulkUpdateUnitResponsible: (payload: { organization: string; responsiblePerson: string; responsiblePhone?: string; note?: string }) =>
-    req<{ unitResponsiblePerson: UnitResponsiblePerson; updatedCount: number; log: ActivityLog | null }>(
+    req<{ unitResponsiblePerson: UnitResponsiblePerson; updatedCount: number; log: ActivityLog | null; history: UnitResponsibleUpdateHistory }>(
       "/api/unit-responsible-persons",
       { method: "POST", body: JSON.stringify(payload) },
     ),
+
+  // update history + rollback for the bulk responsible-person feature
+  getUnitResponsibleHistory: () =>
+    req<{ history: UnitResponsibleUpdateHistory[] }>("/api/unit-responsible-persons/history").then((r) => r.history),
+  rollbackUnitResponsibleUpdate: (historyId: number) =>
+    req<{ history: UnitResponsibleUpdateHistory }>(`/api/unit-responsible-persons/history/${historyId}/rollback`, {
+      method: "POST",
+    }).then((r) => r.history),
 };

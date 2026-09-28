@@ -54,7 +54,7 @@ export type AssetSetItem = {
 export type ActivityLog = {
   id: number;
   userName: string;
-  actionType: "แก้ไข" | "ลบ" | "กู้คืน" | "ยกเลิกผลตรวจ" | "อัปเดตผู้รับผิดชอบ";
+  actionType: "แก้ไข" | "ลบ" | "กู้คืน" | "ยกเลิกผลตรวจ" | "อัปเดตผู้รับผิดชอบ" | "ย้อนกลับผู้รับผิดชอบ";
   targetId: number;
   targetTable: "assets";
   detail: string;
@@ -73,6 +73,26 @@ export type UnitResponsiblePerson = {
   responsiblePhone: string;
   note: string;
   updatedAt?: string;
+};
+// One row per bulk "เปลี่ยนผู้รับผิดชอบของหน่วยงาน" batch — see
+// unitResponsibleUpdateHistory in src/db/schema.ts. affectedAssetIds is exactly
+// which asset rows that batch touched, so a rollback can restore precisely
+// those rows (and only those) rather than re-matching on organization.
+export type UnitResponsibleUpdateHistory = {
+  id: number;
+  unitName: string;
+  oldResponsiblePerson: string;
+  oldPhoneNumber: string;
+  newResponsiblePerson: string;
+  newPhoneNumber: string;
+  affectedAssetIds: number[];
+  affectedAssetCount: number;
+  note: string;
+  updatedBy: string;
+  updatedAt: string;
+  rolledBack: boolean;
+  rolledBackAt?: string;
+  rolledBackBy?: string;
 };
 export type AnnualInspection = {
   id: string;

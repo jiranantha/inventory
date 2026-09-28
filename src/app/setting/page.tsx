@@ -9,7 +9,7 @@ import { ADMIN_IMPORT_FIELD_DEFINITIONS, buildAdminAssetImportPreview, buildUnit
 import { normalizeOrganizationName } from "@/lib/organizations";
 import { readExcelWorkbookForMapping } from "@/lib/import-export";
 import { uniqueSorted } from "@/lib/utils";
-import { AdminAssetImportRow, AdminImportColumnMapping, AssetImportInsertSummary, AssetListRow, DetectedExcelWorkbook, MasterDataItem, UnitResponsiblePerson } from "@/types";
+import { AdminAssetImportRow, AdminImportColumnMapping, AssetImportInsertSummary, AssetListRow, DetectedExcelWorkbook, MasterDataItem, UnitResponsiblePerson, UnitResponsibleUpdateHistory } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 function ActiveToggle({ checked, onChange, disabled, ariaLabel }: {
@@ -551,11 +551,13 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
 // "current" responsible person and, on confirm, rewrites responsiblePerson/
 // responsiblePhone on every asset under that unit across all fiscal years —
 // see onBulkUpdateResponsible in AppDataProvider for the actual API call.
-function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsiblePersons, onBulkUpdateResponsible }: {
+function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsiblePersons, onBulkUpdateResponsible, history, onRollbackUnitResponsibleUpdate }: {
   assets: AssetListRow[];
   organizationItems: MasterDataItem[];
   unitResponsiblePersons: UnitResponsiblePerson[];
   onBulkUpdateResponsible: (payload: { organization: string; responsiblePerson: string; responsiblePhone: string; note: string }) => Promise<number>;
+  history: UnitResponsibleUpdateHistory[];
+  onRollbackUnitResponsibleUpdate: (historyId: number) => Promise<void>;
 }) {
   const { showToast } = useAppData();
   const [organization, setOrganization] = useState("");
@@ -566,6 +568,9 @@ function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsible
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [lastResult, setLastResult] = useState<{ organization: string; count: number } | null>(null);
+  const [rollbackTarget, setRollbackTarget] = useState<UnitResponsibleUpdateHistory | null>(null);
+  const [rollbackAcknowledged, setRollbackAcknowledged] = useState(false);
+  const [rollbackSubmitting, setRollbackSubmitting] = useState(false);
 
   const organizationOptions = useMemo(
     () => uniqueSorted([...organizationItems.map((item) => item.name), ...assets.map((asset) => asset.organization)]),
@@ -617,21 +622,54 @@ function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsible
     }
   };
 
+  // Requirement 5: warn (not block) when an affected asset no longer matches
+  // this batch's "new" value — meaning it was edited manually since the bulk
+  // update, so blindly restoring the old value could clobber that later edit.
+  const rollbackMismatchCount = useMemo(() => {
+    if (!rollbackTarget) return 0;
+    const affectedIds = new Set(rollbackTarget.affectedAssetIds);
+    return assets.filter(
+      (asset) =>
+        affectedIds.has(asset.id) &&
+        (asset.responsiblePerson !== rollbackTarget.newResponsiblePerson || (asset.responsiblePhone ?? "-") !== rollbackTarget.newPhoneNumber),
+    ).length;
+  }, [assets, rollbackTarget]);
+
+  const openRollback = (record: UnitResponsibleUpdateHistory) => {
+    setRollbackTarget(record);
+    setRollbackAcknowledged(false);
+  };
+
+  const handleConfirmRollback = async () => {
+    if (!rollbackTarget) return;
+    if (rollbackMismatchCount > 0 && !rollbackAcknowledged) return;
+    setRollbackSubmitting(true);
+    try {
+      await onRollbackUnitResponsibleUpdate(rollbackTarget.id);
+      setRollbackTarget(null);
+      setRollbackAcknowledged(false);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "ย้อนกลับไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setRollbackSubmitting(false);
+    }
+  };
+
+  const currentResponsiblePersonLabel = currentResponsible?.responsiblePerson || "ยังไม่มีข้อมูลผู้รับผิดชอบปัจจุบัน";
+  const currentResponsiblePhoneLabel = currentResponsible?.responsiblePhone && currentResponsible.responsiblePhone !== "-" ? currentResponsible.responsiblePhone : "-";
+
   return (
     <section className="mx-auto w-full max-w-screen-2xl space-y-5">
+      {/* Step 1: pick the unit — everything below only appears once one is selected, so it's always clear what's being edited. */}
       <div className="rounded-lg border border-line bg-surface p-6">
-        <h2 className="text-xl font-bold text-ink">เปลี่ยนผู้รับผิดชอบของหน่วยงาน</h2>
+        <h2 className="text-xl font-bold text-ink">อัปเดตผู้รับผิดชอบของครุภัณฑ์ในหน่วยงาน</h2>
+        <p className="mt-2 text-sm font-semibold text-ink">
+          การอัปเดตนี้จะเปลี่ยนชื่อผู้รับผิดชอบและเบอร์โทรของครุภัณฑ์ทุกชิ้นในหน่วยงานนี้
+        </p>
         <p className="mt-2 text-sm text-muted">
-          เมื่อประธานชมรม/หัวหน้าหน่วยงานเปลี่ยน ให้กรอกชื่อผู้รับผิดชอบใหม่เพียงครั้งเดียว ระบบจะอัปเดตผู้รับผิดชอบและเบอร์โทรของครุภัณฑ์ทุกรายการในหน่วยงานนี้ให้ทันที
-          ไม่ว่าครุภัณฑ์จะจัดซื้อในปีงบประมาณใดก็ตาม เนื่องจากผู้รับผิดชอบหมายถึงผู้ดูแลหน่วยงานในปัจจุบัน ไม่ใช่ปีงบประมาณของครุภัณฑ์
+          ใช้เมื่อประธานชมรม/หัวหน้าหน่วยงานเปลี่ยน กรอกชื่อผู้รับผิดชอบใหม่เพียงครั้งเดียว ระบบจะอัปเดตให้ทุกรายการในหน่วยงานนี้ทันที ไม่ว่าครุภัณฑ์จะจัดซื้อในปีงบประมาณใดก็ตาม
         </p>
-        <p className="mt-4 rounded-lg border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-100">
-          การยืนยันจะแก้ไขข้อมูลผู้รับผิดชอบและเบอร์โทรของครุภัณฑ์จริงในระบบ กรุณาตรวจสอบก่อนยืนยัน
-        </p>
-      </div>
-
-      <div className="rounded-lg border border-line bg-surface p-6">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="mt-4 max-w-md">
           <SelectField
             label="หน่วยงาน"
             required
@@ -640,53 +678,67 @@ function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsible
             options={organizationOptions}
             placeholder="เลือกหน่วยงาน"
           />
-          <Field
-            label="ชื่อผู้รับผิดชอบใหม่"
-            required
-            value={responsiblePerson}
-            onChange={(event) => setResponsiblePerson(event.target.value)}
-            placeholder="เช่น นาย ก"
-          />
-          <PhoneField
-            value={responsiblePhone}
-            onChange={(value) => { setResponsiblePhone(value); setPhoneError(""); }}
-            onInvalidInput={() => setPhoneError("กรุณากรอกหมายเลขโทรศัพท์เป็นตัวเลขเท่านั้น")}
-            onBlur={() => {
-              if (responsiblePhone && !/^[0-9]{9,10}$/.test(responsiblePhone)) setPhoneError("กรุณากรอกหมายเลขโทรศัพท์ให้ถูกต้อง 9-10 หลัก");
-            }}
-            error={phoneError}
-            label="หมายเลขโทรศัพท์"
-          />
-          <TextAreaField
-            label="หมายเหตุ"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="เช่น ประธานชมรมปี 2569"
-            compact
-          />
-        </div>
-
-        {normalizedOrganization && (
-          <div className="mt-4 space-y-2">
-            <p className="rounded-md border border-sky-300/30 bg-sky-400/10 px-3 py-2 text-sm font-semibold text-sky-100">
-              พบครุภัณฑ์ของหน่วยงานนี้จำนวน {affectedCount.toLocaleString("th-TH")} รายการ
-            </p>
-            <p className="text-xs text-muted">
-              ผู้รับผิดชอบปัจจุบัน: {currentResponsible ? `${currentResponsible.responsiblePerson}${currentResponsible.responsiblePhone && currentResponsible.responsiblePhone !== "-" ? ` (${currentResponsible.responsiblePhone})` : ""}` : "ยังไม่มีข้อมูลผู้รับผิดชอบปัจจุบันของหน่วยงานนี้"}
-            </p>
-          </div>
-        )}
-
-        <div className="mt-5 flex justify-end border-t border-line pt-4">
-          <button
-            type="button"
-            onClick={handleOpenConfirm}
-            className="min-h-11 rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-white hover:bg-primary-hover"
-          >
-            อัปเดตผู้รับผิดชอบของหน่วยงาน
-          </button>
         </div>
       </div>
+
+      {/* Step 2: show what's true right now, before anything changes. */}
+      {normalizedOrganization && (
+        <div className="rounded-lg border border-line bg-surface p-6">
+          <h3 className="text-base font-bold text-ink">ข้อมูลปัจจุบันของหน่วยงานนี้</h3>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <DetailInfoItem label="หน่วยงาน" value={normalizedOrganization} />
+            <DetailInfoItem label="ผู้รับผิดชอบปัจจุบัน" value={currentResponsiblePersonLabel} />
+            <DetailInfoItem label="หมายเลขโทรศัพท์ปัจจุบัน" value={currentResponsiblePhoneLabel} />
+            <DetailInfoItem label="จำนวนครุภัณฑ์ทั้งหมดของหน่วยงานนี้" value={`${affectedCount.toLocaleString("th-TH")} รายการ`} />
+          </div>
+          <p className="mt-4 rounded-md border border-sky-300/30 bg-sky-400/10 px-3 py-2 text-sm font-semibold text-sky-100">
+            พบครุภัณฑ์ของหน่วยงานนี้จำนวน {affectedCount.toLocaleString("th-TH")} รายการ
+          </p>
+        </div>
+      )}
+
+      {/* Step 3: the actual edit — new values only, kept separate from the current-data card above. */}
+      {normalizedOrganization && (
+        <div className="rounded-lg border border-line bg-surface p-6">
+          <h3 className="text-base font-bold text-ink">ระบุผู้รับผิดชอบคนใหม่</h3>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Field
+              label="ชื่อผู้รับผิดชอบใหม่"
+              required
+              value={responsiblePerson}
+              onChange={(event) => setResponsiblePerson(event.target.value)}
+              placeholder="เช่น นาย ก"
+            />
+            <PhoneField
+              value={responsiblePhone}
+              onChange={(value) => { setResponsiblePhone(value); setPhoneError(""); }}
+              onInvalidInput={() => setPhoneError("กรุณากรอกหมายเลขโทรศัพท์เป็นตัวเลขเท่านั้น")}
+              onBlur={() => {
+                if (responsiblePhone && !/^[0-9]{9,10}$/.test(responsiblePhone)) setPhoneError("กรุณากรอกหมายเลขโทรศัพท์ให้ถูกต้อง 9-10 หลัก");
+              }}
+              error={phoneError}
+              label="หมายเลขโทรศัพท์"
+            />
+            <TextAreaField
+              label="หมายเหตุ"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="เช่น ประธานชมรมปี 2569"
+              compact
+            />
+          </div>
+
+          <div className="mt-5 flex justify-end border-t border-line pt-4">
+            <button
+              type="button"
+              onClick={handleOpenConfirm}
+              className="min-h-11 rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-white hover:bg-primary-hover"
+            >
+              อัปเดตผู้รับผิดชอบของหน่วยงาน
+            </button>
+          </div>
+        </div>
+      )}
 
       {lastResult && (
         <div className="rounded-lg border border-emerald-300/30 bg-emerald-400/10 p-6">
@@ -697,23 +749,89 @@ function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsible
         </div>
       )}
 
+      <div className="rounded-lg border border-line bg-surface p-6">
+        <h2 className="text-xl font-bold text-ink">ประวัติการอัปเดตผู้รับผิดชอบ</h2>
+        <p className="mt-2 text-sm text-muted">รายการอัปเดตผู้รับผิดชอบของหน่วยงานที่ผ่านมา สามารถย้อนกลับรายการที่ยังไม่ถูกย้อนกลับได้</p>
+        {history.length === 0 ? (
+          <p className="mt-5 rounded-lg border border-line bg-surfaceSoft px-4 py-6 text-center text-sm text-muted">ยังไม่มีประวัติการอัปเดตผู้รับผิดชอบ</p>
+        ) : (
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full min-w-[1200px] border-collapse text-left text-xs">
+              <thead className="sticky top-0 bg-surfaceSoft text-ink">
+                <tr>
+                  {["วันที่อัปเดต", "หน่วยงาน", "ผู้รับผิดชอบเดิม", "เบอร์เดิม", "ผู้รับผิดชอบใหม่", "เบอร์ใหม่", "จำนวนรายการที่อัปเดต", "หมายเหตุ", "สถานะ", "จัดการ"].map((label) => (
+                    <th key={label} className="border-b border-line px-3 py-2.5 font-semibold">{label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
+                {history.map((record) => (
+                  <tr key={record.id}>
+                    <td className="whitespace-nowrap px-3 py-2.5">
+                      <p>{record.updatedAt}</p>
+                      {record.updatedBy && <p className="mt-0.5 text-[10px] text-muted">โดย {record.updatedBy}</p>}
+                    </td>
+                    <td className="px-3 py-2.5" title={record.unitName}>{record.unitName}</td>
+                    <td className="px-3 py-2.5" title={record.oldResponsiblePerson}>{record.oldResponsiblePerson}</td>
+                    <td className="px-3 py-2.5">{record.oldPhoneNumber}</td>
+                    <td className="px-3 py-2.5" title={record.newResponsiblePerson}>{record.newResponsiblePerson}</td>
+                    <td className="px-3 py-2.5">{record.newPhoneNumber}</td>
+                    <td className="px-3 py-2.5 text-center">{record.affectedAssetCount.toLocaleString("th-TH")}</td>
+                    <td className="px-3 py-2.5" title={record.note}>{record.note}</td>
+                    <td className="px-3 py-2.5">
+                      {record.rolledBack ? (
+                        <span className="inline-flex whitespace-nowrap rounded-full border border-slate-300/30 bg-slate-500/10 px-2 py-0.5 text-[11px] font-bold text-muted" title={record.rolledBackBy ? `ย้อนกลับโดย ${record.rolledBackBy} เมื่อ ${record.rolledBackAt}` : undefined}>
+                          ย้อนกลับแล้ว
+                        </span>
+                      ) : (
+                        <span className="inline-flex whitespace-nowrap rounded-full border border-emerald-300/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-bold text-emerald-200">
+                          ใช้งานอยู่
+                        </span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5">
+                      {record.rolledBack ? (
+                        <span className="text-muted">-</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => openRollback(record)}
+                          className="rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-extrabold text-ink hover:border-primary hover:text-primary"
+                        >
+                          ย้อนกลับ
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {confirmOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
           <div className="w-full max-w-lg overflow-hidden rounded-xl border border-line bg-surface shadow-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-line p-5">
               <div>
-                <h3 className="text-xl font-bold text-white">ยืนยันการเปลี่ยนผู้รับผิดชอบ</h3>
-                <p className="mt-1 text-sm text-muted">ระบบจะอัปเดตผู้รับผิดชอบของครุภัณฑ์จำนวน {affectedCount.toLocaleString("th-TH")} รายการในหน่วยงานนี้</p>
+                <h3 className="text-xl font-bold text-white">ยืนยันการอัปเดตผู้รับผิดชอบ</h3>
+                <p className="mt-1 text-sm text-muted">โปรดตรวจสอบข้อมูลก่อนยืนยัน</p>
               </div>
               <CloseIconButton onClick={() => setConfirmOpen(false)} />
             </div>
             <div className="space-y-3 p-5">
               <div className="space-y-1 rounded-lg border border-line bg-slate-950/30 px-4 py-3 text-sm">
                 <p><span className="text-muted">หน่วยงาน: </span><span className="font-semibold text-white">{normalizedOrganization}</span></p>
+                <p><span className="text-muted">ผู้รับผิดชอบเดิม: </span><span className="font-semibold text-white">{currentResponsiblePersonLabel}</span></p>
+                <p><span className="text-muted">เบอร์เดิม: </span><span className="font-semibold text-white">{currentResponsiblePhoneLabel}</span></p>
                 <p><span className="text-muted">ผู้รับผิดชอบใหม่: </span><span className="font-semibold text-white">{responsiblePerson.trim()}</span></p>
-                <p><span className="text-muted">เบอร์โทร: </span><span className="font-semibold text-white">{responsiblePhone.trim() || "-"}</span></p>
+                <p><span className="text-muted">เบอร์ใหม่: </span><span className="font-semibold text-white">{responsiblePhone.trim() || "-"}</span></p>
                 <p><span className="text-muted">จำนวนครุภัณฑ์ที่ได้รับผลกระทบ: </span><span className="font-semibold text-white">{affectedCount.toLocaleString("th-TH")} รายการ</span></p>
               </div>
+              <p className="rounded-md border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-sm font-semibold text-amber-100">
+                การอัปเดตนี้จะมีผลกับครุภัณฑ์ทุกรายการในหน่วยงานนี้ กรุณาตรวจสอบก่อนยืนยัน
+              </p>
               <div className="flex justify-end gap-3 border-t border-line pt-4">
                 <button type="button" onClick={() => setConfirmOpen(false)} className="rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">ยกเลิก</button>
                 <button type="button" onClick={handleConfirm} disabled={submitting} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50">
@@ -724,11 +842,60 @@ function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsible
           </div>
         </div>
       )}
+
+      {rollbackTarget && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
+          <div className="w-full max-w-lg overflow-hidden rounded-xl border border-line bg-surface shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-line p-5">
+              <div>
+                <h3 className="text-xl font-bold text-white">ยืนยันย้อนกลับ</h3>
+                <p className="mt-1 text-sm text-muted">
+                  การดำเนินการนี้จะคืนค่าผู้รับผิดชอบและเบอร์โทรของครุภัณฑ์ที่ได้รับผลกระทบจากการอัปเดตครั้งนี้กลับไปเป็นค่าเดิม
+                </p>
+              </div>
+              <CloseIconButton onClick={() => setRollbackTarget(null)} />
+            </div>
+            <div className="space-y-3 p-5">
+              <div className="space-y-1 rounded-lg border border-line bg-slate-950/30 px-4 py-3 text-sm">
+                <p><span className="text-muted">หน่วยงาน: </span><span className="font-semibold text-white">{rollbackTarget.unitName}</span></p>
+                <p><span className="text-muted">ผู้รับผิดชอบเดิม (ก่อนอัปเดต): </span><span className="font-semibold text-white">{rollbackTarget.oldResponsiblePerson} ({rollbackTarget.oldPhoneNumber})</span></p>
+                <p><span className="text-muted">ผู้รับผิดชอบปัจจุบัน (จากการอัปเดตนี้): </span><span className="font-semibold text-white">{rollbackTarget.newResponsiblePerson} ({rollbackTarget.newPhoneNumber})</span></p>
+                <p><span className="text-muted">จำนวนครุภัณฑ์ที่ได้รับผลกระทบ: </span><span className="font-semibold text-white">{rollbackTarget.affectedAssetCount.toLocaleString("th-TH")} รายการ</span></p>
+              </div>
+              {rollbackMismatchCount > 0 && (
+                <div className="space-y-2 rounded-lg border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-100">
+                  <p>มีครุภัณฑ์บางรายการที่ถูกแก้ไขผู้รับผิดชอบหลังจากการอัปเดตนี้ กรุณาตรวจสอบก่อนย้อนกลับ ({rollbackMismatchCount.toLocaleString("th-TH")} รายการ)</p>
+                  <label className="flex items-start gap-2 text-xs font-semibold text-amber-100">
+                    <input
+                      type="checkbox"
+                      checked={rollbackAcknowledged}
+                      onChange={(event) => setRollbackAcknowledged(event.target.checked)}
+                      className="mt-0.5 h-4 w-4 accent-amber-400"
+                    />
+                    ฉันตรวจสอบแล้วและต้องการย้อนกลับต่อไป
+                  </label>
+                </div>
+              )}
+              <div className="flex justify-end gap-3 border-t border-line pt-4">
+                <button type="button" onClick={() => setRollbackTarget(null)} className="rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">ยกเลิก</button>
+                <button
+                  type="button"
+                  onClick={handleConfirmRollback}
+                  disabled={rollbackSubmitting || (rollbackMismatchCount > 0 && !rollbackAcknowledged)}
+                  className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {rollbackSubmitting ? "กำลังย้อนกลับ..." : "ยืนยันย้อนกลับ"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
 
-function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, currentUser, roles, onRolesChange, permissions, organizationItems, onOrganizationItemsChange, locationItems, onLocationItemsChange, equipmentTypeItems, onEquipmentTypeItemsChange, assets, onImportAssets, unitResponsiblePersons, onBulkUpdateResponsible }: {
+function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, currentUser, roles, onRolesChange, permissions, organizationItems, onOrganizationItemsChange, locationItems, onLocationItemsChange, equipmentTypeItems, onEquipmentTypeItemsChange, assets, onImportAssets, unitResponsiblePersons, onBulkUpdateResponsible, unitResponsibleHistory, onRollbackUnitResponsibleUpdate }: {
   users: AppUser[];
   onAddUser: (user: AppUser) => void;
   onUpdateUser: (user: AppUser) => void;
@@ -747,6 +914,8 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
   onImportAssets: (rows: AssetListRow[]) => Promise<AssetImportInsertSummary>;
   unitResponsiblePersons: UnitResponsiblePerson[];
   onBulkUpdateResponsible: (payload: { organization: string; responsiblePerson: string; responsiblePhone: string; note: string }) => Promise<number>;
+  unitResponsibleHistory: UnitResponsibleUpdateHistory[];
+  onRollbackUnitResponsibleUpdate: (historyId: number) => Promise<void>;
 }) {
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
   const [userModalMode, setUserModalMode] = useState<"add" | "edit">("edit");
@@ -928,6 +1097,8 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
           organizationItems={organizationItems}
           unitResponsiblePersons={unitResponsiblePersons}
           onBulkUpdateResponsible={onBulkUpdateResponsible}
+          history={unitResponsibleHistory}
+          onRollbackUnitResponsibleUpdate={onRollbackUnitResponsibleUpdate}
         />
       )}
 
@@ -1018,6 +1189,8 @@ export default function SettingRoute() {
     onImportAssets,
     unitResponsiblePersons,
     onBulkUpdateResponsible,
+    unitResponsibleHistory,
+    onRollbackUnitResponsibleUpdate,
   } = useAppData();
   if (!permissions.canManageUsers) return <PlaceholderPage title="ไม่มีสิทธิ์เข้าถึงการตั้งค่า" />;
   return (
@@ -1040,6 +1213,8 @@ export default function SettingRoute() {
       onImportAssets={onImportAssets}
       unitResponsiblePersons={unitResponsiblePersons}
       onBulkUpdateResponsible={onBulkUpdateResponsible}
+      unitResponsibleHistory={unitResponsibleHistory}
+      onRollbackUnitResponsibleUpdate={onRollbackUnitResponsibleUpdate}
     />
   );
 }

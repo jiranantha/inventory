@@ -18,7 +18,7 @@ import {
   getPermissions,
   initialRoleDefinitions,
 } from "@/lib/permissions";
-import { ActivityLog, AnnualInspection, AssetImportInsertSummary, AssetListRow, MasterDataItem, Organization, UnitResponsiblePerson } from "@/types";
+import { ActivityLog, AnnualInspection, AssetImportInsertSummary, AssetListRow, MasterDataItem, Organization, UnitResponsiblePerson, UnitResponsibleUpdateHistory } from "@/types";
 
 // Everything every page needs, lifted out of the old single-page component and
 // shared through context so navigating between routes never refetches the data.
@@ -34,6 +34,7 @@ type AppData = {
   locationItems: MasterDataItem[];
   equipmentTypeItems: MasterDataItem[];
   unitResponsiblePersons: UnitResponsiblePerson[];
+  unitResponsibleHistory: UnitResponsibleUpdateHistory[];
   activeOrganizations: Organization[];
   activeLocations: string[];
   activeEquipmentTypes: string[];
@@ -47,6 +48,7 @@ type AppData = {
   onCreateAsset: (asset: AssetListRow) => void;
   onImportAssets: (rows: AssetListRow[]) => Promise<AssetImportInsertSummary>;
   onBulkUpdateResponsible: (payload: { organization: string; responsiblePerson: string; responsiblePhone: string; note: string }) => Promise<number>;
+  onRollbackUnitResponsibleUpdate: (historyId: number) => Promise<void>;
   onSaveAnnualInspection: (inspection: AnnualInspection) => void;
   onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => void;
   onSaveAsset: (asset: AssetListRow, oldAsset: AssetListRow) => void;
@@ -171,6 +173,7 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
   const [locationItems, setLocationItems] = useState<MasterDataItem[]>([]);
   const [equipmentTypeItems, setEquipmentTypeItems] = useState<MasterDataItem[]>([]);
   const [unitResponsiblePersons, setUnitResponsiblePersons] = useState<UnitResponsiblePerson[]>([]);
+  const [unitResponsibleHistory, setUnitResponsibleHistory] = useState<UnitResponsibleUpdateHistory[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [assets, setAssets] = useState<AssetListRow[]>([]);
   const [annualInspections, setAnnualInspections] = useState<AnnualInspection[]>([]);
@@ -226,6 +229,14 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     if (!permissions.canManageUsers) return;
     api.getUsers().then(setUsers).catch(() => undefined);
   }, [permissions.canManageUsers]);
+
+  // Admins additionally load the bulk-responsible-update history for the
+  // "ประวัติการอัปเดตผู้รับผิดชอบ" table in /setting — the API itself is also
+  // admin-gated, this just avoids firing the request for everyone else.
+  useEffect(() => {
+    if (!permissions.canBulkUpdateResponsible) return;
+    api.getUnitResponsibleHistory().then(setUnitResponsibleHistory).catch(() => undefined);
+  }, [permissions.canBulkUpdateResponsible]);
 
   const showToast = (message: string) => {
     setToast(message);
@@ -546,7 +557,7 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
       showToast("ไม่มีสิทธิ์เปลี่ยนผู้รับผิดชอบของหน่วยงาน");
       throw new Error("ไม่มีสิทธิ์เปลี่ยนผู้รับผิดชอบของหน่วยงาน");
     }
-    const { unitResponsiblePerson, updatedCount, log } = await api.bulkUpdateUnitResponsible(payload);
+    const { unitResponsiblePerson, updatedCount, log, history } = await api.bulkUpdateUnitResponsible(payload);
     setUnitResponsiblePersons((items) => [
       ...items.filter((item) => item.organization !== unitResponsiblePerson.organization),
       unitResponsiblePerson,
@@ -558,9 +569,31 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
           : item,
       ),
     );
+    setUnitResponsibleHistory((items) => [history, ...items]);
     prependLog(log);
     showToast(`อัปเดตผู้รับผิดชอบของหน่วยงาน "${unitResponsiblePerson.organization}" แล้ว ${updatedCount} รายการ`);
     return updatedCount;
+  };
+
+  // /setting > ประวัติการอัปเดตผู้รับผิดชอบ > ย้อนกลับ (admin-only). Restores
+  // responsiblePerson/responsiblePhone on exactly the asset ids recorded in
+  // this history batch, then marks the batch rolled back so it can't be
+  // rolled back again — the server independently re-checks that too.
+  const handleRollbackUnitResponsibleUpdate = async (historyId: number) => {
+    if (!permissions.canBulkUpdateResponsible) {
+      showToast("ไม่มีสิทธิ์ย้อนกลับการอัปเดตผู้รับผิดชอบ");
+      throw new Error("ไม่มีสิทธิ์ย้อนกลับการอัปเดตผู้รับผิดชอบ");
+    }
+    const updated = await api.rollbackUnitResponsibleUpdate(historyId);
+    setUnitResponsibleHistory((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+    setAssets((items) =>
+      items.map((item) =>
+        updated.affectedAssetIds.includes(item.id)
+          ? { ...item, responsiblePerson: updated.oldResponsiblePerson, responsiblePhone: updated.oldPhoneNumber }
+          : item,
+      ),
+    );
+    showToast(`ย้อนกลับผู้รับผิดชอบของหน่วยงาน "${updated.unitName}" แล้ว`);
   };
 
   if (!dataReady) return <LoadingScreen message="กำลังโหลดข้อมูลจากระบบ..." />;
@@ -584,6 +617,7 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     locationItems,
     equipmentTypeItems,
     unitResponsiblePersons,
+    unitResponsibleHistory,
     activeOrganizations,
     activeLocations,
     activeEquipmentTypes,
@@ -597,6 +631,7 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     onCreateAsset: handleCreateAsset,
     onImportAssets: handleImportAssets,
     onBulkUpdateResponsible: handleBulkUpdateResponsible,
+    onRollbackUnitResponsibleUpdate: handleRollbackUnitResponsibleUpdate,
     onSaveAnnualInspection: handleSaveAnnualInspection,
     onCancelAnnualInspection: handleCancelAnnualInspection,
     onSaveAsset: handleSaveAsset,
