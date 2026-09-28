@@ -90,10 +90,16 @@ export async function requirePermission(
 }
 
 // Converts thrown AuthErrors into JSON responses; everything else becomes a 500.
+// The real error is always logged server-side. Outside production it's also
+// appended to the response (e.g. a Postgres "relation does not exist" error
+// from a missing migration) so a failure is diagnosable from the browser
+// network tab / toast without needing server log access; production keeps the
+// generic message so internals are never leaked to end users.
 export function jsonError(error: unknown): NextResponse {
   if (error instanceof AuthError) {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
   console.error("[api] unhandled error", error);
-  return NextResponse.json({ error: "เกิดข้อผิดพลาดภายในระบบ" }, { status: 500 });
+  const detail = process.env.NODE_ENV !== "production" && error instanceof Error ? ` (${error.message})` : "";
+  return NextResponse.json({ error: `เกิดข้อผิดพลาดภายในระบบ${detail}` }, { status: 500 });
 }
