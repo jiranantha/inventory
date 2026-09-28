@@ -551,9 +551,8 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
 // "current" responsible person and, on confirm, rewrites responsiblePerson/
 // responsiblePhone on every asset under that unit across all fiscal years —
 // see onBulkUpdateResponsible in AppDataProvider for the actual API call.
-function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsiblePersons, onBulkUpdateResponsible, history, onRollbackUnitResponsibleUpdate }: {
+function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpdateResponsible, history, onRollbackUnitResponsibleUpdate }: {
   assets: AssetListRow[];
-  organizationItems: MasterDataItem[];
   unitResponsiblePersons: UnitResponsiblePerson[];
   onBulkUpdateResponsible: (payload: { organization: string; responsiblePerson: string; responsiblePhone: string; note: string }) => Promise<number>;
   history: UnitResponsibleUpdateHistory[];
@@ -573,9 +572,13 @@ function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsible
   const [rollbackSubmitting, setRollbackSubmitting] = useState(false);
   const [detailTarget, setDetailTarget] = useState<UnitResponsibleUpdateHistory | null>(null);
 
+  // Requirement: this dropdown lists units that actually have asset records —
+  // not the full master unit list — since the whole point of this feature is
+  // to bulk-update the assets under a selected unit. A unit with zero assets
+  // would just be dead weight here (and its affected count would always be 0).
   const organizationOptions = useMemo(
-    () => uniqueSorted([...organizationItems.map((item) => item.name), ...assets.map((asset) => asset.organization)]),
-    [organizationItems, assets],
+    () => uniqueSorted(assets.map((asset) => asset.organization.trim()).filter((name) => name && name !== "-")),
+    [assets],
   );
   const normalizedOrganization = organization ? normalizeOrganizationName(organization) : "";
   const affectedCount = useMemo(
@@ -1153,7 +1156,6 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
       {activeTab === "bulkUpdate" && permissions.canBulkUpdateResponsible && (
         <BulkUpdateResponsiblePanel
           assets={assets}
-          organizationItems={organizationItems}
           unitResponsiblePersons={unitResponsiblePersons}
           onBulkUpdateResponsible={onBulkUpdateResponsible}
           history={unitResponsibleHistory}
