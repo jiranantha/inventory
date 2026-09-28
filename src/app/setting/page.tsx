@@ -571,6 +571,7 @@ function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsible
   const [rollbackTarget, setRollbackTarget] = useState<UnitResponsibleUpdateHistory | null>(null);
   const [rollbackAcknowledged, setRollbackAcknowledged] = useState(false);
   const [rollbackSubmitting, setRollbackSubmitting] = useState(false);
+  const [detailTarget, setDetailTarget] = useState<UnitResponsibleUpdateHistory | null>(null);
 
   const organizationOptions = useMemo(
     () => uniqueSorted([...organizationItems.map((item) => item.name), ...assets.map((asset) => asset.organization)]),
@@ -649,7 +650,7 @@ function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsible
       setRollbackTarget(null);
       setRollbackAcknowledged(false);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "ย้อนกลับไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      showToast(error instanceof Error ? error.message : "คืนค่าก่อนหน้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
     } finally {
       setRollbackSubmitting(false);
     }
@@ -751,56 +752,64 @@ function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsible
 
       <div className="rounded-lg border border-line bg-surface p-6">
         <h2 className="text-xl font-bold text-ink">ประวัติการอัปเดตผู้รับผิดชอบ</h2>
-        <p className="mt-2 text-sm text-muted">รายการอัปเดตผู้รับผิดชอบของหน่วยงานที่ผ่านมา สามารถย้อนกลับรายการที่ยังไม่ถูกย้อนกลับได้</p>
+        <p className="mt-2 text-sm text-muted">รายการอัปเดตผู้รับผิดชอบของหน่วยงานที่ผ่านมา กด &quot;ดูรายละเอียด&quot; เพื่อดูข้อมูลทั้งหมด หรือ &quot;คืนค่าก่อนหน้า&quot; เพื่อคืนค่ารายการที่ยังไม่ถูกคืนค่า</p>
         {history.length === 0 ? (
           <p className="mt-5 rounded-lg border border-line bg-surfaceSoft px-4 py-6 text-center text-sm text-muted">ยังไม่มีประวัติการอัปเดตผู้รับผิดชอบ</p>
         ) : (
           <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[1200px] border-collapse text-left text-xs">
+            <table className="w-full min-w-[900px] border-collapse text-left text-sm">
               <thead className="sticky top-0 bg-surfaceSoft text-ink">
                 <tr>
-                  {["วันที่อัปเดต", "หน่วยงาน", "ผู้รับผิดชอบเดิม", "เบอร์เดิม", "ผู้รับผิดชอบใหม่", "เบอร์ใหม่", "จำนวนรายการที่อัปเดต", "หมายเหตุ", "สถานะ", "จัดการ"].map((label) => (
-                    <th key={label} className="border-b border-line px-3 py-2.5 font-semibold">{label}</th>
+                  {["วันที่อัปเดต", "หน่วยงาน", "เปลี่ยนจาก", "เปลี่ยนเป็น", "จำนวนรายการ", "หมายเหตุ", "สถานะ", "จัดการ"].map((label) => (
+                    <th key={label} className="border-b border-line px-4 py-3 font-bold">{label}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
                 {history.map((record) => (
                   <tr key={record.id}>
-                    <td className="whitespace-nowrap px-3 py-2.5">
-                      <p>{record.updatedAt}</p>
-                      {record.updatedBy && <p className="mt-0.5 text-[10px] text-muted">โดย {record.updatedBy}</p>}
+                    <td className="whitespace-nowrap px-4 py-3 align-top">{record.updatedAt}</td>
+                    <td className="max-w-[160px] truncate px-4 py-3 align-top" title={record.unitName}>{record.unitName}</td>
+                    <td className="max-w-[170px] px-4 py-3 align-top">
+                      <p className="truncate" title={record.oldResponsiblePerson}>{record.oldResponsiblePerson}</p>
+                      <p className="mt-0.5 truncate text-xs text-muted" title={record.oldPhoneNumber}>{record.oldPhoneNumber}</p>
                     </td>
-                    <td className="px-3 py-2.5" title={record.unitName}>{record.unitName}</td>
-                    <td className="px-3 py-2.5" title={record.oldResponsiblePerson}>{record.oldResponsiblePerson}</td>
-                    <td className="px-3 py-2.5">{record.oldPhoneNumber}</td>
-                    <td className="px-3 py-2.5" title={record.newResponsiblePerson}>{record.newResponsiblePerson}</td>
-                    <td className="px-3 py-2.5">{record.newPhoneNumber}</td>
-                    <td className="px-3 py-2.5 text-center">{record.affectedAssetCount.toLocaleString("th-TH")}</td>
-                    <td className="px-3 py-2.5" title={record.note}>{record.note}</td>
-                    <td className="px-3 py-2.5">
+                    <td className="max-w-[170px] px-4 py-3 align-top">
+                      <p className="truncate" title={record.newResponsiblePerson}>{record.newResponsiblePerson}</p>
+                      <p className="mt-0.5 truncate text-xs text-muted" title={record.newPhoneNumber}>{record.newPhoneNumber}</p>
+                    </td>
+                    <td className="px-4 py-3 text-center align-top">{record.affectedAssetCount.toLocaleString("th-TH")}</td>
+                    <td className="max-w-[180px] truncate px-4 py-3 align-top" title={record.note}>{record.note}</td>
+                    <td className="px-4 py-3 align-top">
                       {record.rolledBack ? (
-                        <span className="inline-flex whitespace-nowrap rounded-full border border-slate-300/30 bg-slate-500/10 px-2 py-0.5 text-[11px] font-bold text-muted" title={record.rolledBackBy ? `ย้อนกลับโดย ${record.rolledBackBy} เมื่อ ${record.rolledBackAt}` : undefined}>
-                          ย้อนกลับแล้ว
+                        <span className="inline-flex whitespace-nowrap rounded-full border border-slate-300/30 bg-slate-500/10 px-2.5 py-1 text-xs font-bold text-muted" title={record.rolledBackBy ? `คืนค่าโดย ${record.rolledBackBy} เมื่อ ${record.rolledBackAt}` : undefined}>
+                          คืนค่าแล้ว
                         </span>
                       ) : (
-                        <span className="inline-flex whitespace-nowrap rounded-full border border-emerald-300/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-bold text-emerald-200">
+                        <span className="inline-flex whitespace-nowrap rounded-full border border-emerald-300/30 bg-emerald-400/10 px-2.5 py-1 text-xs font-bold text-emerald-200">
                           ใช้งานอยู่
                         </span>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5">
-                      {record.rolledBack ? (
-                        <span className="text-muted">-</span>
-                      ) : (
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => openRollback(record)}
-                          className="rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-extrabold text-ink hover:border-primary hover:text-primary"
+                          onClick={() => setDetailTarget(record)}
+                          className="whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-extrabold text-ink hover:border-primary hover:text-primary"
                         >
-                          ย้อนกลับ
+                          ดูรายละเอียด
                         </button>
-                      )}
+                        {!record.rolledBack && (
+                          <button
+                            type="button"
+                            onClick={() => openRollback(record)}
+                            className="whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-extrabold text-ink hover:border-primary hover:text-primary"
+                          >
+                            คืนค่าก่อนหน้า
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -848,9 +857,9 @@ function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsible
           <div className="w-full max-w-lg overflow-hidden rounded-xl border border-line bg-surface shadow-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-line p-5">
               <div>
-                <h3 className="text-xl font-bold text-white">ยืนยันย้อนกลับ</h3>
+                <h3 className="text-xl font-bold text-white">ยืนยันคืนค่าก่อนหน้า</h3>
                 <p className="mt-1 text-sm text-muted">
-                  การดำเนินการนี้จะคืนค่าผู้รับผิดชอบและเบอร์โทรของครุภัณฑ์ที่ได้รับผลกระทบจากการอัปเดตครั้งนี้กลับไปเป็นค่าเดิม
+                  ระบบจะคืนค่าผู้รับผิดชอบและเบอร์โทรของครุภัณฑ์ที่ถูกอัปเดตในรอบนี้กลับไปเป็นข้อมูลเดิม
                 </p>
               </div>
               <CloseIconButton onClick={() => setRollbackTarget(null)} />
@@ -858,13 +867,18 @@ function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsible
             <div className="space-y-3 p-5">
               <div className="space-y-1 rounded-lg border border-line bg-slate-950/30 px-4 py-3 text-sm">
                 <p><span className="text-muted">หน่วยงาน: </span><span className="font-semibold text-white">{rollbackTarget.unitName}</span></p>
-                <p><span className="text-muted">ผู้รับผิดชอบเดิม (ก่อนอัปเดต): </span><span className="font-semibold text-white">{rollbackTarget.oldResponsiblePerson} ({rollbackTarget.oldPhoneNumber})</span></p>
-                <p><span className="text-muted">ผู้รับผิดชอบปัจจุบัน (จากการอัปเดตนี้): </span><span className="font-semibold text-white">{rollbackTarget.newResponsiblePerson} ({rollbackTarget.newPhoneNumber})</span></p>
-                <p><span className="text-muted">จำนวนครุภัณฑ์ที่ได้รับผลกระทบ: </span><span className="font-semibold text-white">{rollbackTarget.affectedAssetCount.toLocaleString("th-TH")} รายการ</span></p>
+                <p><span className="text-muted">ผู้รับผิดชอบเดิม: </span><span className="font-semibold text-white">{rollbackTarget.oldResponsiblePerson}</span></p>
+                <p><span className="text-muted">เบอร์เดิม: </span><span className="font-semibold text-white">{rollbackTarget.oldPhoneNumber}</span></p>
+                <p><span className="text-muted">ผู้รับผิดชอบใหม่: </span><span className="font-semibold text-white">{rollbackTarget.newResponsiblePerson}</span></p>
+                <p><span className="text-muted">เบอร์ใหม่: </span><span className="font-semibold text-white">{rollbackTarget.newPhoneNumber}</span></p>
+                <p><span className="text-muted">จำนวนครุภัณฑ์ที่จะถูกคืนค่า: </span><span className="font-semibold text-white">{rollbackTarget.affectedAssetCount.toLocaleString("th-TH")} รายการ</span></p>
+                {rollbackTarget.note && rollbackTarget.note !== "-" && (
+                  <p><span className="text-muted">หมายเหตุ: </span><span className="font-semibold text-white">{rollbackTarget.note}</span></p>
+                )}
               </div>
               {rollbackMismatchCount > 0 && (
                 <div className="space-y-2 rounded-lg border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-100">
-                  <p>มีครุภัณฑ์บางรายการที่ถูกแก้ไขผู้รับผิดชอบหลังจากการอัปเดตนี้ กรุณาตรวจสอบก่อนย้อนกลับ ({rollbackMismatchCount.toLocaleString("th-TH")} รายการ)</p>
+                  <p>มีครุภัณฑ์บางรายการที่ถูกแก้ไขผู้รับผิดชอบหลังจากการอัปเดตนี้ กรุณาตรวจสอบก่อนคืนค่า ({rollbackMismatchCount.toLocaleString("th-TH")} รายการ)</p>
                   <label className="flex items-start gap-2 text-xs font-semibold text-amber-100">
                     <input
                       type="checkbox"
@@ -872,7 +886,7 @@ function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsible
                       onChange={(event) => setRollbackAcknowledged(event.target.checked)}
                       className="mt-0.5 h-4 w-4 accent-amber-400"
                     />
-                    ฉันตรวจสอบแล้วและต้องการย้อนกลับต่อไป
+                    ฉันตรวจสอบแล้วและต้องการคืนค่าต่อไป
                   </label>
                 </div>
               )}
@@ -884,9 +898,54 @@ function BulkUpdateResponsiblePanel({ assets, organizationItems, unitResponsible
                   disabled={rollbackSubmitting || (rollbackMismatchCount > 0 && !rollbackAcknowledged)}
                   className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {rollbackSubmitting ? "กำลังย้อนกลับ..." : "ยืนยันย้อนกลับ"}
+                  {rollbackSubmitting ? "กำลังคืนค่า..." : "ยืนยันคืนค่าก่อนหน้า"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detailTarget && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/75 p-4">
+          <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-surface shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-line p-5">
+              <div>
+                <h3 className="text-xl font-bold text-white">รายละเอียดการอัปเดตผู้รับผิดชอบ</h3>
+                <p className="mt-1 text-sm text-muted">ข้อมูลทั้งหมดของการอัปเดตครั้งนี้</p>
+              </div>
+              <CloseIconButton onClick={() => setDetailTarget(null)} />
+            </div>
+            <div className="grid grid-cols-1 gap-x-6 p-5 sm:grid-cols-2">
+              <DetailInfoItem label="วันที่อัปเดต" value={detailTarget.updatedAt} />
+              <DetailInfoItem label="หน่วยงาน" value={detailTarget.unitName} />
+              <DetailInfoItem label="ผู้รับผิดชอบเดิม" value={detailTarget.oldResponsiblePerson} />
+              <DetailInfoItem label="เบอร์เดิม" value={detailTarget.oldPhoneNumber} />
+              <DetailInfoItem label="ผู้รับผิดชอบใหม่" value={detailTarget.newResponsiblePerson} />
+              <DetailInfoItem label="เบอร์ใหม่" value={detailTarget.newPhoneNumber} />
+              <DetailInfoItem label="จำนวนครุภัณฑ์ที่ถูกอัปเดต" value={`${detailTarget.affectedAssetCount.toLocaleString("th-TH")} รายการ`} />
+              <DetailInfoItem label="ผู้ดำเนินการ" value={detailTarget.updatedBy || "-"} />
+              <DetailInfoItem label="หมายเหตุ" value={detailTarget.note} />
+              <DetailInfoItem
+                label="สถานะ"
+                value={detailTarget.rolledBack ? `คืนค่าแล้ว${detailTarget.rolledBackBy ? ` โดย ${detailTarget.rolledBackBy}` : ""}${detailTarget.rolledBackAt ? ` เมื่อ ${detailTarget.rolledBackAt}` : ""}` : "ใช้งานอยู่"}
+              />
+            </div>
+            <div className="flex justify-end gap-3 border-t border-line p-5">
+              <button type="button" onClick={() => setDetailTarget(null)} className="rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">ปิด</button>
+              {!detailTarget.rolledBack && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const record = detailTarget;
+                    setDetailTarget(null);
+                    openRollback(record);
+                  }}
+                  className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover"
+                >
+                  คืนค่าก่อนหน้า
+                </button>
+              )}
             </div>
           </div>
         </div>

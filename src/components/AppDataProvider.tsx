@@ -575,14 +575,14 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     return updatedCount;
   };
 
-  // /setting > ประวัติการอัปเดตผู้รับผิดชอบ > ย้อนกลับ (admin-only). Restores
+  // /setting > ประวัติการอัปเดตผู้รับผิดชอบ > คืนค่าก่อนหน้า (admin-only). Restores
   // responsiblePerson/responsiblePhone on exactly the asset ids recorded in
   // this history batch, then marks the batch rolled back so it can't be
   // rolled back again — the server independently re-checks that too.
   const handleRollbackUnitResponsibleUpdate = async (historyId: number) => {
     if (!permissions.canBulkUpdateResponsible) {
-      showToast("ไม่มีสิทธิ์ย้อนกลับการอัปเดตผู้รับผิดชอบ");
-      throw new Error("ไม่มีสิทธิ์ย้อนกลับการอัปเดตผู้รับผิดชอบ");
+      showToast("ไม่มีสิทธิ์คืนค่าผู้รับผิดชอบของหน่วยงาน");
+      throw new Error("ไม่มีสิทธิ์คืนค่าผู้รับผิดชอบของหน่วยงาน");
     }
     const updated = await api.rollbackUnitResponsibleUpdate(historyId);
     setUnitResponsibleHistory((items) => items.map((item) => (item.id === updated.id ? updated : item)));
@@ -593,7 +593,7 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
           : item,
       ),
     );
-    showToast(`ย้อนกลับผู้รับผิดชอบของหน่วยงาน "${updated.unitName}" แล้ว`);
+    showToast(`คืนค่าผู้รับผิดชอบของหน่วยงาน "${updated.unitName}" กลับไปเป็นข้อมูลเดิมแล้ว`);
   };
 
   if (!dataReady) return <LoadingScreen message="กำลังโหลดข้อมูลจากระบบ..." />;
