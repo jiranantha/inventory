@@ -791,28 +791,13 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
                     <td className="truncate px-4 py-3 align-top">{record.affectedAssetCount.toLocaleString("th-TH")} รายการ</td>
                     <td className="truncate px-4 py-3 align-top" title={record.note}>{record.note || "-"}</td>
                     <td className="px-4 py-3 align-top">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setDetailTarget(record)}
-                          className="whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-extrabold text-ink hover:border-primary hover:text-primary"
-                        >
-                          ดูรายละเอียด
-                        </button>
-                        {record.rolledBack ? (
-                          <span className="inline-flex whitespace-nowrap rounded-full border border-slate-300/30 bg-slate-500/10 px-2.5 py-1 text-xs font-bold text-muted" title={record.rolledBackBy ? `คืนค่าโดย ${record.rolledBackBy} เมื่อ ${record.rolledBackAt}` : undefined}>
-                            คืนค่าแล้ว
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => openRollback(record)}
-                            className="whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-extrabold text-ink hover:border-primary hover:text-primary"
-                          >
-                            คืนค่าก่อนหน้า
-                          </button>
-                        )}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDetailTarget(record)}
+                        className="whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-extrabold text-ink hover:border-primary hover:text-primary"
+                      >
+                        ดูรายละเอียด
+                      </button>
                     </td>
                   </tr>
                 ))}
