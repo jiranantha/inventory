@@ -571,6 +571,8 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
   const [rollbackAcknowledged, setRollbackAcknowledged] = useState(false);
   const [rollbackSubmitting, setRollbackSubmitting] = useState(false);
   const [detailTarget, setDetailTarget] = useState<UnitResponsibleUpdateHistory | null>(null);
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<"ทั้งหมด" | "ยังไม่คืนค่า" | "คืนค่าแล้ว">("ทั้งหมด");
 
   // Requirement: this dropdown lists units that actually have asset records —
   // not the full master unit list — since the whole point of this feature is
@@ -659,6 +661,22 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
     }
   };
 
+  // Requirement 8: search by unit or responsible-person name (old or new), plus
+  // a rollback-status filter, so a long history stays reviewable.
+  const filteredHistory = useMemo(() => {
+    const query = historySearch.trim().toLowerCase();
+    return history.filter((record) => {
+      const matchesQuery = !query
+        || record.unitName.toLowerCase().includes(query)
+        || record.newResponsiblePerson.toLowerCase().includes(query)
+        || record.oldResponsiblePerson.toLowerCase().includes(query);
+      const matchesStatus =
+        historyStatusFilter === "ทั้งหมด" ||
+        (historyStatusFilter === "คืนค่าแล้ว" ? record.rolledBack : !record.rolledBack);
+      return matchesQuery && matchesStatus;
+    });
+  }, [history, historySearch, historyStatusFilter]);
+
   const currentResponsiblePersonLabel = currentResponsible?.responsiblePerson || "ยังไม่มีข้อมูลผู้รับผิดชอบปัจจุบัน";
   const currentResponsiblePhoneLabel = currentResponsible?.responsiblePhone && currentResponsible.responsiblePhone !== "-" ? currentResponsible.responsiblePhone : "-";
 
@@ -667,11 +685,11 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
       {/* Step 1: pick the unit — everything below only appears once one is selected, so it's always clear what's being edited. */}
       <div className="rounded-lg border border-line bg-surface p-6">
         <h2 className="text-xl font-bold text-ink">อัปเดตผู้รับผิดชอบของครุภัณฑ์ในหน่วยงาน</h2>
-        <p className="mt-2 text-sm font-semibold text-ink">
-          การอัปเดตนี้จะเปลี่ยนชื่อผู้รับผิดชอบและเบอร์โทรของครุภัณฑ์ทุกชิ้นในหน่วยงานนี้
+        <p className="mt-2 text-sm text-muted">
+          ใช้สำหรับอัปเดตชื่อผู้รับผิดชอบและเบอร์โทรของครุภัณฑ์ทุกชิ้นในหน่วยงานที่เลือก เช่น กรณีเปลี่ยนประธานชมรมหรือหัวหน้าหน่วยงาน
         </p>
         <p className="mt-2 text-sm text-muted">
-          ใช้เมื่อประธานชมรม/หัวหน้าหน่วยงานเปลี่ยน กรอกชื่อผู้รับผิดชอบใหม่เพียงครั้งเดียว ระบบจะอัปเดตให้ทุกรายการในหน่วยงานนี้ทันที ไม่ว่าครุภัณฑ์จะจัดซื้อในปีงบประมาณใดก็ตาม
+          ระบบจะอัปเดตเฉพาะข้อมูลผู้รับผิดชอบและหมายเลขโทรศัพท์เท่านั้น ไม่กระทบข้อมูลครุภัณฑ์อื่น
         </p>
         <div className="mt-4 max-w-md">
           <SelectField
@@ -693,7 +711,7 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
             <DetailInfoItem label="หน่วยงาน" value={normalizedOrganization} />
             <DetailInfoItem label="ผู้รับผิดชอบปัจจุบัน" value={currentResponsiblePersonLabel} />
             <DetailInfoItem label="หมายเลขโทรศัพท์ปัจจุบัน" value={currentResponsiblePhoneLabel} />
-            <DetailInfoItem label="จำนวนครุภัณฑ์ทั้งหมดของหน่วยงานนี้" value={`${affectedCount.toLocaleString("th-TH")} รายการ`} />
+            <DetailInfoItem label="จำนวนครุภัณฑ์ของหน่วยงานนี้" value={`${affectedCount.toLocaleString("th-TH")} รายการ`} />
           </div>
           <p className="mt-4 rounded-md border border-sky-300/30 bg-sky-400/10 px-3 py-2 text-sm font-semibold text-sky-100">
             พบครุภัณฑ์ของหน่วยงานนี้จำนวน {affectedCount.toLocaleString("th-TH")} รายการ
@@ -704,7 +722,10 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
       {/* Step 3: the actual edit — new values only, kept separate from the current-data card above. */}
       {normalizedOrganization && (
         <div className="rounded-lg border border-line bg-surface p-6">
-          <h3 className="text-base font-bold text-ink">ระบุผู้รับผิดชอบคนใหม่</h3>
+          <h3 className="text-base font-bold text-ink">ข้อมูลผู้รับผิดชอบใหม่</h3>
+          <p className="mt-3 rounded-md border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-sm font-semibold text-amber-100">
+            การอัปเดตนี้จะเปลี่ยนผู้รับผิดชอบและเบอร์โทรของครุภัณฑ์ทุกชิ้นในหน่วยงานนี้ ไม่ว่าจะเป็นครุภัณฑ์ปีงบประมาณใดก็ตาม
+          </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Field
               label="ชื่อผู้รับผิดชอบใหม่"
@@ -738,7 +759,7 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
               onClick={handleOpenConfirm}
               className="min-h-11 rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-white hover:bg-primary-hover"
             >
-              อัปเดตผู้รับผิดชอบของหน่วยงาน
+              อัปเดตผู้รับผิดชอบของครุภัณฑ์ในหน่วยงาน
             </button>
           </div>
         </div>
@@ -755,55 +776,82 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
 
       <div className="rounded-lg border border-line bg-surface p-6">
         <h2 className="text-xl font-bold text-ink">ประวัติการอัปเดตผู้รับผิดชอบ</h2>
-        <p className="mt-2 text-sm text-muted">รายการอัปเดตผู้รับผิดชอบของหน่วยงานที่ผ่านมา กด &quot;ดูรายละเอียด&quot; เพื่อดูข้อมูลทั้งหมด หรือ &quot;คืนค่าก่อนหน้า&quot; เพื่อคืนค่ารายการที่ยังไม่ถูกคืนค่า</p>
+        <p className="mt-2 text-sm text-muted">รายการอัปเดตผู้รับผิดชอบของหน่วยงานที่ผ่านมา กด &quot;ดูรายละเอียด&quot; เพื่อดูข้อมูลทั้งหมดและคืนค่าก่อนหน้าได้จากในนั้น</p>
         {history.length === 0 ? (
           <p className="mt-5 rounded-lg border border-line bg-surfaceSoft px-4 py-6 text-center text-sm text-muted">ยังไม่มีประวัติการอัปเดตผู้รับผิดชอบ</p>
         ) : (
-          <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[820px] table-fixed border-collapse text-left text-sm">
-              <colgroup>
-                <col className="w-[16%]" />
-                <col className="w-[28%]" />
-                <col className="w-[22%]" />
-                <col className="w-[10%]" />
-                <col className="w-[16%]" />
-                <col className="w-[8%]" />
-              </colgroup>
-              <thead className="sticky top-0 bg-surfaceSoft text-ink">
-                <tr>
-                  {["วันที่อัปเดต", "หน่วยงาน", "ผู้รับผิดชอบใหม่", "จำนวนรายการ", "หมายเหตุ/วาระ", "จัดการ"].map((label, index) => (
-                    <th key={label} className={`truncate border-b border-line px-4 py-3 font-bold ${index === 3 ? "text-center" : ""}`}>{label}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
-                {history.map((record) => (
-                  <tr key={record.id}>
-                    <td className="px-4 py-3 align-top">
-                      <p className="truncate">{record.updatedAt}</p>
-                      {record.updatedBy && <p className="mt-0.5 truncate text-xs text-muted">โดย {record.updatedBy}</p>}
-                    </td>
-                    <td className="truncate px-4 py-3 align-top" title={record.unitName}>{record.unitName}</td>
-                    <td className="px-4 py-3 align-top">
-                      <p className="truncate" title={record.newResponsiblePerson}>{record.newResponsiblePerson}</p>
-                      <p className="mt-0.5 truncate text-xs text-muted" title={record.newPhoneNumber}>{record.newPhoneNumber}</p>
-                    </td>
-                    <td className="truncate px-4 py-3 text-center align-top">{record.affectedAssetCount.toLocaleString("th-TH")} รายการ</td>
-                    <td className="truncate px-4 py-3 align-top" title={record.note}>{record.note || "-"}</td>
-                    <td className="px-2 py-3 align-top">
-                      <button
-                        type="button"
-                        onClick={() => setDetailTarget(record)}
-                        className="whitespace-nowrap rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs font-extrabold text-ink hover:border-primary hover:text-primary"
-                      >
-                        ดูรายละเอียด
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative sm:flex-1">
+                <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="m14 14 3.5 3.5M8.5 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+                <input
+                  value={historySearch}
+                  onChange={(event) => setHistorySearch(event.target.value)}
+                  placeholder="ค้นหาหน่วยงานหรือชื่อผู้รับผิดชอบ"
+                  className="min-h-11 w-full rounded-lg border border-lineStrong bg-surface py-2 pl-9 pr-3 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
+                />
+              </div>
+              <div className="sm:w-56">
+                <SelectField
+                  label="สถานะ"
+                  value={historyStatusFilter}
+                  onChange={(value) => setHistoryStatusFilter(value as typeof historyStatusFilter)}
+                  options={["ทั้งหมด", "ยังไม่คืนค่า", "คืนค่าแล้ว"]}
+                />
+              </div>
+            </div>
+            {filteredHistory.length === 0 ? (
+              <p className="mt-4 rounded-lg border border-line bg-surfaceSoft px-4 py-6 text-center text-sm text-muted">ไม่พบประวัติที่ตรงกับเงื่อนไข</p>
+            ) : (
+              <div className="mt-5 overflow-x-auto">
+                <table className="w-full min-w-[820px] table-fixed border-collapse text-left text-sm">
+                  <colgroup>
+                    <col className="w-[16%]" />
+                    <col className="w-[28%]" />
+                    <col className="w-[22%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[16%]" />
+                    <col className="w-[8%]" />
+                  </colgroup>
+                  <thead className="sticky top-0 bg-surfaceSoft text-ink">
+                    <tr>
+                      {["วันที่อัปเดต", "หน่วยงาน", "ผู้รับผิดชอบใหม่", "จำนวนรายการ", "หมายเหตุ/วาระ", "จัดการ"].map((label, index) => (
+                        <th key={label} className={`truncate border-b border-line px-4 py-3 font-bold ${index === 3 ? "text-center" : ""}`}>{label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
+                    {filteredHistory.map((record) => (
+                      <tr key={record.id}>
+                        <td className="px-4 py-3 align-top">
+                          <p className="truncate">{record.updatedAt}</p>
+                          {record.updatedBy && <p className="mt-0.5 truncate text-xs text-muted">โดย {record.updatedBy}</p>}
+                        </td>
+                        <td className="truncate px-4 py-3 align-top" title={record.unitName}>{record.unitName}</td>
+                        <td className="px-4 py-3 align-top">
+                          <p className="truncate" title={record.newResponsiblePerson}>{record.newResponsiblePerson}</p>
+                          <p className="mt-0.5 truncate text-xs text-muted" title={record.newPhoneNumber}>{record.newPhoneNumber}</p>
+                        </td>
+                        <td className="truncate px-4 py-3 text-center align-top">{record.affectedAssetCount.toLocaleString("th-TH")} รายการ</td>
+                        <td className="truncate px-4 py-3 align-top" title={record.note}>{record.note || "-"}</td>
+                        <td className="px-2 py-3 align-top">
+                          <button
+                            type="button"
+                            onClick={() => setDetailTarget(record)}
+                            className="whitespace-nowrap rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs font-extrabold text-ink hover:border-primary hover:text-primary"
+                          >
+                            ดูรายละเอียด
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -825,14 +873,17 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
                 <p><span className="text-muted">ผู้รับผิดชอบใหม่: </span><span className="font-semibold text-white">{responsiblePerson.trim()}</span></p>
                 <p><span className="text-muted">เบอร์ใหม่: </span><span className="font-semibold text-white">{responsiblePhone.trim() || "-"}</span></p>
                 <p><span className="text-muted">จำนวนครุภัณฑ์ที่ได้รับผลกระทบ: </span><span className="font-semibold text-white">{affectedCount.toLocaleString("th-TH")} รายการ</span></p>
+                {note.trim() && (
+                  <p><span className="text-muted">หมายเหตุ/วาระ: </span><span className="font-semibold text-white">{note.trim()}</span></p>
+                )}
               </div>
               <p className="rounded-md border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-sm font-semibold text-amber-100">
-                การอัปเดตนี้จะมีผลกับครุภัณฑ์ทุกรายการในหน่วยงานนี้ กรุณาตรวจสอบก่อนยืนยัน
+                การอัปเดตนี้จะเปลี่ยนผู้รับผิดชอบและเบอร์โทรของครุภัณฑ์ทุกรายการในหน่วยงานนี้ กรุณาตรวจสอบก่อนยืนยัน
               </p>
               <div className="flex justify-end gap-3 border-t border-line pt-4">
                 <button type="button" onClick={() => setConfirmOpen(false)} className="rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">ยกเลิก</button>
                 <button type="button" onClick={handleConfirm} disabled={submitting} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50">
-                  {submitting ? "กำลังอัปเดต..." : "ยืนยัน"}
+                  {submitting ? "กำลังอัปเดต..." : "ยืนยันอัปเดต"}
                 </button>
               </div>
             </div>
