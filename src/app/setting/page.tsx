@@ -763,16 +763,16 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
             <table className="w-full min-w-[820px] table-fixed border-collapse text-left text-sm">
               <colgroup>
                 <col className="w-[16%]" />
-                <col className="w-[24%]" />
-                <col className="w-[18%]" />
-                <col className="w-[12%]" />
-                <col className="w-[18%]" />
-                <col className="w-[12%]" />
+                <col className="w-[28%]" />
+                <col className="w-[22%]" />
+                <col className="w-[10%]" />
+                <col className="w-[16%]" />
+                <col className="w-[8%]" />
               </colgroup>
               <thead className="sticky top-0 bg-surfaceSoft text-ink">
                 <tr>
-                  {["วันที่อัปเดต", "หน่วยงาน", "ผู้รับผิดชอบใหม่", "จำนวนรายการ", "หมายเหตุ/วาระ", "จัดการ"].map((label) => (
-                    <th key={label} className="truncate border-b border-line px-4 py-3 font-bold">{label}</th>
+                  {["วันที่อัปเดต", "หน่วยงาน", "ผู้รับผิดชอบใหม่", "จำนวนรายการ", "หมายเหตุ/วาระ", "จัดการ"].map((label, index) => (
+                    <th key={label} className={`truncate border-b border-line px-4 py-3 font-bold ${index === 3 ? "text-center" : ""}`}>{label}</th>
                   ))}
                 </tr>
               </thead>
@@ -788,13 +788,13 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
                       <p className="truncate" title={record.newResponsiblePerson}>{record.newResponsiblePerson}</p>
                       <p className="mt-0.5 truncate text-xs text-muted" title={record.newPhoneNumber}>{record.newPhoneNumber}</p>
                     </td>
-                    <td className="truncate px-4 py-3 align-top">{record.affectedAssetCount.toLocaleString("th-TH")} รายการ</td>
+                    <td className="truncate px-4 py-3 text-center align-top">{record.affectedAssetCount.toLocaleString("th-TH")} รายการ</td>
                     <td className="truncate px-4 py-3 align-top" title={record.note}>{record.note || "-"}</td>
-                    <td className="px-4 py-3 align-top">
+                    <td className="px-2 py-3 align-top">
                       <button
                         type="button"
                         onClick={() => setDetailTarget(record)}
-                        className="whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-extrabold text-ink hover:border-primary hover:text-primary"
+                        className="whitespace-nowrap rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs font-extrabold text-ink hover:border-primary hover:text-primary"
                       >
                         ดูรายละเอียด
                       </button>
