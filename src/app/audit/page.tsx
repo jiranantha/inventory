@@ -23,6 +23,7 @@ function AuditPage({
   onCancelAnnualInspection,
   onSaveInspectionStatus,
   inspectorRoleLabel,
+  inspectorNameLabel,
 }: {
   assets: AssetListRow[];
   annualInspections: AnnualInspection[];
@@ -30,6 +31,7 @@ function AuditPage({
   onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => void;
   onSaveInspectionStatus: (asset: AssetListRow, status: string, inspectionDate: string, note: string) => void;
   inspectorRoleLabel: string;
+  inspectorNameLabel: string;
 }) {
   const { lang, t } = useLanguage();
   const currentInspectionYear = getCurrentInspectionYear();
@@ -233,7 +235,10 @@ function AuditPage({
       inspectionYear,
       inspectionDate: displayDate,
       foundLocation,
-      inspectorName: inspectorRoleLabel,
+      // The data model has a single inspectorName field, so the current
+      // user's name and role are combined into one string — "ชื่อ (บทบาท)" —
+      // rather than the old hardcoded "คณะกรรมการตรวจสอบครุภัณฑ์" value.
+      inspectorName: `${inspectorNameLabel} (${inspectorRoleLabel})`,
       result: modalResult,
       evidenceFileNames: evidenceImages.map((image) => image.name),
       evidenceImages,
@@ -603,12 +608,20 @@ function AuditPage({
               </label>
               <ThaiDateField label={t("audit.modal.date")} value={inspectionDate} onChange={setInspectionDate} />
 
-              {/* Row 2: ผู้ตรวจสอบ (label) — auto-filled from the current user's role (value),
-                  read-only, given its own full-width row so it reads clearly as one fact. */}
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-lineStrong bg-surface px-4 py-3 md:col-span-2">
+              {/* Row 2: ผู้ตรวจสอบ (role) | ชื่อผู้ตรวจสอบ (name) — both auto-filled
+                  from the current logged-in user and read-only. */}
+              <label className="block min-w-0">
                 <span className="text-sm font-semibold text-ink">{t("audit.modal.inspector")}</span>
-                <span className="truncate text-sm font-semibold text-ink" title={inspectorRoleLabel}>{inspectorRoleLabel}</span>
-              </div>
+                <div className="mt-2 min-h-12 w-full truncate rounded-lg border border-lineStrong bg-surface px-4 py-3 text-sm font-semibold text-ink" title={inspectorRoleLabel}>
+                  {inspectorRoleLabel}
+                </div>
+              </label>
+              <label className="block min-w-0">
+                <span className="text-sm font-semibold text-ink">{t("audit.modal.inspectorName")}</span>
+                <div className="mt-2 min-h-12 w-full truncate rounded-lg border border-lineStrong bg-surface px-4 py-3 text-sm font-semibold text-ink" title={inspectorNameLabel}>
+                  {inspectorNameLabel}
+                </div>
+              </label>
 
               {/* Row 3: สถานที่ที่พบครุภัณฑ์ | สถานะครุภัณฑ์ */}
               <Field label={t("audit.modal.location")} value={foundLocation} onChange={(event) => setFoundLocation(event.target.value)} placeholder="ระบุสถานที่ที่พบครุภัณฑ์" />
@@ -740,10 +753,11 @@ function AuditPage({
 export default function AuditRoute() {
   const { permissions, assets, annualInspections, onSaveAnnualInspection, onCancelAnnualInspection, onSaveInspectionStatus, currentUser, roles } = useAppData();
   if (!permissions.canInspect) return <PlaceholderPage title="ไม่มีสิทธิ์ตรวจสอบประจำปี" />;
-  // ผู้ตรวจสอบ now always reflects the logged-in user's role (not a free-text
-  // field), so the audit record always shows who is actually performing the
-  // inspection — not a hardcoded placeholder.
-  const inspectorRoleLabel = currentUser.role ? getRoleDefinition(currentUser.role, roles).name : "-";
+  // ผู้ตรวจสอบ / ชื่อผู้ตรวจสอบ now always reflect the logged-in user's role and
+  // display name (not free-text fields), so the audit record always shows who
+  // is actually performing the inspection — not a hardcoded placeholder.
+  const inspectorRoleLabel = currentUser.role ? getRoleDefinition(currentUser.role, roles).name : "ไม่ระบุ";
+  const inspectorNameLabel = currentUser.name.trim() || "ไม่ระบุ";
   return (
     <AuditPage
       assets={assets}
@@ -752,6 +766,7 @@ export default function AuditRoute() {
       onCancelAnnualInspection={onCancelAnnualInspection}
       onSaveInspectionStatus={onSaveInspectionStatus}
       inspectorRoleLabel={inspectorRoleLabel}
+      inspectorNameLabel={inspectorNameLabel}
     />
   );
 }
