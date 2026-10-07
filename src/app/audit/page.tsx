@@ -594,6 +594,7 @@ function AuditPage({
             </div>
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {/* Row 1: ปีที่ตรวจสอบ | วันที่ตรวจสอบ */}
               <label className="block min-w-0">
                 <span className="text-sm font-semibold text-ink">{t("audit.modal.year")}</span>
                 <div className="mt-2 min-h-12 w-full rounded-lg border border-lineStrong bg-surface px-4 py-3 text-sm font-semibold text-ink">
@@ -601,13 +602,16 @@ function AuditPage({
                 </div>
               </label>
               <ThaiDateField label={t("audit.modal.date")} value={inspectionDate} onChange={setInspectionDate} />
-              <Field label={t("audit.modal.location")} value={foundLocation} onChange={(event) => setFoundLocation(event.target.value)} placeholder="ระบุสถานที่ที่พบครุภัณฑ์" />
-              <label className="block min-w-0">
+
+              {/* Row 2: ผู้ตรวจสอบ (label) — auto-filled from the current user's role (value),
+                  read-only, given its own full-width row so it reads clearly as one fact. */}
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-lineStrong bg-surface px-4 py-3 md:col-span-2">
                 <span className="text-sm font-semibold text-ink">{t("audit.modal.inspector")}</span>
-                <div className="mt-2 min-h-12 w-full truncate rounded-lg border border-lineStrong bg-surface px-4 py-3 text-sm font-semibold text-ink" title={inspectorRoleLabel}>
-                  {inspectorRoleLabel}
-                </div>
-              </label>
+                <span className="truncate text-sm font-semibold text-ink" title={inspectorRoleLabel}>{inspectorRoleLabel}</span>
+              </div>
+
+              {/* Row 3: สถานที่ที่พบครุภัณฑ์ | สถานะครุภัณฑ์ */}
+              <Field label={t("audit.modal.location")} value={foundLocation} onChange={(event) => setFoundLocation(event.target.value)} placeholder="ระบุสถานที่ที่พบครุภัณฑ์" />
               <SelectField label={t("audit.modal.status")} value={modalResult} onChange={setModalResult} options={modalStatusOptions} getOptionLabel={(v) => translateOption(v, lang)} />
               <div className="space-y-3 md:col-span-2">
                 <div>
