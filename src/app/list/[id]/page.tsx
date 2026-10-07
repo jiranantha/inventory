@@ -5,16 +5,17 @@ import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 
 import { useState, useEffect } from "react";
-import { AssetStructureBadge, BackIconButton, CloseIconButton, DetailInfoItem, PageHeader, RecordFormSection, StatusBadge } from "@/components/ui";
+import { AssetStructureBadge, BackIconButton, CloseIconButton, DetailInfoItem, InspectionResultBadge, PageHeader, RecordFormSection, StatusBadge } from "@/components/ui";
 import { getAssetDerivedValues, getNumberPlacementValue, getPurchaseProjectValue } from "@/lib/assets";
 import { formatThaiDateTime } from "@/lib/dates";
 import { Permissions } from "@/lib/permissions";
-import { ActivityLog, AssetListRow, HistoryFieldRow } from "@/types";
+import { ActivityLog, AnnualInspection, AssetListRow, HistoryFieldRow } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 function AssetDetailPage({
   asset,
   activityLogs,
+  annualInspections,
   permissions,
   onEdit,
   onDelete,
@@ -22,6 +23,7 @@ function AssetDetailPage({
 }: {
   asset: AssetListRow;
   activityLogs: ActivityLog[];
+  annualInspections: AnnualInspection[];
   permissions: Permissions;
   onEdit: (asset: AssetListRow) => void;
   onDelete: (asset: AssetListRow) => void;
@@ -33,6 +35,16 @@ function AssetDetailPage({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<{ url: string; name: string } | null>(null);
   const { phoneValue } = getAssetDerivedValues(asset);
+
+  // Asset usage status (สถานะครุภัณฑ์) and the latest inspection result
+  // (ผลการตรวจสอบล่าสุด) are two separate concepts — the latter comes from this
+  // asset's most recent annual inspection record (by inspection year), not from
+  // the asset row itself, so it can show who inspected it, when, and where.
+  const assetInspections = annualInspections.filter((item) => item.assetId === asset.id);
+  const latestInspection = assetInspections.length > 0
+    ? [...assetInspections].sort((a, b) => Number(b.inspectionYear) - Number(a.inspectionYear))[0]
+    : null;
+  const isInspected = Boolean(latestInspection);
 
   useEffect(() => {
     if (!lightboxImage) return;
@@ -328,20 +340,43 @@ function AssetDetailPage({
           )}
         </RecordFormSection>
 
-        {/* Section 2: fields 12-13 */}
+        {/* Section 2: asset usage status + latest inspection result — kept as
+            two distinct groups so it's always clear whether a status like
+            "ใช้งานได้" reflects the asset's own usage status or an inspection. */}
         <RecordFormSection
           number={2}
           title={t("det.sec2")}
           description={t("det.sec2desc")}
         >
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="min-w-0 border-b border-line py-2">
-              <p className="text-xs font-semibold text-muted">สถานะการใช้งาน</p>
-              <div className="mt-2">
-                <StatusBadge value={asset.status} />
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-muted">{t("det.sec2.status")}</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="min-w-0 border-b border-line py-2">
+                <p className="text-xs font-semibold text-muted">สถานะการใช้งาน</p>
+                <div className="mt-2">
+                  <StatusBadge value={asset.status} />
+                </div>
               </div>
+              {asset.note && asset.note !== "-" && (
+                <DetailInfoItem label={t("det.sec2.statusNote")} value={safeText(asset.note)} />
+              )}
             </div>
-            <DetailInfoItem label="หมายเหตุ" value={safeText(asset.note)} />
+          </div>
+
+          <div className="mt-5 border-t border-line pt-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted">{t("det.sec2.inspection")}</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="min-w-0 border-b border-line py-2">
+                <p className="text-xs font-semibold text-muted">{t("col.inspection")}</p>
+                <div className="mt-2">
+                  <InspectionResultBadge inspected={isInspected} />
+                </div>
+              </div>
+              <DetailInfoItem label={t("det.sec2.inspectedBy")} value={safeText(latestInspection?.inspectorName)} />
+              <DetailInfoItem label={t("det.sec2.lastInspectedDate")} value={safeText(latestInspection?.inspectionDate)} />
+              <DetailInfoItem label={t("det.sec2.foundLocation")} value={safeText(latestInspection?.foundLocation)} />
+              <DetailInfoItem label={t("det.sec2.inspectionNote")} value={safeText(latestInspection?.note)} />
+            </div>
           </div>
         </RecordFormSection>
 
@@ -481,7 +516,7 @@ function AssetDetailPage({
 
 export default function AssetDetailRoute() {
   const params = useParams<{ id: string }>();
-  const { permissions, assets, activityLogs, onEditAsset, onDeleteAsset, onBackToList } =
+  const { permissions, assets, activityLogs, annualInspections, onEditAsset, onDeleteAsset, onBackToList } =
     useAppData();
   if (!permissions.canViewList)
     return <PlaceholderPage title="ไม่มีสิทธิ์ดูรายละเอียดครุภัณฑ์" />;
@@ -491,6 +526,7 @@ export default function AssetDetailRoute() {
     <AssetDetailPage
       asset={asset}
       activityLogs={activityLogs}
+      annualInspections={annualInspections}
       permissions={permissions}
       onEdit={onEditAsset}
       onDelete={onDeleteAsset}
