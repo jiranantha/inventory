@@ -351,7 +351,7 @@ function AssetDetailPage({
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-muted">{t("det.sec2.status")}</p>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <div className="min-w-0 border-b border-line py-2">
+              <div className="min-w-0 py-2">
                 <p className="text-xs font-semibold text-muted">สถานะการใช้งาน</p>
                 <div className="mt-2">
                   <StatusBadge value={asset.status} />
