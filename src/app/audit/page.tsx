@@ -10,6 +10,7 @@ import { formatThaiDate, getCurrentInspectionYear } from "@/lib/dates";
 import { uploadImage } from "@/lib/image-upload";
 import { uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow, EvidenceImage } from "@/types";
+import { getRoleDefinition } from "@/lib/permissions";
 import { allowedAssetStatuses, ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
 import { registrationTypeOptions } from "@/constants/options";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -21,12 +22,14 @@ function AuditPage({
   onSaveAnnualInspection,
   onCancelAnnualInspection,
   onSaveInspectionStatus,
+  inspectorRoleLabel,
 }: {
   assets: AssetListRow[];
   annualInspections: AnnualInspection[];
   onSaveAnnualInspection: (inspection: AnnualInspection) => void;
   onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => void;
   onSaveInspectionStatus: (asset: AssetListRow, status: string, inspectionDate: string, note: string) => void;
+  inspectorRoleLabel: string;
 }) {
   const { lang, t } = useLanguage();
   const currentInspectionYear = getCurrentInspectionYear();
@@ -54,7 +57,6 @@ function AuditPage({
   const [cancelTarget, setCancelTarget] = useState<{ asset: AssetListRow; inspection: AnnualInspection } | null>(null);
   const [inspectionDate, setInspectionDate] = useState(today);
   const [foundLocation, setFoundLocation] = useState("");
-  const [inspectorName, setInspectorName] = useState("คณะกรรมการตรวจสอบครุภัณฑ์");
   const [modalResult, setModalResult] = useState("ใช้งานได้");
   const [evidenceImages, setEvidenceImages] = useState<EvidenceImage[]>([]);
   const [evidenceError, setEvidenceError] = useState("");
@@ -120,7 +122,6 @@ function AuditPage({
     setSelectedAsset(asset);
     setInspectionDate(new Date().toISOString().slice(0, 10));
     setFoundLocation(existing?.foundLocation ?? asset.location);
-    setInspectorName(existing?.inspectorName ?? "คณะกรรมการตรวจสอบครุภัณฑ์");
     setModalResult(existing?.result && modalStatusOptions.includes(existing.result)
       ? existing.result
       : modalStatusOptions.includes(asset.status)
@@ -213,7 +214,7 @@ function AuditPage({
 
   const saveInspection = () => {
     if (!selectedAsset) return;
-    if (!inspectionYear || !inspectionDate || !foundLocation.trim() || !inspectorName.trim() || !modalResult || evidenceImages.length === 0) {
+    if (!inspectionYear || !inspectionDate || !foundLocation.trim() || !inspectorRoleLabel.trim() || !modalResult || evidenceImages.length === 0) {
       const message = evidenceImages.length === 0
         ? "กรุณาอัปโหลดรูปหลักฐานอย่างน้อย 1 รูปก่อนบันทึกผลตรวจสอบ"
         : "กรุณากรอกข้อมูลการตรวจสอบให้ครบก่อนบันทึก";
@@ -232,7 +233,7 @@ function AuditPage({
       inspectionYear,
       inspectionDate: displayDate,
       foundLocation,
-      inspectorName,
+      inspectorName: inspectorRoleLabel,
       result: modalResult,
       evidenceFileNames: evidenceImages.map((image) => image.name),
       evidenceImages,
@@ -278,7 +279,7 @@ function AuditPage({
     inspectionYear &&
     inspectionDate &&
     foundLocation.trim() &&
-    inspectorName.trim() &&
+    inspectorRoleLabel.trim() &&
     modalResult &&
     evidenceImages.length > 0,
   );
@@ -601,7 +602,12 @@ function AuditPage({
               </label>
               <ThaiDateField label={t("audit.modal.date")} value={inspectionDate} onChange={setInspectionDate} />
               <Field label={t("audit.modal.location")} value={foundLocation} onChange={(event) => setFoundLocation(event.target.value)} placeholder="ระบุสถานที่ที่พบครุภัณฑ์" />
-              <Field label={t("audit.modal.inspector")} value={inspectorName} onChange={(event) => setInspectorName(event.target.value)} placeholder="ชื่อผู้ตรวจสอบ" />
+              <label className="block min-w-0">
+                <span className="text-sm font-semibold text-ink">{t("audit.modal.inspector")}</span>
+                <div className="mt-2 min-h-12 w-full truncate rounded-lg border border-lineStrong bg-surface px-4 py-3 text-sm font-semibold text-ink" title={inspectorRoleLabel}>
+                  {inspectorRoleLabel}
+                </div>
+              </label>
               <SelectField label={t("audit.modal.status")} value={modalResult} onChange={setModalResult} options={modalStatusOptions} getOptionLabel={(v) => translateOption(v, lang)} />
               <div className="space-y-3 md:col-span-2">
                 <div>
@@ -728,8 +734,12 @@ function AuditPage({
 
 
 export default function AuditRoute() {
-  const { permissions, assets, annualInspections, onSaveAnnualInspection, onCancelAnnualInspection, onSaveInspectionStatus } = useAppData();
+  const { permissions, assets, annualInspections, onSaveAnnualInspection, onCancelAnnualInspection, onSaveInspectionStatus, currentUser, roles } = useAppData();
   if (!permissions.canInspect) return <PlaceholderPage title="ไม่มีสิทธิ์ตรวจสอบประจำปี" />;
+  // ผู้ตรวจสอบ now always reflects the logged-in user's role (not a free-text
+  // field), so the audit record always shows who is actually performing the
+  // inspection — not a hardcoded placeholder.
+  const inspectorRoleLabel = currentUser.role ? getRoleDefinition(currentUser.role, roles).name : "-";
   return (
     <AuditPage
       assets={assets}
@@ -737,6 +747,7 @@ export default function AuditRoute() {
       onSaveAnnualInspection={onSaveAnnualInspection}
       onCancelAnnualInspection={onCancelAnnualInspection}
       onSaveInspectionStatus={onSaveInspectionStatus}
+      inspectorRoleLabel={inspectorRoleLabel}
     />
   );
 }
