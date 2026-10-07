@@ -176,68 +176,12 @@ function ListPage({
   ];
   const centeredHeadings = new Set([t("col.no"), t("col.yearShort"), t("col.numberType"), t("col.status"), t("col.inspection"), t("col.image"), t("col.manage")]);
 
-  return (
-    <section className="mx-auto w-full max-w-screen-2xl space-y-4">
-      <PageHeader
-        title={t("list.title")}
-        description={t("list.desc")}
-        actions={(
-          <>
-            {permissions.canExport && (
-              <div className="relative">
-                <button
-                  onClick={() => setExportOpen((v) => !v)}
-                  className="min-h-11 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink transition hover:border-primary hover:text-primary"
-                >
-                  {t("c.export")} ▾
-                </button>
-                {exportOpen && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} />
-                    <div className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-md border border-line bg-surface shadow-glow">
-                      {(["pdf", "word", "excel"] as const).map((fmt) => (
-                        <button
-                          key={fmt}
-                          type="button"
-                          onClick={() => {
-                            const fp: string[] = [];
-                            if (search.trim()) fp.push(lang === "th" ? `ค้นหา: ${search.trim()}` : `Search: ${search.trim()}`);
-                            if (selectedYears.length > 0) fp.push(lang === "th" ? `ปีงบประมาณ: ${selectedYears.join(", ")}` : `Fiscal Year: ${selectedYears.join(", ")}`);
-                            if (selectedUnits.length > 0) fp.push(lang === "th" ? `หน่วยงาน: ${selectedUnits.join(", ")}` : `Department: ${selectedUnits.join(", ")}`);
-                            if (selectedStatuses.length > 0) fp.push(lang === "th" ? `สถานะ: ${selectedStatuses.map((v) => translateOption(v, lang)).join(", ")}` : `Status: ${selectedStatuses.map((v) => translateOption(v, lang)).join(", ")}`);
-                            if (selectedRegTypes.length > 0) fp.push(lang === "th" ? `ประเภทการขึ้นทะเบียน: ${selectedRegTypes.map((v) => translateOption(v, lang)).join(", ")}` : `Registration Type: ${selectedRegTypes.map((v) => translateOption(v, lang)).join(", ")}`);
-                            const reportTitle = lang === "th" ? "รายงานครุภัณฑ์ทั้งหมด" : "All Asset Report";
-                            const isPdf = fmt === "pdf";
-                            const columns = isPdf ? assetPdfReportColumns : assetReportExportColumns;
-                            const exportRows = isPdf
-                              ? filteredRows.map((row) => assetToPdfReportRow(row, inspectedAssetIds.has(row.id)))
-                              : filteredRows.map(assetToReportRow);
-                            void exportAssetReport(fmt, reportTitle, columns, exportRows, fp.join("  |  "), {
-                              lang,
-                              pdfFileName: isPdf ? buildAssetPdfFileName(selectedYears) : undefined,
-                            }).catch(() => {
-                              window.alert(lang === "th" ? "ไม่สามารถส่งออกไฟล์ได้ กรุณาลองใหม่อีกครั้ง" : "Export failed. Please try again.");
-                            });
-                            setExportOpen(false);
-                          }}
-                          className="w-full px-4 py-2.5 text-left text-xs font-semibold text-ink hover:bg-surfaceSoft"
-                        >
-                          {fmt === "pdf" ? "PDF" : fmt === "word" ? "Word" : "Excel"}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-            {permissions.canCreate && (
-              <button onClick={onAddAsset} className="min-h-11 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white transition hover:bg-amberSoft">
-                {t("c.add")}
-              </button>
-            )}
-          </>
-        )}
-      />
+  // Search/filter card — extracted so its position can differ by role: normal
+  // roles keep it right under the page header (original position); the
+  // Committee-only layout renders it further down, under the summary/charts
+  // block and directly above the table. Same JSX, same filter state/logic —
+  // only where it's placed in the tree changes.
+  const filterCard = (
       <div className="rounded-lg border border-line bg-surface p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(4,minmax(0,1fr))]">
           <label className="block md:col-span-2 xl:col-span-1">
@@ -346,6 +290,72 @@ function ListPage({
           </div>
         )}
       </div>
+  );
+
+  return (
+    <section className="mx-auto w-full max-w-screen-2xl space-y-4">
+      <PageHeader
+        title={t("list.title")}
+        description={t("list.desc")}
+        actions={(
+          <>
+            {permissions.canExport && (
+              <div className="relative">
+                <button
+                  onClick={() => setExportOpen((v) => !v)}
+                  className="min-h-11 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink transition hover:border-primary hover:text-primary"
+                >
+                  {t("c.export")} ▾
+                </button>
+                {exportOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} />
+                    <div className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-md border border-line bg-surface shadow-glow">
+                      {(["pdf", "word", "excel"] as const).map((fmt) => (
+                        <button
+                          key={fmt}
+                          type="button"
+                          onClick={() => {
+                            const fp: string[] = [];
+                            if (search.trim()) fp.push(lang === "th" ? `ค้นหา: ${search.trim()}` : `Search: ${search.trim()}`);
+                            if (selectedYears.length > 0) fp.push(lang === "th" ? `ปีงบประมาณ: ${selectedYears.join(", ")}` : `Fiscal Year: ${selectedYears.join(", ")}`);
+                            if (selectedUnits.length > 0) fp.push(lang === "th" ? `หน่วยงาน: ${selectedUnits.join(", ")}` : `Department: ${selectedUnits.join(", ")}`);
+                            if (selectedStatuses.length > 0) fp.push(lang === "th" ? `สถานะ: ${selectedStatuses.map((v) => translateOption(v, lang)).join(", ")}` : `Status: ${selectedStatuses.map((v) => translateOption(v, lang)).join(", ")}`);
+                            if (selectedRegTypes.length > 0) fp.push(lang === "th" ? `ประเภทการขึ้นทะเบียน: ${selectedRegTypes.map((v) => translateOption(v, lang)).join(", ")}` : `Registration Type: ${selectedRegTypes.map((v) => translateOption(v, lang)).join(", ")}`);
+                            const reportTitle = lang === "th" ? "รายงานครุภัณฑ์ทั้งหมด" : "All Asset Report";
+                            const isPdf = fmt === "pdf";
+                            const columns = isPdf ? assetPdfReportColumns : assetReportExportColumns;
+                            const exportRows = isPdf
+                              ? filteredRows.map((row) => assetToPdfReportRow(row, inspectedAssetIds.has(row.id)))
+                              : filteredRows.map(assetToReportRow);
+                            void exportAssetReport(fmt, reportTitle, columns, exportRows, fp.join("  |  "), {
+                              lang,
+                              pdfFileName: isPdf ? buildAssetPdfFileName(selectedYears) : undefined,
+                            }).catch(() => {
+                              window.alert(lang === "th" ? "ไม่สามารถส่งออกไฟล์ได้ กรุณาลองใหม่อีกครั้ง" : "Export failed. Please try again.");
+                            });
+                            setExportOpen(false);
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-xs font-semibold text-ink hover:bg-surfaceSoft"
+                        >
+                          {fmt === "pdf" ? "PDF" : fmt === "word" ? "Word" : "Excel"}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            {permissions.canCreate && (
+              <button onClick={onAddAsset} className="min-h-11 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white transition hover:bg-amberSoft">
+                {t("c.add")}
+              </button>
+            )}
+          </>
+        )}
+      />
+      {/* Normal roles: filter card stays right under the header, same as before. */}
+      {!isCommittee && filterCard}
 
       {/* Committee-only compact summary — cards + charts, visible only for role
           "Committee" (คณะกรรมการนักศึกษา). All other roles see nothing here. */}
@@ -449,6 +459,11 @@ function ListPage({
           )}
         </section>
       )}
+
+      {/* Committee layout: filter card moved below the summary/charts, directly
+          above the table (always shown here regardless of the summary's own
+          empty state, so the admin can still adjust filters). */}
+      {isCommittee && filterCard}
 
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
