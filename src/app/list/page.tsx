@@ -3,18 +3,36 @@
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 
-import { useState, useMemo, useCallback, Suspense } from "react";
+import { useState, useMemo, useCallback, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { AssetNumberCell, FilterChip, InspectionResultBadge, MultiSelectFilter, PageHeader, RegistrationTypeBadge, SearchableMultiSelectFilter, StatusBadge, getRegistrationType } from "@/components/ui";
 import { assetPdfReportColumns, assetReportExportColumns, assetToPdfReportRow, assetToReportRow } from "@/lib/assets";
 import { exportAssetReport } from "@/lib/import-export";
 import { Permissions } from "@/lib/permissions";
-import { uniqueSorted } from "@/lib/utils";
+import { chartColors, dashboardCardColors } from "@/constants/colors";
+import { countBy, uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateOption } from "@/lib/i18n";
 import { ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
 import { registrationTypeOptions } from "@/constants/options";
+
+// Pie-slice palette for the committee-only status chart on /list — same fixed
+// blue palette the overview/dashboard page's status pie chart already uses,
+// kept local here since the dashboard doesn't export it.
+const COMMITTEE_PIE_COLORS = ["#044377", "#508ABA", "#9CD1FC", "#C3E3FD", "#032D50", "#B0DADF", "#E1F1FE", "#011628"];
 
 function parseMultiParam(param: string | null): string[] {
   if (!param) return [];
@@ -36,6 +54,7 @@ function ListPage({
   onViewDetails,
   onEditAsset,
   onDeleteAsset,
+  currentUserRole,
 }: {
   assets: AssetListRow[];
   annualInspections: AnnualInspection[];
@@ -44,6 +63,7 @@ function ListPage({
   onViewDetails: (asset: AssetListRow) => void;
   onEditAsset: (asset: AssetListRow) => void;
   onDeleteAsset: (asset: AssetListRow) => void;
+  currentUserRole: string;
 }) {
   const { lang, t } = useLanguage();
   const router = useRouter();
@@ -100,6 +120,40 @@ function ListPage({
       return matchSearch && matchFiscalYear && matchOrganization && matchStatus && matchRegType;
     });
   }, [assets, search, selectedYears, selectedUnits, selectedStatuses, selectedRegTypes]);
+
+  // Role-specific enhanced view for คณะกรรมการนักศึกษา (role key "Committee") —
+  // a compact summary (cards + charts) inserted between the filters and the
+  // table. Built entirely from `filteredRows`, the same filtered set the table
+  // below renders, so it always reflects the current search/year/unit/status/
+  // registration-type filters with no separate data path to keep in sync.
+  const isCommittee = currentUserRole === "Committee";
+  const [chartsReady, setChartsReady] = useState(false);
+  useEffect(() => {
+    if (isCommittee) setChartsReady(true);
+  }, [isCommittee]);
+  const committeeUninspectedCount = useMemo(
+    () => filteredRows.filter((row) => !inspectedAssetIds.has(row.id)).length,
+    [filteredRows, inspectedAssetIds],
+  );
+  const committeeStatusChartData = useMemo(
+    () => Object.entries(countBy(filteredRows, (row) => row.status))
+      .sort(([, a], [, b]) => b - a)
+      .map(([name, value], index) => ({ name, value, color: COMMITTEE_PIE_COLORS[index % COMMITTEE_PIE_COLORS.length] })),
+    [filteredRows],
+  );
+  const committeeStatusTotal = committeeStatusChartData.reduce((total, item) => total + item.value, 0);
+  const committeeOrgChartData = useMemo(
+    () => Object.entries(countBy(filteredRows, (row) => row.organization))
+      .sort(([nameA, countA], [nameB, countB]) => countB - countA || nameA.localeCompare(nameB, "th"))
+      .map(([name, value]) => ({ name, value })),
+    [filteredRows],
+  );
+  const committeeTooltipStyle = {
+    backgroundColor: "var(--color-bg-card)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "8px",
+    color: "var(--color-text-primary)",
+  };
 
   const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const safePage = Math.min(page, pageCount);
@@ -293,6 +347,109 @@ function ListPage({
         )}
       </div>
 
+      {/* Committee-only compact summary — cards + charts, visible only for role
+          "Committee" (คณะกรรมการนักศึกษา). All other roles see nothing here. */}
+      {isCommittee && (
+        <section className="space-y-4">
+          {filteredRows.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-line bg-surfaceSoft px-4 py-8 text-center">
+              <p className="text-sm font-bold text-ink">{t("list.committeeNoData")}</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <article className={`flex min-h-[110px] flex-col justify-center gap-1.5 rounded-lg border ${dashboardCardColors.total.border} bg-surface bg-gradient-to-br ${dashboardCardColors.total.glow} to-transparent px-4 py-4 shadow-glow`}>
+                  <p className="text-sm font-semibold text-ink">{t("dash.totalAssets")}</p>
+                  <strong className={`block text-3xl font-extrabold leading-none ${dashboardCardColors.total.accent}`}>{filteredRows.length.toLocaleString("th-TH")}</strong>
+                </article>
+                <article className={`flex min-h-[110px] flex-col justify-center gap-1.5 rounded-lg border ${dashboardCardColors.pending.border} bg-surface bg-gradient-to-br ${dashboardCardColors.pending.glow} to-transparent px-4 py-4 shadow-glow`}>
+                  <p className="text-sm font-semibold text-ink">{t("dash.unaudited")}</p>
+                  <strong className={`block text-3xl font-extrabold leading-none ${dashboardCardColors.pending.accent}`}>{committeeUninspectedCount.toLocaleString("th-TH")}</strong>
+                </article>
+              </div>
+
+              <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 [&>*]:min-w-0">
+                <article className="flex min-h-[260px] flex-col overflow-visible rounded-lg border border-line bg-surface p-4">
+                  <h3 className="text-sm font-bold text-ink">{t("dash.chartStatus")}</h3>
+                  <div className="mt-3 min-h-0 flex-1 overflow-visible">
+                    {chartsReady ? (
+                      <div className="flex h-full flex-col">
+                        <div className="relative min-h-0 flex-1">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie data={committeeStatusChartData} dataKey="value" nameKey="name" innerRadius={44} outerRadius={76} paddingAngle={3}>
+                                {committeeStatusChartData.map((item) => (
+                                  <Cell key={item.name} fill={item.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                contentStyle={committeeTooltipStyle}
+                                formatter={(value, name) => [`${Number(value).toLocaleString("th-TH")} ${t("dash.itemCount")}`, translateOption(String(name), lang)]}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center" aria-hidden="true">
+                            <strong className="text-2xl font-extrabold leading-none text-ink">{committeeStatusTotal.toLocaleString("th-TH")}</strong>
+                            <span className="mt-1 text-[11px] font-semibold text-muted">{t("dash.itemCount")}</span>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-ink">
+                          {committeeStatusChartData.map((item) => (
+                            <span key={item.name} className="inline-flex items-center gap-1.5">
+                              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+                              {translateOption(item.name, lang)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-muted">{t("dash.preparingChart")}</div>
+                    )}
+                  </div>
+                </article>
+
+                <article className="flex min-h-[260px] flex-col overflow-visible rounded-lg border border-line bg-surface p-4">
+                  <h3 className="text-sm font-bold text-ink">{t("dash.chartByOrg")}</h3>
+                  <div className="mt-3 min-h-0 flex-1 overflow-visible">
+                    {chartsReady ? (
+                      committeeOrgChartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={committeeOrgChartData} margin={{ top: 10, right: 10, left: -10, bottom: 60 }}>
+                            <CartesianGrid stroke={chartColors.grid} vertical={false} />
+                            <XAxis
+                              dataKey="name"
+                              stroke={chartColors.axis}
+                              tickLine={false}
+                              axisLine={false}
+                              interval={0}
+                              angle={-35}
+                              textAnchor="end"
+                              tick={{ fill: chartColors.axis, fontSize: 10 }}
+                              tickFormatter={(value: string) => (value.length > 12 ? `${value.slice(0, 12)}…` : value)}
+                            />
+                            <YAxis stroke={chartColors.axis} tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
+                            <Tooltip
+                              contentStyle={committeeTooltipStyle}
+                              cursor={{ fill: "#E1F1FE" }}
+                              formatter={(value) => [`${Number(value).toLocaleString("th-TH")} ${t("dash.itemCount")}`, t("dash.assetCount")]}
+                            />
+                            <Bar dataKey="value" name={t("dash.assetCount")} fill={chartColors.organizationBar} radius={[6, 6, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-sm font-semibold text-muted">{t("dash.noChartData")}</div>
+                      )
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-muted">{t("dash.preparingChart")}</div>
+                    )}
+                  </div>
+                </article>
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
         {visibleRows.map((row, index) => (
@@ -439,7 +596,7 @@ function ListPage({
 
 
 export default function ListRoute() {
-  const { permissions, assets, annualInspections, onGoToRecord, onViewDetails, onEditAsset, onDeleteAsset } = useAppData();
+  const { permissions, assets, annualInspections, onGoToRecord, onViewDetails, onEditAsset, onDeleteAsset, currentUser } = useAppData();
   if (!permissions.canViewList) return <PlaceholderPage title="ไม่มีสิทธิ์ดูรายการครุภัณฑ์" />;
   const storeReturnUrl = () => {
     sessionStorage.setItem("listReturnUrl", window.location.pathname + window.location.search);
@@ -454,6 +611,7 @@ export default function ListRoute() {
         onViewDetails={(asset) => { storeReturnUrl(); onViewDetails(asset); }}
         onEditAsset={(asset) => { storeReturnUrl(); onEditAsset(asset); }}
         onDeleteAsset={onDeleteAsset}
+        currentUserRole={currentUser.role}
       />
     </Suspense>
   );
