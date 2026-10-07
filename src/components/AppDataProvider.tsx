@@ -352,11 +352,20 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
       const { log } = await api.deleteInspection(asset.id, inspectionYear, logInput);
       setAnnualInspections((items) => items.filter((item) => !(item.assetId === asset.id && item.inspectionYear === inspectionYear)));
       prependLog(log);
-      if (previousStatus) {
-        const restoredAsset = { ...asset, status: previousStatus, inspectionResult: previousStatus };
-        const { asset: saved } = await api.updateAsset(asset.id, restoredAsset);
-        setAssets((items) => items.map((item) => (item.id === saved.id ? saved : item)));
-      }
+      // handleSaveInspectionStatus writes the audit modal's inspection note into
+      // the shared asset.note field (note: note || asset.note), so canceling the
+      // inspection must also clear it here — otherwise /list/[id] keeps showing
+      // that note as if it still applied, even though the inspection it came
+      // from no longer exists. There's no tracked "note before this inspection"
+      // to restore, so it resets to "-" (the app's empty-field convention) same
+      // as the status revert only runs when a previousStatus was recorded.
+      const restoredAsset = {
+        ...asset,
+        note: "-",
+        ...(previousStatus ? { status: previousStatus, inspectionResult: previousStatus } : {}),
+      };
+      const { asset: saved } = await api.updateAsset(asset.id, restoredAsset);
+      setAssets((items) => items.map((item) => (item.id === saved.id ? saved : item)));
       showToast(`ยกเลิกผลตรวจสอบประจำปี ${inspectionYear} แล้ว`);
     } catch (error) {
       showToast(`ยกเลิกผลตรวจสอบไม่สำเร็จ: ${(error as Error).message}`);
