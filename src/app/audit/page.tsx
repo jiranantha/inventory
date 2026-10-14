@@ -4,34 +4,45 @@ import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 
 import { useState, useMemo } from "react";
-import { buttonColors, inspectionStatusColors } from "@/constants/colors";
-import { CloseIconButton, Field, FilterChip, MultiSelectFilter, RegistrationTypeBadge, SearchableMultiSelectFilter, SelectField, StatusBadge, TextAreaField, ThaiDateField, getRegistrationType } from "@/components/ui";
+import { inspectionStatusColors } from "@/constants/colors";
+import { CloseIconButton, DetailInfoItem, Field, FilterChip, MultiSelectFilter, RegistrationTypeBadge, SearchableMultiSelectFilter, SelectField, StatusBadge, TextAreaField, ThaiDateField, getRegistrationType } from "@/components/ui";
 import { formatThaiDate, getCurrentInspectionYear } from "@/lib/dates";
 import { uploadImage } from "@/lib/image-upload";
 import { uniqueSorted } from "@/lib/utils";
 import { AnnualInspection, AssetListRow, EvidenceImage } from "@/types";
-import { getRoleDefinition } from "@/lib/permissions";
+import { getRoleDefinition, Permissions } from "@/lib/permissions";
 import { allowedAssetStatuses, ASSET_STATUS_FILTER_OPTIONS } from "@/constants/statuses";
 import { registrationTypeOptions } from "@/constants/options";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateOption } from "@/lib/i18n";
 
+// AnnualInspection.inspectorName is saved as a single combined "ชื่อ (บทบาท)"
+// string (the data model has no separate role/name columns). The read-only
+// detail modal still wants to show them as two fields, so this splits it back
+// apart — falling back to showing the whole value as the name if it doesn't
+// match that shape (e.g. older records saved before this convention existed).
+function parseInspector(inspectorName: string): { role: string; name: string } {
+  const match = inspectorName?.match(/^(.*)\s\((.*)\)$/);
+  if (match) return { name: match[1].trim() || "-", role: match[2].trim() || "-" };
+  return { name: inspectorName?.trim() || "-", role: "-" };
+}
+
 function AuditPage({
   assets,
   annualInspections,
   onSaveAnnualInspection,
-  onCancelAnnualInspection,
   onSaveInspectionStatus,
   inspectorRoleLabel,
   inspectorNameLabel,
+  permissions,
 }: {
   assets: AssetListRow[];
   annualInspections: AnnualInspection[];
   onSaveAnnualInspection: (inspection: AnnualInspection) => void;
-  onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => void;
   onSaveInspectionStatus: (asset: AssetListRow, status: string, inspectionDate: string, note: string) => void;
   inspectorRoleLabel: string;
   inspectorNameLabel: string;
+  permissions: Permissions;
 }) {
   const { lang, t } = useLanguage();
   const currentInspectionYear = getCurrentInspectionYear();
@@ -56,7 +67,7 @@ function AuditPage({
   const [selectedInspectionResults, setSelectedInspectionResults] = useState<string[]>([]);
   const [selectedRegTypes, setSelectedRegTypes] = useState<string[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<AssetListRow | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<{ asset: AssetListRow; inspection: AnnualInspection } | null>(null);
+  const [detailTarget, setDetailTarget] = useState<{ asset: AssetListRow; inspection: AnnualInspection } | null>(null);
   const [inspectionDate, setInspectionDate] = useState(today);
   const [foundLocation, setFoundLocation] = useState("");
   const [modalResult, setModalResult] = useState("ใช้งานได้");
@@ -203,15 +214,6 @@ function AuditPage({
       }
       return nextItems;
     });
-  };
-
-  const confirmCancelInspection = () => {
-    if (!cancelTarget) return;
-    const targetYear = cancelTarget.inspection.inspectionYear;
-    onCancelAnnualInspection(cancelTarget.asset, targetYear, cancelTarget.inspection);
-    setCancelTarget(null);
-    setToast(`ยกเลิกผลตรวจสอบปี ${targetYear} เรียบร้อยแล้ว`);
-    window.setTimeout(() => setToast(""), 3000);
   };
 
   const saveInspection = () => {
@@ -449,9 +451,12 @@ function AuditPage({
               <div><dt className="text-xs font-semibold text-muted">{t("col.location")}</dt><dd className="mt-1 text-ink">{asset.location}</dd></div>
               <div><dt className="text-xs font-semibold text-muted">{t("col.status")}</dt><dd className="mt-1"><StatusBadge value={asset.status} variant="soft" /></dd></div>
             </dl>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button onClick={() => openInspectionModal(asset)} className="min-h-12 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white transition hover:bg-amberSoft">{t("audit.btnAudit")}</button>
-              <button type="button" disabled={!inspection} onClick={() => inspection && setCancelTarget({ asset, inspection })} className={`min-h-12 rounded-md border px-4 py-2 text-sm font-semibold ${inspection ? buttonColors.cancelEnabled : `cursor-not-allowed ${buttonColors.cancelDisabled}`}`}>{t("audit.btnCancel")}</button>
+            <div className="mt-4">
+              {inspection ? (
+                <button type="button" onClick={() => setDetailTarget({ asset, inspection })} className="min-h-12 w-full rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">{t("audit.btnViewDetail")}</button>
+              ) : (
+                <button onClick={() => openInspectionModal(asset)} className="min-h-12 w-full rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white transition hover:bg-amberSoft">{t("audit.btnAudit")}</button>
+              )}
             </div>
           </article>
         ))}
@@ -534,21 +539,19 @@ function AuditPage({
                   </td>
                   <td className="overflow-hidden px-2 py-3">
                     <div className="flex flex-nowrap items-center gap-2">
-                      <button onClick={() => openInspectionModal(asset)} className="shrink-0 whitespace-nowrap rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-white transition hover:bg-amberSoft">
-                        {t("audit.btnAudit")}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={!inspection}
-                        onClick={() => inspection && setCancelTarget({ asset, inspection })}
-                        className={`shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 text-xs font-semibold ${
-                          inspection
-                            ? `cursor-pointer ${buttonColors.cancelEnabled}`
-                            : `cursor-not-allowed ${buttonColors.cancelDisabled}`
-                        }`}
-                      >
-                        {t("audit.btnCancel")}
-                      </button>
+                      {inspection ? (
+                        <button
+                          type="button"
+                          onClick={() => setDetailTarget({ asset, inspection })}
+                          className="shrink-0 whitespace-nowrap rounded-md border border-line bg-surfaceSoft px-3 py-1.5 text-xs font-semibold text-ink hover:border-primary hover:text-primary"
+                        >
+                          {t("audit.btnViewDetail")}
+                        </button>
+                      ) : (
+                        <button onClick={() => openInspectionModal(asset)} className="shrink-0 whitespace-nowrap rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-white transition hover:bg-amberSoft">
+                          {t("audit.btnAudit")}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -713,34 +716,76 @@ function AuditPage({
         </div>
       )}
 
-      {/* Cancel inspection modal */}
-      {cancelTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4">
-          <div className="w-full max-w-lg rounded-lg border border-rose-300/20 bg-surface p-5 shadow-2xl">
-            <div className="flex items-start justify-between gap-3">
-              <h3 className="text-xl font-bold text-white">{t("audit.cancel.title")}</h3>
-              <CloseIconButton onClick={() => setCancelTarget(null)} />
+      {/* Inspection detail modal — read-only for everyone; once an asset is
+          inspected, this replaces both the "ตรวจสอบ" and old "ยกเลิก" actions.
+          Only admins (canEditInspection) get an edit entry point from here,
+          which reuses the existing save modal (openInspectionModal already
+          pre-fills from the existing record). The server independently
+          re-checks canEditInspection on save, so this button is a UX nicety,
+          not the real gate. */}
+      {detailTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-2 sm:p-4">
+          <div className="max-h-[96vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-line bg-surface p-4 shadow-2xl sm:max-h-[90vh] sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-bold text-ink">{t("audit.detail.title")}</h3>
+                <p className="mt-3 text-base font-extrabold text-ink">{detailTarget.asset.assetName}</p>
+                <p className="mt-1 text-sm font-semibold text-primary">{detailTarget.asset.assetNumber}</p>
+              </div>
+              <CloseIconButton onClick={() => setDetailTarget(null)} />
             </div>
-            <p className="mt-3 text-sm leading-6 text-ink">
-              {lang === "th"
-                ? `ต้องการยกเลิกผลตรวจสอบของครุภัณฑ์รายการนี้ในปี ${inspectionYear} ใช่หรือไม่?`
-                : `Do you want to cancel the inspection result for ${inspectionYear}?`}
-            </p>
-            <div className="mt-4 rounded-lg border border-line bg-slate-950/30 p-4 text-sm">
-              <p className="text-muted">{t("col.number")}</p>
-              <p className="mt-1 font-semibold text-primary">{cancelTarget.asset.assetNumber}</p>
-              <p className="mt-3 text-muted">{t("audit.col.assetName")}</p>
-              <p className="mt-1 font-semibold text-white">{cancelTarget.asset.assetName}</p>
-              <p className="mt-3 text-muted">{t("audit.modal.year")}</p>
-              <p className="mt-1 font-semibold text-white">{inspectionYear}</p>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <DetailInfoItem label={t("audit.modal.year")} value={detailTarget.inspection.inspectionYear} />
+              <DetailInfoItem label={t("audit.modal.date")} value={detailTarget.inspection.inspectionDate || "-"} />
+              <DetailInfoItem label={t("audit.modal.inspector")} value={parseInspector(detailTarget.inspection.inspectorName).role} />
+              <DetailInfoItem label={t("audit.modal.inspectorName")} value={parseInspector(detailTarget.inspection.inspectorName).name} />
+              <DetailInfoItem label={t("audit.modal.location")} value={detailTarget.inspection.foundLocation || "-"} />
+              <div className="min-w-0 py-2">
+                <p className="text-xs font-semibold text-muted">{t("audit.modal.status")}</p>
+                <div className="mt-2">
+                  <StatusBadge value={detailTarget.inspection.result} />
+                </div>
+              </div>
             </div>
-            <p className="mt-4 rounded-lg border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-100">
-              {t("audit.cancel.note")}
-            </p>
-            <div className="mt-5 flex flex-wrap justify-end gap-3">
-              <button type="button" onClick={confirmCancelInspection} className="rounded-md bg-rose-500 px-4 py-2 text-sm font-extrabold text-white hover:bg-rose-400">
-                {t("audit.cancel.confirm")}
+
+            <div className="mt-5">
+              <p className="text-sm font-semibold text-ink">{t("audit.modal.evidence")}</p>
+              {detailTarget.inspection.evidenceImages && detailTarget.inspection.evidenceImages.length > 0 ? (
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {detailTarget.inspection.evidenceImages.map((image) => (
+                    <figure key={image.url} className="overflow-hidden rounded-md border border-line bg-slate-950/40">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={image.url} alt={image.name} className="h-24 w-full cursor-pointer object-cover" onClick={() => setPreviewImage(image)} />
+                    </figure>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-muted">-</p>
+              )}
+            </div>
+
+            <div className="mt-5">
+              <DetailInfoItem label={t("audit.modal.note")} value={detailTarget.inspection.note || "-"} />
+            </div>
+
+            <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-line pt-4">
+              <button type="button" onClick={() => setDetailTarget(null)} className="min-h-11 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">
+                {t("c.close")}
               </button>
+              {permissions.canEditInspection && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const { asset } = detailTarget;
+                    setDetailTarget(null);
+                    openInspectionModal(asset);
+                  }}
+                  className="min-h-11 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover"
+                >
+                  {t("audit.btnEditInspection")}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -751,7 +796,7 @@ function AuditPage({
 
 
 export default function AuditRoute() {
-  const { permissions, assets, annualInspections, onSaveAnnualInspection, onCancelAnnualInspection, onSaveInspectionStatus, currentUser, roles } = useAppData();
+  const { permissions, assets, annualInspections, onSaveAnnualInspection, onSaveInspectionStatus, currentUser, roles } = useAppData();
   if (!permissions.canInspect) return <PlaceholderPage title="ไม่มีสิทธิ์ตรวจสอบประจำปี" />;
   // ผู้ตรวจสอบ / ชื่อผู้ตรวจสอบ now always reflect the logged-in user's role and
   // display name (not free-text fields), so the audit record always shows who
@@ -763,10 +808,10 @@ export default function AuditRoute() {
       assets={assets}
       annualInspections={annualInspections}
       onSaveAnnualInspection={onSaveAnnualInspection}
-      onCancelAnnualInspection={onCancelAnnualInspection}
       onSaveInspectionStatus={onSaveInspectionStatus}
       inspectorRoleLabel={inspectorRoleLabel}
       inspectorNameLabel={inspectorNameLabel}
+      permissions={permissions}
     />
   );
 }

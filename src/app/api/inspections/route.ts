@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { inspectionToColumns, rowToActivityLog, rowToInspection } from "@/db/mappers";
 import { activityLogs, annualInspections } from "@/db/schema";
-import { jsonError, requirePermission } from "@/lib/auth-helpers";
+import { AuthError, jsonError, requirePermission } from "@/lib/auth-helpers";
+import { getPermissions } from "@/lib/permissions";
 import type { ActivityLog, AnnualInspection } from "@/types";
 
 type ActivityLogInput = Omit<ActivityLog, "id" | "createdAt">;
@@ -25,11 +26,26 @@ export async function GET() {
 }
 
 // POST /api/inspections — upsert one inspection per (asset, fiscal year).
+// Creating a NEW inspection only needs canInspect; overwriting one that's
+// already on file (the "แก้ไขข้อมูลการตรวจสอบ" action for an already-inspected
+// asset) additionally needs canEditInspection (admin-only) — enforced here so
+// the restriction holds even if a request bypasses the UI's hidden button.
 export async function POST(request: Request) {
   try {
-    await requirePermission("inspect");
+    const { user, roles } = await requirePermission("inspect");
     const body = (await request.json()) as { inspection: AnnualInspection };
     const columns = inspectionToColumns(body.inspection);
+
+    const [existing] = await db
+      .select({ id: annualInspections.id })
+      .from(annualInspections)
+      .where(and(eq(annualInspections.assetId, columns.assetId), eq(annualInspections.inspectionYear, columns.inspectionYear)));
+    if (existing) {
+      const permissions = getPermissions({ role: user.role as string, viewerCanExport: user.viewerCanExport }, roles);
+      if (!permissions.canEditInspection) {
+        throw new AuthError(403, "เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถแก้ไขผลตรวจสอบที่บันทึกไว้แล้วได้");
+      }
+    }
 
     const [row] = await db
       .insert(annualInspections)

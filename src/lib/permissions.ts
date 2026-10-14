@@ -21,6 +21,11 @@ export type Permissions = {
   // Kept separate from canEdit so it stays admin-only regardless of who can
   // edit individual assets.
   canBulkUpdateResponsible: boolean;
+  // Overwriting an annual inspection that was already saved (/audit — the
+  // "แก้ไขข้อมูลการตรวจสอบ" action on an already-inspected asset). Separate from
+  // canInspect so any inspector role can still record a NEW inspection, but
+  // only this flag can correct one that's already on file.
+  canEditInspection: boolean;
 };
 
 export type RoleDefinition = {
@@ -67,7 +72,7 @@ export type ApiAssetScope = {
 export const noPermissions: Permissions = {
   canViewDashboard: false, canViewList: false, canCreate: false, canEdit: false, canDelete: false, canExport: false,
   canInspect: false, canManageUsers: false, canViewAllOrganizations: true,
-  canEditLimitedFields: false, canImportAssets: false, canBulkUpdateResponsible: false,
+  canEditLimitedFields: false, canImportAssets: false, canBulkUpdateResponsible: false, canEditInspection: false,
 };
 
 export const initialRoleDefinitions: RoleDefinition[] = [
@@ -84,6 +89,7 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canEditLimitedFields: false,
       canImportAssets: true,
       canBulkUpdateResponsible: true,
+      canEditInspection: true,
   } },
   { key: "Staff", name: "เจ้าหน้าที่พัสดุ", description: "จัดการข้อมูลครุภัณฑ์และตรวจสอบประจำปี", allowExport: true, active: true, permissions: {
       canViewDashboard: true,
@@ -98,6 +104,7 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canEditLimitedFields: true,
       canImportAssets: false,
       canBulkUpdateResponsible: false,
+      canEditInspection: false,
   } },
   { key: "Committee", name: "คณะกรรมการนักศึกษา", description: "ดูรายการและรายละเอียดครุภัณฑ์ทั้งหมดในระบบ", allowExport: false, active: true, permissions: {
       canViewDashboard: false,
@@ -112,6 +119,7 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canEditLimitedFields: false,
       canImportAssets: false,
       canBulkUpdateResponsible: false,
+      canEditInspection: false,
   } },
   { key: "Viewer", name: "ผู้ดูรายงาน", description: "ดูหน้าภาพรวมและรายการครุภัณฑ์", allowExport: false, active: true, permissions: {
       ...noPermissions, canViewDashboard: true, canViewList: true, canViewAllOrganizations: true,
@@ -164,6 +172,7 @@ export function getPermissionLabel(permissions: Permissions) {
     permissions.canExport && "ส่งออกข้อมูล",
     permissions.canImportAssets && "นำเข้าข้อมูล Excel",
     permissions.canBulkUpdateResponsible && "เปลี่ยนผู้รับผิดชอบของหน่วยงาน",
+    permissions.canEditInspection && "แก้ไขข้อมูลการตรวจสอบที่บันทึกแล้ว",
   ].filter(Boolean);
   return labels.join(", ");
 }
