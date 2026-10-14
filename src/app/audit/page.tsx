@@ -295,7 +295,7 @@ function AuditPage({
     t("col.dot"), t("col.no"), t("col.number"), t("col.numberType"), t("audit.col.assetName"),
     t("col.org"), t("col.location"), t("col.status"), t("col.inspection"), t("col.manage"),
   ];
-  const centeredTableHeadings = new Set([t("col.numberType"), t("col.status"), t("col.inspection")]);
+  const centeredTableHeadings = new Set([t("col.numberType"), t("col.status"), t("col.inspection"), t("col.manage")]);
 
   return (
     <section className="mx-auto w-full max-w-screen-2xl space-y-5">
@@ -476,24 +476,23 @@ function AuditPage({
       {/* Desktop table */}
       <div className="hidden overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="overflow-x-auto">
-          {/* ผล/ลำดับ/หมายเลขครุภัณฑ์/ประเภทเลข/สถานที่จัดเก็บ/สถานะ/ผลการตรวจสอบ/จัดการ are
-              fixed-px, sized to what their content (dots, badges, buttons) actually needs —
-              they don't grow with viewport width. ชื่อครุภัณฑ์ and หน่วยงาน are left with no
-              width so they split whatever space remains (table-layout: fixed auto-column
-              rule), which keeps the table balanced and flush on both narrow and wide screens
-              instead of leaving a gap or squeezing จัดการ. */}
+          {/* table-fixed with an explicit colgroup so every column is sized to
+              what its content actually needs and the table fills the card
+              width exactly. จัดการ is a fixed 110px (only ever holds one
+              button now) instead of the old wider fixed width sized for two
+              buttons — that's what was pooling as blank space on the right. */}
           <table className="w-full min-w-[950px] table-fixed border-collapse text-left text-sm">
             <colgroup>
-              <col className="w-[36px]" />
-              <col className="w-[46px]" />
-              <col className="w-[140px]" />
-              <col className="w-[118px]" />
-              <col />
-              <col />
-              <col className="w-[120px]" />
-              <col className="w-[100px]" />
-              <col className="w-[146px]" />
-              <col className="w-[162px]" />
+              <col className="w-[3%]" />
+              <col className="w-[4%]" />
+              <col className="w-[13%]" />
+              <col className="w-[9%]" />
+              <col className="w-[20%]" />
+              <col className="w-[18%]" />
+              <col className="w-[12%]" />
+              <col className="w-[8%]" />
+              <col className="w-[9%]" />
+              <col className="w-[110px]" />
             </colgroup>
             <thead className="bg-surfaceSoft text-ink">
               <tr>
@@ -537,18 +536,18 @@ function AuditPage({
                       </span>
                     )}
                   </td>
-                  <td className="overflow-hidden px-2 py-3">
-                    <div className="flex flex-nowrap items-center gap-2">
+                  <td className="overflow-hidden px-1.5 py-3 text-center">
+                    <div className="flex flex-nowrap items-center justify-center gap-2">
                       {inspection ? (
                         <button
                           type="button"
                           onClick={() => setDetailTarget({ asset, inspection })}
-                          className="shrink-0 whitespace-nowrap rounded-md border border-line bg-surfaceSoft px-3 py-1.5 text-xs font-semibold text-ink hover:border-primary hover:text-primary"
+                          className="shrink-0 whitespace-nowrap rounded-md border border-line bg-surfaceSoft px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-primary hover:text-primary"
                         >
                           {t("audit.btnViewDetail")}
                         </button>
                       ) : (
-                        <button onClick={() => openInspectionModal(asset)} className="shrink-0 whitespace-nowrap rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-white transition hover:bg-amberSoft">
+                        <button onClick={() => openInspectionModal(asset)} className="shrink-0 whitespace-nowrap rounded-md bg-gold px-2.5 py-1.5 text-xs font-extrabold text-white transition hover:bg-amberSoft">
                           {t("audit.btnAudit")}
                         </button>
                       )}
