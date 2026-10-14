@@ -769,11 +769,8 @@ function AuditPage({
               <DetailInfoItem label={t("audit.modal.note")} value={detailTarget.inspection.note || "-"} />
             </div>
 
-            <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-line pt-4">
-              <button type="button" onClick={() => setDetailTarget(null)} className="min-h-11 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">
-                {t("c.close")}
-              </button>
-              {permissions.canEditInspection && (
+            {permissions.canEditInspection && (
+              <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-line pt-4">
                 <button
                   type="button"
                   onClick={() => {
@@ -785,8 +782,8 @@ function AuditPage({
                 >
                   {t("audit.btnEditInspection")}
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}
