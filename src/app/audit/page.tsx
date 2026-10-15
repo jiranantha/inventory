@@ -40,7 +40,7 @@ function AuditPage({
   assets: AssetListRow[];
   annualInspections: AnnualInspection[];
   onSaveAnnualInspection: (inspection: AnnualInspection) => void;
-  onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => void;
+  onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => Promise<void>;
   onSaveInspectionStatus: (asset: AssetListRow, status: string, inspectionDate: string, note: string) => void;
   inspectorRoleLabel: string;
   inspectorNameLabel: string;
@@ -76,6 +76,7 @@ function AuditPage({
   // "ยกเลิกการตรวจสอบ" action or just a plain close button.
   const [editingExistingInspection, setEditingExistingInspection] = useState<AnnualInspection | null>(null);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [inspectionDate, setInspectionDate] = useState(today);
   const [foundLocation, setFoundLocation] = useState("");
   const [modalResult, setModalResult] = useState("ใช้งานได้");
@@ -269,11 +270,16 @@ function AuditPage({
   // record (editingExistingInspection), never the edit form's current
   // (possibly unsaved) field values, so an in-progress edit is discarded
   // rather than applied when canceling.
-  const handleConfirmCancelInspection = () => {
-    if (!selectedAsset || !editingExistingInspection) return;
-    onCancelAnnualInspection(selectedAsset, editingExistingInspection.inspectionYear, editingExistingInspection);
-    setCancelConfirmOpen(false);
-    setSelectedAsset(null);
+  const handleConfirmCancelInspection = async () => {
+    if (!selectedAsset || !editingExistingInspection || cancelSubmitting) return;
+    setCancelSubmitting(true);
+    try {
+      await onCancelAnnualInspection(selectedAsset, editingExistingInspection.inspectionYear, editingExistingInspection);
+      setCancelConfirmOpen(false);
+      setSelectedAsset(null);
+    } finally {
+      setCancelSubmitting(false);
+    }
   };
 
   const summaryItems = [
@@ -762,11 +768,13 @@ function AuditPage({
               <p className="mt-1 font-semibold text-ink">{editingExistingInspection.inspectionYear}</p>
             </div>
             <div className="mt-5 flex flex-wrap justify-end gap-3">
-              <button type="button" onClick={() => setCancelConfirmOpen(false)} className="min-h-11 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">
-                {t("audit.btnBackToEdit")}
-              </button>
-              <button type="button" onClick={handleConfirmCancelInspection} className="min-h-11 rounded-md bg-danger px-4 py-2 text-sm font-extrabold text-white hover:bg-danger/90">
-                {t("audit.btnConfirmCancelInspection")}
+              <button
+                type="button"
+                onClick={handleConfirmCancelInspection}
+                disabled={cancelSubmitting}
+                className="min-h-11 rounded-md border-2 border-danger bg-white px-4 py-2 text-sm font-medium text-danger hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {cancelSubmitting ? "กำลังยกเลิก..." : t("audit.btnConfirmCancelInspection")}
               </button>
             </div>
           </div>
