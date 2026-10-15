@@ -54,7 +54,13 @@ export const api = {
       body: JSON.stringify({ inspection }),
     }).then((r) => r.inspection),
   deleteInspection: (assetId: number, inspectionYear: string | number, log?: ActivityLogInput) =>
-    req<{ ok: true; log: ActivityLog | null }>("/api/inspections", {
+    req<{
+      ok: true;
+      log: ActivityLog | null;
+      asset: AssetListRow;
+      statusOutcome: "restored" | "preservedNewer" | "conflict" | "noSource";
+      restoredStatus: string | null;
+    }>("/api/inspections", {
       method: "DELETE",
       body: JSON.stringify({ assetId, inspectionYear, log }),
     }),

@@ -1,8 +1,8 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { inspectionToColumns, rowToActivityLog, rowToInspection } from "@/db/mappers";
-import { activityLogs, annualInspections } from "@/db/schema";
+import { inspectionToColumns, rowToActivityLog, rowToAsset, rowToInspection } from "@/db/mappers";
+import { activityLogs, annualInspections, assets } from "@/db/schema";
 import { AuthError, jsonError, requirePermission } from "@/lib/auth-helpers";
 import { hasPermission } from "@/lib/permissions";
 import type { ActivityLog, AnnualInspection } from "@/types";
@@ -75,6 +75,25 @@ export async function POST(request: Request) {
 // here independently of the UI, which also only shows the cancel action to
 // admins — a direct request without that role is rejected before any data
 // is touched.
+//
+// Canceling the LATEST inspection for an asset must restore the asset's
+// usage status to whatever it should be without that inspection — not just
+// leave the status/result it set sitting there as if it still applied. This
+// runs the lookup, the delete, and the status write in one transaction so the
+// asset can never be left half-updated:
+//   1. If a newer inspection than the one being canceled still exists, that
+//      newer one already governs the current status — leave status untouched.
+//   2. Otherwise, only restore status if the asset's CURRENT status still
+//      matches what this inspection set (asset.status === target.result). If
+//      it doesn't, something changed the status independently afterward —
+//      that's a conflict, so status is left alone and the admin is told to
+//      resolve it manually rather than silently overwriting their change.
+//   3. With no conflict: restore to the next-most-recent remaining
+//      inspection's result, or — if this was the asset's only inspection —
+//      the snapshot already captured in `previousStatus` when this
+//      inspection was first created. If neither exists, there is nothing
+//      reliable to restore to, so status is left untouched and the caller is
+//      told explicitly rather than guessing a value.
 export async function DELETE(request: Request) {
   try {
     const { user } = await requirePermission("editInspection");
@@ -86,11 +105,27 @@ export async function DELETE(request: Request) {
     const year = Number(body.inspectionYear);
 
     const result = await db.transaction(async (tx) => {
+      const [target] = await tx
+        .select()
+        .from(annualInspections)
+        .where(and(eq(annualInspections.assetId, body.assetId), eq(annualInspections.inspectionYear, year)));
+      if (!target) throw new AuthError(404, "ไม่พบผลการตรวจสอบที่ต้องการยกเลิก");
+
+      const [asset] = await tx.select().from(assets).where(eq(assets.id, body.assetId));
+      if (!asset) throw new AuthError(404, "ไม่พบครุภัณฑ์");
+
+      // Every OTHER inspection year for this asset — used both to check for a
+      // still-active newer inspection and to find the next-latest remaining
+      // one to restore to. Fetched before the delete so "others" never
+      // includes the row being removed.
+      const others = await tx
+        .select()
+        .from(annualInspections)
+        .where(and(eq(annualInspections.assetId, body.assetId), ne(annualInspections.inspectionYear, year)));
+
       await tx
         .delete(annualInspections)
-        .where(
-          and(eq(annualInspections.assetId, body.assetId), eq(annualInspections.inspectionYear, year)),
-        );
+        .where(and(eq(annualInspections.assetId, body.assetId), eq(annualInspections.inspectionYear, year)));
 
       let log = null;
       if (body.log) {
@@ -109,10 +144,55 @@ export async function DELETE(request: Request) {
           .returning();
         log = inserted;
       }
-      return { log };
+
+      // See the function-level comment above for the exact decision rules.
+      const newerInspectionStillActive = others.some((item) => item.inspectionYear > year);
+      let statusOutcome: "restored" | "preservedNewer" | "conflict" | "noSource" = "preservedNewer";
+      let restoredStatus: string | null = null;
+
+      if (!newerInspectionStillActive) {
+        if (asset.status !== target.result) {
+          statusOutcome = "conflict";
+        } else {
+          const nextLatest = others
+            .filter((item) => item.inspectionYear < year)
+            .sort((a, b) => b.inspectionYear - a.inspectionYear)[0];
+          if (nextLatest) {
+            restoredStatus = nextLatest.result;
+            statusOutcome = "restored";
+          } else if (target.previousStatus) {
+            restoredStatus = target.previousStatus;
+            statusOutcome = "restored";
+          } else {
+            statusOutcome = "noSource";
+          }
+        }
+      }
+
+      // The audit modal's note gets written into the shared asset.note field
+      // on save (see handleSaveInspectionStatus client-side), so it's cleared
+      // here regardless of the status outcome — otherwise a stale inspection
+      // note keeps showing even after the inspection it came from is gone.
+      const [updatedAsset] = await tx
+        .update(assets)
+        .set({
+          note: "-",
+          updatedAt: new Date(),
+          ...(restoredStatus ? { status: restoredStatus, inspectionResult: restoredStatus } : {}),
+        })
+        .where(eq(assets.id, body.assetId))
+        .returning();
+
+      return { log, asset: updatedAsset, statusOutcome, restoredStatus };
     });
 
-    return NextResponse.json({ ok: true, log: result.log ? rowToActivityLog(result.log) : null });
+    return NextResponse.json({
+      ok: true,
+      log: result.log ? rowToActivityLog(result.log) : null,
+      asset: rowToAsset(result.asset),
+      statusOutcome: result.statusOutcome,
+      restoredStatus: result.restoredStatus,
+    });
   } catch (error) {
     return jsonError(error);
   }

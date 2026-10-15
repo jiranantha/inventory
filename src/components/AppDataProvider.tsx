@@ -332,12 +332,12 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     }
   };
 
-  // Admin-only "ยกเลิกการตรวจสอบ" from the audit edit modal. Canceling an
-  // inspection removes its active inspection result ONLY — it must never
-  // revert the asset's usage status (ใช้งานได้/ชำรุด/สูญหาย/ไม่พบ/...), which
-  // stays exactly as it currently is. Only year-scoped inspection data and the
-  // asset's note (contaminated by the audit modal's note on save — see
-  // handleSaveInspectionStatus) are cleared.
+  // Admin-only "ยกเลิกการตรวจสอบ" from the audit edit modal. The server deletes
+  // the year-scoped inspection and restores the asset's usage status — to the
+  // next-most-recent remaining inspection, or the pre-inspection snapshot if
+  // this was the only one — atomically in one transaction (see DELETE
+  // /api/inspections for the exact decision rules and why). This handler just
+  // relays the result into client state and surfaces the outcome to the admin.
   const handleCancelAnnualInspection = async (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => {
     const logInput: ActivityLogInput = {
       userName: currentUser.name,
@@ -348,24 +348,23 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
       oldValue: inspection
         ? `ปีตรวจสอบ: ${inspection.inspectionYear}, วันที่ตรวจสอบ: ${inspection.inspectionDate}, สถานะหลังตรวจ: ${inspection.result}`
         : `ปีตรวจสอบ: ${inspectionYear}`,
-      newValue: "ลบเฉพาะ annual_inspections ของปีที่เลือก สถานะการใช้งานของครุภัณฑ์ไม่เปลี่ยนแปลง",
-      note: "ไม่ได้ย้อนสถานะครุภัณฑ์ — ยกเลิกเฉพาะผลการตรวจสอบของปีที่เลือกเท่านั้น",
+      newValue: "ลบเฉพาะ annual_inspections ของปีที่เลือก และคืนค่าสถานะครุภัณฑ์ตามการตรวจสอบล่าสุดที่เหลืออยู่ (ถ้ามี)",
+      note: "ยกเลิกผลตรวจสอบของปีที่เลือก",
     };
     try {
-      const { log } = await api.deleteInspection(asset.id, inspectionYear, logInput);
+      const { log, asset: saved, statusOutcome, restoredStatus } = await api.deleteInspection(asset.id, inspectionYear, logInput);
       setAnnualInspections((items) => items.filter((item) => !(item.assetId === asset.id && item.inspectionYear === inspectionYear)));
       prependLog(log);
-      // handleSaveInspectionStatus writes the audit modal's inspection note into
-      // the shared asset.note field (note: note || asset.note), so canceling the
-      // inspection must also clear it here — otherwise /list/[id] keeps showing
-      // that note as if it still applied, even though the inspection it came
-      // from no longer exists. There's no tracked "note before this inspection"
-      // to restore, so it resets to "-" (the app's empty-field convention).
-      // asset.status/inspectionResult are deliberately left untouched.
-      const restoredAsset = { ...asset, note: "-" };
-      const { asset: saved } = await api.updateAsset(asset.id, restoredAsset);
       setAssets((items) => items.map((item) => (item.id === saved.id ? saved : item)));
-      showToast("ยกเลิกการตรวจสอบเรียบร้อยแล้ว");
+      if (statusOutcome === "restored") {
+        showToast(`ยกเลิกการตรวจสอบเรียบร้อยแล้ว และคืนค่าสถานะครุภัณฑ์เป็น "${restoredStatus}"`);
+      } else if (statusOutcome === "conflict") {
+        showToast("ยกเลิกการตรวจสอบเรียบร้อยแล้ว แต่สถานะครุภัณฑ์ถูกเปลี่ยนแปลงหลังการตรวจสอบนี้ ระบบจึงไม่คืนค่าสถานะให้โดยอัตโนมัติ กรุณาตรวจสอบสถานะด้วยตนเอง");
+      } else if (statusOutcome === "noSource") {
+        showToast("ยกเลิกการตรวจสอบเรียบร้อยแล้ว แต่ไม่พบข้อมูลสถานะก่อนหน้าที่เชื่อถือได้ กรุณาตรวจสอบและกำหนดสถานะครุภัณฑ์ด้วยตนเอง");
+      } else {
+        showToast("ยกเลิกการตรวจสอบเรียบร้อยแล้ว");
+      }
     } catch (error) {
       showToast(`ยกเลิกการตรวจสอบไม่สำเร็จ: ${(error as Error).message}`);
     }
