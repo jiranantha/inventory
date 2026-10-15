@@ -756,8 +756,13 @@ function AuditPage({
             </div>
             <p className="mt-3 text-sm leading-6 text-ink">
               {lang === "th"
-                ? "ระบบจะลบผลการตรวจสอบและข้อมูลที่เกี่ยวข้องของปีที่เลือกออกจากรายการนี้ สถานะการใช้งานของครุภัณฑ์จะไม่เปลี่ยนแปลง"
-                : "This will clear the inspection result and its related data for the selected year. The asset's usage status will not change."}
+                ? `ระบบจะยกเลิกผลการตรวจสอบปี ${editingExistingInspection.inspectionYear} และเปลี่ยนเป็น “ยังไม่ได้ตรวจสอบ” พร้อมคืนสถานะการใช้งานครุภัณฑ์ตามผลตรวจสอบครั้งก่อนโดยอัตโนมัติ`
+                : `This will cancel the ${editingExistingInspection.inspectionYear} inspection result, change it to "Not Yet Inspected", and automatically restore the asset's usage status from the previous inspection.`}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-muted">
+              {lang === "th"
+                ? "หากไม่มีผลตรวจสอบครั้งก่อน ระบบจะใช้สถานะก่อนตรวจที่บันทึกไว้ หากไม่มีข้อมูลอ้างอิง ระบบจะแจ้งให้ตรวจสอบก่อนดำเนินการ"
+                : "If there is no previous inspection, the system will use the recorded pre-inspection status. If no reliable reference exists, you will be notified before proceeding."}
             </p>
             <div className="mt-4 rounded-lg border border-line bg-slate-950/30 p-4 text-sm">
               <p className="text-muted">{t("audit.col.assetName")}</p>
