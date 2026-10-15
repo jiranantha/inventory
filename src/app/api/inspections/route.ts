@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { inspectionToColumns, rowToActivityLog, rowToInspection } from "@/db/mappers";
 import { activityLogs, annualInspections } from "@/db/schema";
 import { AuthError, jsonError, requirePermission } from "@/lib/auth-helpers";
-import { getPermissions } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions";
 import type { ActivityLog, AnnualInspection } from "@/types";
 
 type ActivityLogInput = Omit<ActivityLog, "id" | "createdAt">;
@@ -40,11 +40,8 @@ export async function POST(request: Request) {
       .select({ id: annualInspections.id })
       .from(annualInspections)
       .where(and(eq(annualInspections.assetId, columns.assetId), eq(annualInspections.inspectionYear, columns.inspectionYear)));
-    if (existing) {
-      const permissions = getPermissions({ role: user.role as string, viewerCanExport: user.viewerCanExport }, roles);
-      if (!permissions.canEditInspection) {
-        throw new AuthError(403, "เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถแก้ไขผลตรวจสอบที่บันทึกไว้แล้วได้");
-      }
+    if (existing && !hasPermission({ role: user.role as string, viewerCanExport: user.viewerCanExport }, "editInspection", undefined, roles)) {
+      throw new AuthError(403, "เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถแก้ไขผลตรวจสอบที่บันทึกไว้แล้วได้");
     }
 
     const [row] = await db
@@ -73,9 +70,14 @@ export async function POST(request: Request) {
 }
 
 // DELETE /api/inspections — cancel one inspection (by asset + year), with log.
+// Admin-only (canEditInspection): canceling an already-saved inspection is a
+// form of editing it, same gate as overwriting one via POST above. Enforced
+// here independently of the UI, which also only shows the cancel action to
+// admins — a direct request without that role is rejected before any data
+// is touched.
 export async function DELETE(request: Request) {
   try {
-    const { user } = await requirePermission("inspect");
+    const { user } = await requirePermission("editInspection");
     const body = (await request.json()) as {
       assetId: number;
       inspectionYear: number | string;

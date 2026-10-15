@@ -57,7 +57,8 @@ export type PermissionAction =
   | "inspect"
   | "manageUsers"
   | "importAssets"
-  | "bulkUpdateResponsible";
+  | "bulkUpdateResponsible"
+  | "editInspection";
 
 export type ApiUser = {
   role: UserRole;
@@ -198,6 +199,7 @@ const ACTION_PERMISSION: Record<PermissionAction, keyof Permissions> = {
   manageUsers: "canManageUsers",
   importAssets: "canImportAssets",
   bulkUpdateResponsible: "canBulkUpdateResponsible",
+  editInspection: "canEditInspection",
 };
 
 export function hasPermission(

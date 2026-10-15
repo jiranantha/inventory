@@ -332,8 +332,13 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     }
   };
 
+  // Admin-only "ยกเลิกการตรวจสอบ" from the audit edit modal. Canceling an
+  // inspection removes its active inspection result ONLY — it must never
+  // revert the asset's usage status (ใช้งานได้/ชำรุด/สูญหาย/ไม่พบ/...), which
+  // stays exactly as it currently is. Only year-scoped inspection data and the
+  // asset's note (contaminated by the audit modal's note on save — see
+  // handleSaveInspectionStatus) are cleared.
   const handleCancelAnnualInspection = async (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => {
-    const previousStatus = inspection?.previousStatus;
     const logInput: ActivityLogInput = {
       userName: currentUser.name,
       actionType: "ยกเลิกผลตรวจ",
@@ -343,10 +348,8 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
       oldValue: inspection
         ? `ปีตรวจสอบ: ${inspection.inspectionYear}, วันที่ตรวจสอบ: ${inspection.inspectionDate}, สถานะหลังตรวจ: ${inspection.result}`
         : `ปีตรวจสอบ: ${inspectionYear}`,
-      newValue: previousStatus
-        ? `ย้อนสถานะครุภัณฑ์จาก "${inspection?.result}" กลับเป็น "${previousStatus}"`
-        : "ลบเฉพาะ annual_inspections ของปีที่เลือก",
-      note: previousStatus ? "ย้อนสถานะครุภัณฑ์โดยอัตโนมัติ" : "ไม่ได้ย้อนสถานะครุภัณฑ์โดยอัตโนมัติ (ไม่มีข้อมูลสถานะก่อนหน้า)",
+      newValue: "ลบเฉพาะ annual_inspections ของปีที่เลือก สถานะการใช้งานของครุภัณฑ์ไม่เปลี่ยนแปลง",
+      note: "ไม่ได้ย้อนสถานะครุภัณฑ์ — ยกเลิกเฉพาะผลการตรวจสอบของปีที่เลือกเท่านั้น",
     };
     try {
       const { log } = await api.deleteInspection(asset.id, inspectionYear, logInput);
@@ -357,18 +360,14 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
       // inspection must also clear it here — otherwise /list/[id] keeps showing
       // that note as if it still applied, even though the inspection it came
       // from no longer exists. There's no tracked "note before this inspection"
-      // to restore, so it resets to "-" (the app's empty-field convention) same
-      // as the status revert only runs when a previousStatus was recorded.
-      const restoredAsset = {
-        ...asset,
-        note: "-",
-        ...(previousStatus ? { status: previousStatus, inspectionResult: previousStatus } : {}),
-      };
+      // to restore, so it resets to "-" (the app's empty-field convention).
+      // asset.status/inspectionResult are deliberately left untouched.
+      const restoredAsset = { ...asset, note: "-" };
       const { asset: saved } = await api.updateAsset(asset.id, restoredAsset);
       setAssets((items) => items.map((item) => (item.id === saved.id ? saved : item)));
-      showToast(`ยกเลิกผลตรวจสอบประจำปี ${inspectionYear} แล้ว`);
+      showToast("ยกเลิกการตรวจสอบเรียบร้อยแล้ว");
     } catch (error) {
-      showToast(`ยกเลิกผลตรวจสอบไม่สำเร็จ: ${(error as Error).message}`);
+      showToast(`ยกเลิกการตรวจสอบไม่สำเร็จ: ${(error as Error).message}`);
     }
   };
 

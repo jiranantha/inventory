@@ -31,6 +31,7 @@ function AuditPage({
   assets,
   annualInspections,
   onSaveAnnualInspection,
+  onCancelAnnualInspection,
   onSaveInspectionStatus,
   inspectorRoleLabel,
   inspectorNameLabel,
@@ -39,6 +40,7 @@ function AuditPage({
   assets: AssetListRow[];
   annualInspections: AnnualInspection[];
   onSaveAnnualInspection: (inspection: AnnualInspection) => void;
+  onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => void;
   onSaveInspectionStatus: (asset: AssetListRow, status: string, inspectionDate: string, note: string) => void;
   inspectorRoleLabel: string;
   inspectorNameLabel: string;
@@ -68,6 +70,12 @@ function AuditPage({
   const [selectedRegTypes, setSelectedRegTypes] = useState<string[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<AssetListRow | null>(null);
   const [detailTarget, setDetailTarget] = useState<{ asset: AssetListRow; inspection: AnnualInspection } | null>(null);
+  // Set only when the open save-modal is editing an already-saved inspection
+  // (vs. recording a brand-new one) — null means "nothing to cancel yet", which
+  // is also how the modal decides whether to show the destructive admin-only
+  // "ยกเลิกการตรวจสอบ" action or just a plain close button.
+  const [editingExistingInspection, setEditingExistingInspection] = useState<AnnualInspection | null>(null);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [inspectionDate, setInspectionDate] = useState(today);
   const [foundLocation, setFoundLocation] = useState("");
   const [modalResult, setModalResult] = useState("ใช้งานได้");
@@ -133,6 +141,7 @@ function AuditPage({
     const existing = annualInspections.find((item) => item.assetId === asset.id && item.inspectionYear === activeInspectionYear);
     setInspectionYear(activeInspectionYear);
     setSelectedAsset(asset);
+    setEditingExistingInspection(existing ?? null);
     setInspectionDate(new Date().toISOString().slice(0, 10));
     setFoundLocation(existing?.foundLocation ?? asset.location);
     setModalResult(existing?.result && modalStatusOptions.includes(existing.result)
@@ -254,6 +263,17 @@ function AuditPage({
     setSelectedAsset(null);
     setToast(`บันทึกผลตรวจสอบปี ${inspectionYear} เรียบร้อยแล้ว`);
     window.setTimeout(() => setToast(""), 3000);
+  };
+
+  // Confirmed from the cancel dialog — uses the ORIGINAL saved inspection
+  // record (editingExistingInspection), never the edit form's current
+  // (possibly unsaved) field values, so an in-progress edit is discarded
+  // rather than applied when canceling.
+  const handleConfirmCancelInspection = () => {
+    if (!selectedAsset || !editingExistingInspection) return;
+    onCancelAnnualInspection(selectedAsset, editingExistingInspection.inspectionYear, editingExistingInspection);
+    setCancelConfirmOpen(false);
+    setSelectedAsset(null);
   };
 
   const summaryItems = [
@@ -690,13 +710,63 @@ function AuditPage({
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:justify-end">
-              <button onClick={() => setSelectedAsset(null)} className="min-h-12 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">{t("c.cancel")}</button>
+              {editingExistingInspection && permissions.canEditInspection ? (
+                // Editing an already-saved inspection (admin-only entry point) —
+                // the plain close button is replaced by the real "cancel this
+                // inspection" action. Closing without saving is still available
+                // via the X at the top-right.
+                <button
+                  type="button"
+                  onClick={() => setCancelConfirmOpen(true)}
+                  className="min-h-12 rounded-md border border-danger/40 bg-transparent px-4 py-2 text-sm font-semibold text-danger hover:bg-danger/10"
+                >
+                  {t("audit.btnCancelInspection")}
+                </button>
+              ) : (
+                <button onClick={() => setSelectedAsset(null)} className="min-h-12 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">{t("c.cancel")}</button>
+              )}
               <button
                 onClick={saveInspection}
                 disabled={!canSaveInspection}
                 className="min-h-12 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-gold"
               >
                 {t("audit.modal.save")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel-inspection confirmation — admin-only, reached only from inside
+          the edit modal above (editingExistingInspection + canEditInspection).
+          Confirming never saves any unsaved edit-form changes; it cancels the
+          ORIGINAL saved inspection record as-is. */}
+      {cancelConfirmOpen && selectedAsset && editingExistingInspection && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/75 p-4">
+          <div className="w-full max-w-lg rounded-lg border border-danger/30 bg-surface p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="text-xl font-bold text-ink">{t("audit.btnCancelInspection")}</h3>
+              <CloseIconButton onClick={() => setCancelConfirmOpen(false)} />
+            </div>
+            <p className="mt-3 text-sm leading-6 text-ink">
+              {lang === "th"
+                ? "ระบบจะลบผลการตรวจสอบและข้อมูลที่เกี่ยวข้องของปีที่เลือกออกจากรายการนี้ สถานะการใช้งานของครุภัณฑ์จะไม่เปลี่ยนแปลง"
+                : "This will clear the inspection result and its related data for the selected year. The asset's usage status will not change."}
+            </p>
+            <div className="mt-4 rounded-lg border border-line bg-slate-950/30 p-4 text-sm">
+              <p className="text-muted">{t("audit.col.assetName")}</p>
+              <p className="mt-1 font-semibold text-ink">{selectedAsset.assetName}</p>
+              <p className="mt-3 text-muted">{t("col.number")}</p>
+              <p className="mt-1 font-semibold text-primary">{selectedAsset.assetNumber}</p>
+              <p className="mt-3 text-muted">{t("audit.modal.year")}</p>
+              <p className="mt-1 font-semibold text-ink">{editingExistingInspection.inspectionYear}</p>
+            </div>
+            <div className="mt-5 flex flex-wrap justify-end gap-3">
+              <button type="button" onClick={() => setCancelConfirmOpen(false)} className="min-h-11 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink hover:border-primary hover:text-primary">
+                {t("audit.btnBackToEdit")}
+              </button>
+              <button type="button" onClick={handleConfirmCancelInspection} className="min-h-11 rounded-md bg-danger px-4 py-2 text-sm font-extrabold text-white hover:bg-danger/90">
+                {t("audit.btnConfirmCancelInspection")}
               </button>
             </div>
           </div>
@@ -792,7 +862,7 @@ function AuditPage({
 
 
 export default function AuditRoute() {
-  const { permissions, assets, annualInspections, onSaveAnnualInspection, onSaveInspectionStatus, currentUser, roles } = useAppData();
+  const { permissions, assets, annualInspections, onSaveAnnualInspection, onCancelAnnualInspection, onSaveInspectionStatus, currentUser, roles } = useAppData();
   if (!permissions.canInspect) return <PlaceholderPage title="ไม่มีสิทธิ์ตรวจสอบประจำปี" />;
   // ผู้ตรวจสอบ / ชื่อผู้ตรวจสอบ now always reflect the logged-in user's role and
   // display name (not free-text fields), so the audit record always shows who
@@ -804,6 +874,7 @@ export default function AuditRoute() {
       assets={assets}
       annualInspections={annualInspections}
       onSaveAnnualInspection={onSaveAnnualInspection}
+      onCancelAnnualInspection={onCancelAnnualInspection}
       onSaveInspectionStatus={onSaveInspectionStatus}
       inspectorRoleLabel={inspectorRoleLabel}
       inspectorNameLabel={inspectorNameLabel}
