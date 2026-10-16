@@ -154,9 +154,12 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
   const { showToast } = useAppData();
   const unitResponsibleLookup = useMemo(() => buildUnitResponsibleLookup(unitResponsiblePersons), [unitResponsiblePersons]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const currentThaiYear = new Date().getFullYear() + 543;
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [defaultFiscalYear, setDefaultFiscalYear] = useState(String(currentThaiYear));
+  // Optional — left blank by default. A row's fiscal year comes from the
+  // mapped Excel column (or, failing that, the university asset number) first;
+  // this is only a fallback for rows with neither, and an empty value means
+  // "leave it unspecified" rather than silently assigning the current year.
+  const [defaultFiscalYear, setDefaultFiscalYear] = useState("");
   const [workbook, setWorkbook] = useState<DetectedExcelWorkbook | null>(null);
   const [sheetIndex, setSheetIndex] = useState(0);
   const [mapping, setMapping] = useState<AdminImportColumnMapping>({});
@@ -198,8 +201,10 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
       setCheckError("รองรับเฉพาะไฟล์ .xlsx และ .xls เท่านั้น");
       return;
     }
-    if (!/^[0-9]{4}$/.test(defaultFiscalYear)) {
-      setCheckError("กรุณาระบุปีงบประมาณเริ่มต้นเป็นตัวเลข 4 หลัก");
+    // Optional field — only validate the format when the admin actually typed
+    // something; leaving it blank is allowed and never blocks the check.
+    if (defaultFiscalYear.trim() && !/^[0-9]{4}$/.test(defaultFiscalYear)) {
+      setCheckError("กรุณาระบุปีงบประมาณเริ่มต้นเป็นตัวเลข 4 หลัก หรือเว้นว่างไว้");
       return;
     }
     setChecking(true);
@@ -286,7 +291,7 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
           <li>รองรับเฉพาะไฟล์ .xlsx และ .xls เท่านั้น</li>
           <li>ระบบไม่บังคับชื่อคอลัมน์ในไฟล์ Excel ผู้ดูแลระบบสามารถเลือกจับคู่คอลัมน์จากไฟล์กับข้อมูลในระบบก่อนนำเข้าได้</li>
           <li>ไฟล์นำเข้าควรมีเลขครุภัณฑ์อย่างน้อยหนึ่งประเภท ได้แก่ เลขทะเบียนควบคุมกิจกรรมนักศึกษา หรือเลขครุภัณฑ์มหาวิทยาลัย ระบบจะใช้เลขจากไฟล์โดยตรงและจะไม่รันเลขใหม่ระหว่างนำเข้า</li>
-          <li>หากไม่จับคู่คอลัมน์ปีงบประมาณ ระบบจะใช้ปีงบประมาณเริ่มต้นที่กำหนดไว้ด้านล่าง</li>
+          <li>หากไม่จับคู่คอลัมน์ปีงบประมาณ ระบบจะใช้ปีงบประมาณเริ่มต้นที่กำหนดไว้ด้านล่าง (ถ้ามี) หากเว้นว่างไว้ รายการนั้นจะถูกบันทึกว่า &quot;ยังไม่ระบุ&quot;</li>
           <li>ข้อมูลที่ซ้ำกับระบบ หรือข้อมูลไม่ครบ จะไม่ถูกนำเข้า</li>
           <li className="font-semibold text-ink">กรุณาตรวจสอบตัวอย่างข้อมูลก่อนกดยืนยันนำเข้า เพราะข้อมูลจะถูกเพิ่มเข้าสู่ฐานข้อมูลจริง</li>
         </ul>
@@ -314,13 +319,15 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
             />
           </label>
           <label className="block sm:w-48">
-            <span className="text-sm font-semibold text-ink">ปีงบประมาณเริ่มต้น (ถ้าไม่จับคู่คอลัมน์)</span>
+            <span className="text-sm font-semibold text-ink">ปีงบประมาณเริ่มต้น (ไม่บังคับ)</span>
             <input
               value={defaultFiscalYear}
               onChange={(event) => setDefaultFiscalYear(event.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
               inputMode="numeric"
-              className="mt-2 min-h-11 w-full rounded-lg border border-lineStrong bg-surface px-4 py-2 text-sm text-ink outline-none focus:border-primary"
+              placeholder="ระบุปีงบประมาณ (ไม่บังคับ)"
+              className="mt-2 min-h-11 w-full rounded-lg border border-lineStrong bg-surface px-4 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
             />
+            <span className="mt-1.5 block text-xs text-muted">ใช้เฉพาะรายการที่ไม่มีปีงบประมาณในไฟล์ Excel สามารถเว้นว่างได้</span>
           </label>
           <button
             type="button"
@@ -504,7 +511,7 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
                     <td className="px-3 py-2" title={row.assetName}>{row.assetName}</td>
                     <td className="px-3 py-2">{row.assetStructureType}</td>
                     <td className="px-3 py-2">{row.assetType}</td>
-                    <td className="px-3 py-2">{row.fiscalYear}</td>
+                    <td className="px-3 py-2">{row.fiscalYear || "ยังไม่ระบุ"}</td>
                     <td className="px-3 py-2">{row.status}</td>
                     <td className="px-3 py-2" title={row.organization}>{row.organization}</td>
                     <td className="px-3 py-2">{row.location}</td>

@@ -481,16 +481,22 @@ export function buildAdminAssetImportPreview(
     const hasUniversityNumber = Boolean(universityAssetNumber && universityAssetNumber !== "-");
     const fiscalYearRaw = mapped(row, "fiscalYear");
     const fiscalYearRawValid = /^[0-9]{4}$/.test(fiscalYearRaw);
-    // Requirement: when the fiscal year column isn't mapped or the cell is
-    // empty/invalid, fall back to the year encoded in the university asset
-    // number (e.g. "...ร59001" → 2559) before falling back to the page's
-    // default fiscal year input.
+    // Priority: (1) the mapped Excel fiscal-year column, (2) the year encoded
+    // in the university asset number (e.g. "...ร59001" → 2559) when there's a
+    // university number to read it from, (3) the admin's optional default —
+    // only used if it's actually a valid 4-digit year, since the field can be
+    // left blank or mid-typed, (4) otherwise unspecified ("") rather than
+    // silently assigning any arbitrary year. The assets.fiscal_year column is
+    // nullable, so an unspecified value here is stored as NULL, not invented.
     const universityFiscalYear = hasUniversityNumber ? extractFiscalYearFromUniversityAssetNumber(universityAssetNumber) : null;
+    const defaultFiscalYearValid = /^[0-9]{4}$/.test(defaultFiscalYear);
     const fiscalYear = fiscalYearRawValid
       ? fiscalYearRaw
       : universityFiscalYear !== null
         ? String(universityFiscalYear)
-        : defaultFiscalYear;
+        : defaultFiscalYearValid
+          ? defaultFiscalYear
+          : "";
     const numberPlacement = mapped(row, "numberPlacement") || "-";
     const assetStructureType = mapped(row, "assetStructureType") || "ครุภัณฑ์เดี่ยว";
     const assetType = mapped(row, "assetType") || "-";
