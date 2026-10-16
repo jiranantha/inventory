@@ -315,10 +315,10 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
               type="file"
               accept=".xlsx,.xls"
               onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
-              className="mt-2 w-full rounded-lg border border-lineStrong bg-surface px-3 py-2 text-sm text-ink file:mr-3 file:rounded-md file:border-0 file:bg-gold file:px-3 file:py-1.5 file:font-bold file:text-white"
+              className="mt-2 min-h-11 w-full rounded-lg border border-lineStrong bg-surface px-3 py-2 text-sm text-ink file:mr-3 file:rounded-md file:border-0 file:bg-gold file:px-3 file:py-1.5 file:font-bold file:text-white"
             />
           </label>
-          <label className="block sm:w-48">
+          <label className="block sm:w-64">
             <span className="text-sm font-semibold text-ink">ปีงบประมาณเริ่มต้น (ไม่บังคับ)</span>
             <input
               value={defaultFiscalYear}
@@ -327,7 +327,6 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
               placeholder="ระบุปีงบประมาณ (ไม่บังคับ)"
               className="mt-2 min-h-11 w-full rounded-lg border border-lineStrong bg-surface px-4 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-primary"
             />
-            <span className="mt-1.5 block text-xs text-muted">ใช้เฉพาะรายการที่ไม่มีปีงบประมาณในไฟล์ Excel สามารถเว้นว่างได้</span>
           </label>
           <button
             type="button"
