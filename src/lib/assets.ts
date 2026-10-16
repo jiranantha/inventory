@@ -261,7 +261,15 @@ export function buildInitialAnnualInspections(assets: AssetListRow[]): AnnualIns
 }
 
 export function validateAssetImportRows(rows: AssetImportRow[], assets: AssetListRow[]) {
-  const existingNumbers = new Set(assets.filter((asset) => !asset.deletedAt).map((asset) => asset.assetNumber.trim()));
+  // Checked against both number fields — requirement 6: a value re-used as
+  // someone else's university number must also be caught as a duplicate, not
+  // just a repeat of another row's activity number.
+  const existingNumbers = new Set(
+    assets
+      .filter((asset) => !asset.deletedAt)
+      .flatMap((asset) => [asset.assetNumber.trim(), asset.universityAssetNumber?.trim() ?? ""])
+      .filter((value) => value && value !== "-"),
+  );
   const seenNumbers = new Set<string>();
 
   return rows.map<AssetImportPreviewRow>((row, index) => {
@@ -303,13 +311,49 @@ export function createAssetFromImportRow(row: AssetImportRow, index: number, uni
   const purchaseProject = row["จัดซื้อในโครงการ"]?.trim() || "-";
   const numberPlacement = row["ตำแหน่งที่ประทับหมายเลขครุภัณฑ์"]?.trim() || "-";
 
+  const rawAssetNumber = row["หมายเลขครุภัณฑ์"]?.trim() || "";
+  const rawUniversityNumber = row["เลขครุภัณฑ์มหาวิทยาลัย"]?.trim() || "";
+  const explicitRegistrationType = row["ประเภทการลงทะเบียน"]?.trim() || "";
+
+  let assetNumber = rawAssetNumber || `IMPORT-${generatedId}`;
+  let universityAssetNumber = rawUniversityNumber || "-";
+  let registrationType = explicitRegistrationType;
+
+  if (!registrationType) {
+    if (rawAssetNumber && rawUniversityNumber) {
+      // Both columns were separately filled in by the file — a genuine
+      // both-number asset, regardless of what rawAssetNumber's text looks like.
+      registrationType = "มีทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย";
+    } else if (rawAssetNumber && !rawUniversityNumber) {
+      // Only one number column has a value. Classify by content, not by
+      // which column it's in: a "ค.อ.มช." number stays a student-activity
+      // number; anything else is a university number and belongs in
+      // universityAssetNumber instead of being misfiled as activity (the
+      // mistake found in existing production rows).
+      if (looksLikeUniversityAssetNumber(rawAssetNumber)) {
+        universityAssetNumber = rawAssetNumber;
+        assetNumber = "-";
+        registrationType = "ครุภัณฑ์มหาวิทยาลัย";
+      } else {
+        registrationType = "ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา";
+      }
+    } else if (!rawAssetNumber && rawUniversityNumber) {
+      registrationType = "ครุภัณฑ์มหาวิทยาลัย";
+    } else {
+      // No number in either column — validateAssetImportRows already
+      // rejects this before createAssetFromImportRow runs, so this is
+      // unreachable in practice; kept as a safe, non-inferring fallback.
+      registrationType = "ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา";
+    }
+  }
+
   return {
     id: generatedId,
     fiscalYear: row["ปีงบประมาณ"]?.trim() || String(new Date().getFullYear() + 543),
     budgetSource,
     recordDate: formatThaiDate(row["วันที่บันทึกข้อมูล"] || new Date().toISOString()),
     assetCode: `CMU-ASSET-IMPORT-${String(generatedId).slice(-6)}`,
-    assetNumber: row["หมายเลขครุภัณฑ์"]?.trim() || `IMPORT-${generatedId}`,
+    assetNumber,
     assetName: row["ชื่อรายการครุภัณฑ์"]?.trim() || "ไม่ระบุชื่อรายการ",
     assetDescription: row["รายละเอียดครุภัณฑ์"]?.trim() || row["ชื่อรายการครุภัณฑ์"]?.trim() || "-",
     organization,
@@ -332,8 +376,8 @@ export function createAssetFromImportRow(row: AssetImportRow, index: number, uni
     isInspected: false,
     imageCount: 0,
     note: row["หมายเหตุ"]?.trim() || "-",
-    registrationType: row["ประเภทการลงทะเบียน"]?.trim() || "ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา",
-    universityAssetNumber: row["เลขครุภัณฑ์มหาวิทยาลัย"]?.trim() || "-",
+    registrationType,
+    universityAssetNumber,
     assetStructureType: structureText.includes("ชุด") ? "set" : "single",
     assetSetItems: [],
     updatedAt: now,
@@ -420,6 +464,23 @@ export function guessColumnMapping(columns: DetectedExcelColumn[]): AdminImportC
     }
   });
   return mapping;
+}
+
+// A student-activity number always carries the "ค.อ.มช." prefix (tolerating
+// minor spacing/period variants, e.g. "ค.อ. มช."). The university side has no
+// fixed format at all — "any non-empty number that isn't a ค.อ.มช. number is a
+// university number" is the rule, not a university-specific pattern. Used
+// only to classify a *lone* "หมายเลขครุภัณฑ์" value when a file gives no
+// dedicated university-number column and no explicit registration type — see
+// requirement 5 and createAssetFromImportRow.
+export function isActivityAssetNumber(value: string): boolean {
+  return /ค\.?\s*อ\.?\s*มช\.?/.test(value.trim());
+}
+
+export function looksLikeUniversityAssetNumber(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "-") return false;
+  return !isActivityAssetNumber(trimmed);
 }
 
 // Requirement 5: infer registration type purely from which asset number(s) a row has.
