@@ -141,7 +141,7 @@ const IMPORT_STATUS_BADGE_CLASS: Record<AdminAssetImportRow["statusKind"], strin
   ready: "border-emerald-300/40 bg-emerald-400/10 text-emerald-200",
   review: "border-amber-300/40 bg-amber-400/10 text-amber-200",
   existing: "border-sky-300/40 bg-sky-400/10 text-sky-200",
-  incomplete: "border-red-300/40 bg-red-400/10 text-red-200",
+  invalid: "border-red-300/40 bg-red-400/10 text-red-200",
 };
 
 // Split once, outside the component, since ADMIN_IMPORT_FIELD_DEFINITIONS is a
@@ -173,12 +173,12 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
 
   const activeSheet = workbook?.sheets[sheetIndex] ?? null;
   const previewSummary = useMemo(() => (previewRows ? summarizeAdminAssetImport(previewRows) : null), [previewRows]);
-  // "review" rows (a number shared with another row in this file, or no
-  // number at all) are imported too — they just need a follow-up look, they
-  // aren't rejected. Only "existing" (already in the database) and
-  // "incomplete" (no asset name) are held back from this list.
+  // Only genuinely new, unambiguous rows are ever submitted for insertion.
+  // "existing" rows are already in the database, "review" rows are a real
+  // identity ambiguity an admin must resolve by hand (never auto-inserted),
+  // and "invalid" rows have no asset name at all.
   const importableRows = useMemo(
-    () => previewRows?.filter((row) => (row.statusKind === "ready" || row.statusKind === "review") && row.asset) ?? [],
+    () => previewRows?.filter((row) => row.statusKind === "ready" && row.asset) ?? [],
     [previewRows],
   );
 
@@ -471,38 +471,45 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
       {previewSummary && (
         <div className="rounded-lg border border-line bg-surface p-6">
           <h3 className="text-base font-bold text-ink">สรุปผลการตรวจสอบไฟล์</h3>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <div className="rounded-lg border border-line bg-surfaceSoft p-3 text-center">
               <p className="text-xs text-muted">จำนวนแถวทั้งหมด</p>
               <p className="mt-1 text-xl font-extrabold text-ink">{previewSummary.totalRows}</p>
-            </div>
-            <div className="rounded-lg border border-emerald-300/30 bg-emerald-400/10 p-3 text-center">
-              <p className="text-xs text-emerald-200">พร้อมนำเข้า</p>
-              <p className="mt-1 text-xl font-extrabold text-emerald-100">{previewSummary.ready}</p>
-            </div>
-            <div className="rounded-lg border border-amber-300/30 bg-amber-400/10 p-3 text-center">
-              <p className="text-xs text-amber-200">นำเข้าได้ แต่ต้องตรวจสอบ</p>
-              <p className="mt-1 text-xl font-extrabold text-amber-100">{previewSummary.review}</p>
             </div>
             <div className="rounded-lg border border-sky-300/30 bg-sky-400/10 p-3 text-center">
               <p className="text-xs text-sky-200">มีอยู่ในระบบแล้ว</p>
               <p className="mt-1 text-xl font-extrabold text-sky-100">{previewSummary.existing}</p>
             </div>
+            <div className="rounded-lg border border-emerald-300/30 bg-emerald-400/10 p-3 text-center">
+              <p className="text-xs text-emerald-200">พร้อมนำเข้าใหม่</p>
+              <p className="mt-1 text-xl font-extrabold text-emerald-100">{previewSummary.newComplete}</p>
+            </div>
+            <div className="rounded-lg border border-amber-300/30 bg-amber-400/10 p-3 text-center">
+              <p className="text-xs text-amber-200">ข้อมูลไม่สมบูรณ์ที่นำเข้าได้</p>
+              <p className="mt-1 text-xl font-extrabold text-amber-100">{previewSummary.newIncomplete}</p>
+            </div>
+            <div className="rounded-lg border border-amber-300/30 bg-amber-400/10 p-3 text-center">
+              <p className="text-xs text-amber-200">ต้องตรวจสอบ</p>
+              <p className="mt-1 text-xl font-extrabold text-amber-100">{previewSummary.review}</p>
+            </div>
             <div className="rounded-lg border border-red-300/30 bg-red-400/10 p-3 text-center">
-              <p className="text-xs text-red-200">ข้อมูลไม่ครบ</p>
-              <p className="mt-1 text-xl font-extrabold text-red-100">{previewSummary.incomplete}</p>
+              <p className="text-xs text-red-200">นำเข้าไม่ได้</p>
+              <p className="mt-1 text-xl font-extrabold text-red-100">{previewSummary.invalid}</p>
             </div>
           </div>
+          {previewSummary.existing > 0 && (
+            <p className="mt-3 text-sm font-semibold text-sky-200">รายการ &quot;มีอยู่ในระบบแล้ว&quot; จะไม่ถูกนำเข้าซ้ำ</p>
+          )}
+          {previewSummary.newIncomplete > 0 && (
+            <p className="mt-2 text-sm font-semibold text-emerald-200">รายการ &quot;ข้อมูลไม่สมบูรณ์ที่นำเข้าได้&quot; จะถูกนำเข้าพร้อมรายการอื่น เพียงแต่ยังไม่มีเลขครุภัณฑ์ ปีงบประมาณ หรือหน่วยงานที่รับผิดชอบ ครบถ้วน สามารถแก้ไขเพิ่มเติมได้ภายหลัง</p>
+          )}
           {previewSummary.review > 0 && (
-            <p className="mt-3 text-sm font-semibold text-amber-200">
-              รายการ &quot;นำเข้าได้ แต่ต้องตรวจสอบ&quot; จะถูกนำเข้าพร้อมรายการอื่น แต่มีเลขครุภัณฑ์ซ้ำกับแถวอื่นในไฟล์นี้ หรือไม่มีเลขครุภัณฑ์เลย กรุณาตรวจสอบภายหลัง
+            <p className="mt-2 text-sm font-semibold text-amber-200">
+              รายการ &quot;ต้องตรวจสอบ&quot; จะไม่ถูกนำเข้าโดยอัตโนมัติ เนื่องจากมีความไม่ชัดเจนเรื่องข้อมูลซ้ำ กรุณาตรวจสอบและนำเข้าด้วยตนเองหลังแก้ไข
             </p>
           )}
-          {previewSummary.existing > 0 && (
-            <p className="mt-2 text-sm font-semibold text-sky-200">รายการ &quot;มีอยู่ในระบบแล้ว&quot; จะไม่ถูกนำเข้าซ้ำ</p>
-          )}
-          {previewSummary.incomplete > 0 && (
-            <p className="mt-2 text-sm font-semibold text-red-200">รายการ &quot;ข้อมูลไม่ครบ&quot; (ไม่มีชื่อรายการครุภัณฑ์) จะไม่ถูกนำเข้า</p>
+          {previewSummary.invalid > 0 && (
+            <p className="mt-2 text-sm font-semibold text-red-200">รายการ &quot;นำเข้าไม่ได้&quot; (ไม่มีชื่อรายการครุภัณฑ์) จะไม่ถูกนำเข้า</p>
           )}
         </div>
       )}
@@ -514,7 +521,7 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
             <table className="w-full min-w-[1200px] border-collapse text-left text-xs">
               <thead className="sticky top-0 bg-surfaceSoft text-ink">
                 <tr>
-                  {["ลำดับ", "ประเภทการขึ้นทะเบียน", "เลขทะเบียนควบคุมกิจกรรมนักศึกษา", "เลขครุภัณฑ์มหาวิทยาลัย", "ตำแหน่งที่ติด/ประทับหมายเลขครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "ลักษณะครุภัณฑ์", "ประเภทครุภัณฑ์", "ปีงบประมาณที่จัดซื้อ", "สถานะการใช้งาน", "องค์กรนักศึกษา/หน่วยงานที่รับผิดชอบ", "สถานที่จัดเก็บ", "ผลการตรวจสอบข้อมูล"].map((label) => (
+                  {["ลำดับ (แถว Excel)", "ชื่อรายการครุภัณฑ์", "เลขครุภัณฑ์มหาวิทยาลัย", "เลขทะเบียนควบคุมกิจกรรมนักศึกษา", "องค์กรนักศึกษา/หน่วยงานที่รับผิดชอบ", "ประเภทการขึ้นทะเบียน", "รหัสที่ตรงกันในระบบ", "ผลการตรวจสอบข้อมูล", "เหตุผล/คำเตือน"].map((label) => (
                     <th key={label} className="border-b border-line px-3 py-2 font-semibold">{label}</th>
                   ))}
                 </tr>
@@ -523,22 +530,18 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
                 {previewRows.map((row) => (
                   <tr key={row.rowNumber}>
                     <td className="px-3 py-2 text-muted">{row.rowNumber - 1}</td>
-                    <td className="px-3 py-2">{row.registrationType}</td>
-                    <td className="px-3 py-2" title={row.assetNumber}>{row.assetNumber}</td>
-                    <td className="px-3 py-2" title={row.universityAssetNumber}>{row.universityAssetNumber}</td>
-                    <td className="px-3 py-2" title={row.numberPlacement}>{row.numberPlacement}</td>
                     <td className="px-3 py-2" title={row.assetName}>{row.assetName}</td>
-                    <td className="px-3 py-2">{row.assetStructureType}</td>
-                    <td className="px-3 py-2">{row.assetType}</td>
-                    <td className="px-3 py-2">{row.fiscalYear || "ยังไม่ระบุ"}</td>
-                    <td className="px-3 py-2">{row.status}</td>
+                    <td className="px-3 py-2" title={row.universityAssetNumber}>{row.universityAssetNumber}</td>
+                    <td className="px-3 py-2" title={row.assetNumber}>{row.assetNumber}</td>
                     <td className="px-3 py-2" title={row.organization}>{row.organization}</td>
-                    <td className="px-3 py-2">{row.location}</td>
+                    <td className="px-3 py-2">{row.registrationType}</td>
+                    <td className="px-3 py-2">{row.matchedExistingId ?? "-"}</td>
                     <td className="px-3 py-2">
-                      <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-bold ${IMPORT_STATUS_BADGE_CLASS[row.statusKind]}`} title={row.reasons.join(", ")}>
+                      <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-bold ${IMPORT_STATUS_BADGE_CLASS[row.statusKind]}`}>
                         {row.statusLabel}
                       </span>
                     </td>
+                    <td className="px-3 py-2 text-muted" title={row.reasons.join(", ")}>{row.reasons.join(", ") || "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -551,7 +554,7 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
               disabled={importableRows.length === 0 || importing}
               className="min-h-11 rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {importing ? "กำลังนำเข้าข้อมูล..." : `ยืนยันนำเข้าข้อมูล (${importableRows.length} รายการ)`}
+              {importing ? "กำลังนำเข้าข้อมูล..." : `ยืนยันนำเข้าข้อมูลใหม่ (${importableRows.length} รายการ)`}
             </button>
           </div>
         </div>

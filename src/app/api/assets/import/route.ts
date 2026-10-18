@@ -6,6 +6,7 @@ import { assetToColumns, rowToAsset } from "@/db/mappers";
 import { activityLogs, assets } from "@/db/schema";
 import { jsonError, requirePermission } from "@/lib/auth-helpers";
 import { allowedAssetStatuses } from "@/constants/statuses";
+import { normalizeNumberForMatch } from "@/lib/assets";
 import type { AssetListRow } from "@/types";
 
 // Backstop only, not the expected runtime: chunked bulk inserts below bring a
@@ -26,14 +27,18 @@ export const maxDuration = 60;
 const CHUNK_SIZE = 25;
 
 // POST /api/assets/import — bulk-insert asset rows from /setting's Excel importer.
-// Admin-only (see canImportAssets in src/lib/permissions.ts): the client sends
-// every row it classified as "ready" or "review" during preview (both get
-// inserted — "review" just means the admin should double-check it afterward,
-// e.g. a number shared with another row in the same file). Nothing here
-// trusts that classification for the one thing that actually matters server-
-// side though: whether the row already exists live in the database — the
-// preview can go stale between when a file is checked and when the admin
-// clicks confirm, so that check is redone here against the current table.
+// Admin-only (see canImportAssets in src/lib/permissions.ts): the client only
+// ever sends rows it classified as "ready" (genuinely new, unambiguous) during
+// preview — "review" and "existing" rows are never submitted, by design (see
+// buildAdminAssetImportPreview). Nothing here trusts that classification for
+// the one thing that actually matters server-side though: whether the row
+// already exists live in the database right now — the preview can go stale
+// between when a file is checked and when the admin clicks confirm (another
+// admin may have imported the same file in the meantime, or this exact file
+// may be a re-upload — see requirement 8's idempotency rule), so that check
+// is redone here against the current table, using the same normalized
+// matching key buildAdminAssetImportPreview uses (requirement 13: preview and
+// execution must apply the same rules).
 export async function POST(request: Request) {
   try {
     const { user } = await requirePermission("importAssets");
@@ -46,10 +51,10 @@ export async function POST(request: Request) {
       .where(isNull(assets.deletedAt));
 
     const existingAssetNumbers = new Set(
-      existingRows.map((row) => row.assetNumber.trim()).filter((value) => value && value !== "-"),
+      existingRows.map((row) => normalizeNumberForMatch(row.assetNumber)).filter((value) => value && value !== "-"),
     );
     const existingUniversityNumbers = new Set(
-      existingRows.map((row) => row.universityAssetNumber.trim()).filter((value) => value && value !== "-"),
+      existingRows.map((row) => normalizeNumberForMatch(row.universityAssetNumber)).filter((value) => value && value !== "-"),
     );
 
     let existingCount = 0;
@@ -58,13 +63,8 @@ export async function POST(request: Request) {
     const inserted: AssetListRow[] = [];
     const failedRows: { assetName: string; assetNumber: string; universityAssetNumber: string; error: string }[] = [];
     const toInsert: AssetListRow[] = [];
+    const seenInThisBatch = new Set<string>();
 
-    // Pass 1: classify every row. A number shared by two rows *within this
-    // same incoming batch* is intentionally NOT treated as a duplicate here
-    // — the DB has no unique constraint on either number column, so both are
-    // real, separate assets; the client already flagged that pair as
-    // "review" for the admin to look at, this route's job is only to catch
-    // rows that already exist live (requirement 6).
     for (const asset of incoming) {
       const assetNumber = (asset?.assetNumber ?? "").trim();
       const universityAssetNumber = (asset?.universityAssetNumber ?? "").trim();
@@ -77,12 +77,29 @@ export async function POST(request: Request) {
         continue;
       }
 
+      const normalizedAssetNumber = normalizeNumberForMatch(assetNumber);
+      const normalizedUniversityNumber = normalizeNumberForMatch(universityAssetNumber);
       const existsAlready =
-        (hasActivityNumber && existingAssetNumbers.has(assetNumber)) ||
-        (hasUniversityNumber && existingUniversityNumbers.has(universityAssetNumber));
+        (hasActivityNumber && existingAssetNumbers.has(normalizedAssetNumber)) ||
+        (hasUniversityNumber && existingUniversityNumbers.has(normalizedUniversityNumber));
       if (existsAlready) {
         existingCount += 1;
         continue;
+      }
+
+      // Idempotency guard within this one request: if the exact same number
+      // appears twice in what was submitted (e.g. a double-submitted click),
+      // only the first copy inserts — the client only ever sends "ready"
+      // rows, which by definition have no duplicate within the file, so this
+      // only ever fires on an accidental double submission, not on genuine
+      // distinct assets.
+      const batchKey = hasActivityNumber ? `a:${normalizedAssetNumber}` : hasUniversityNumber ? `u:${normalizedUniversityNumber}` : null;
+      if (batchKey) {
+        if (seenInThisBatch.has(batchKey)) {
+          existingCount += 1;
+          continue;
+        }
+        seenInThisBatch.add(batchKey);
       }
 
       toInsert.push(asset);
