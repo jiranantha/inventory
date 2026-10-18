@@ -139,9 +139,9 @@ const ADMIN_IMPORT_TEMPLATE_SHEET_URL = "https://docs.google.com/spreadsheets/d/
 
 const IMPORT_STATUS_BADGE_CLASS: Record<AdminAssetImportRow["statusKind"], string> = {
   ready: "border-emerald-300/40 bg-emerald-400/10 text-emerald-200",
-  duplicate: "border-amber-300/40 bg-amber-400/10 text-amber-200",
+  review: "border-amber-300/40 bg-amber-400/10 text-amber-200",
+  existing: "border-sky-300/40 bg-sky-400/10 text-sky-200",
   incomplete: "border-red-300/40 bg-red-400/10 text-red-200",
-  invalid: "border-red-300/40 bg-red-400/10 text-red-200",
 };
 
 // Split once, outside the component, since ADMIN_IMPORT_FIELD_DEFINITIONS is a
@@ -173,7 +173,14 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
 
   const activeSheet = workbook?.sheets[sheetIndex] ?? null;
   const previewSummary = useMemo(() => (previewRows ? summarizeAdminAssetImport(previewRows) : null), [previewRows]);
-  const readyRows = useMemo(() => previewRows?.filter((row) => row.statusKind === "ready" && row.asset) ?? [], [previewRows]);
+  // "review" rows (a number shared with another row in this file, or no
+  // number at all) are imported too — they just need a follow-up look, they
+  // aren't rejected. Only "existing" (already in the database) and
+  // "incomplete" (no asset name) are held back from this list.
+  const importableRows = useMemo(
+    () => previewRows?.filter((row) => (row.statusKind === "ready" || row.statusKind === "review") && row.asset) ?? [],
+    [previewRows],
+  );
 
   const resetAll = () => {
     setWorkbook(null);
@@ -259,10 +266,10 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
   };
 
   const handleConfirmImport = async () => {
-    if (readyRows.length === 0) return;
+    if (importableRows.length === 0) return;
     setImporting(true);
     try {
-      const summary = await onImportAssets(readyRows.map((row) => row.asset as AssetListRow));
+      const summary = await onImportAssets(importableRows.map((row) => row.asset as AssetListRow));
       setInsertSummary(summary);
       setPreviewRows(null);
       setSelectedFile(null);
@@ -290,9 +297,10 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-muted">
           <li>รองรับเฉพาะไฟล์ .xlsx และ .xls เท่านั้น</li>
           <li>ระบบไม่บังคับชื่อคอลัมน์ในไฟล์ Excel ผู้ดูแลระบบสามารถเลือกจับคู่คอลัมน์จากไฟล์กับข้อมูลในระบบก่อนนำเข้าได้</li>
-          <li>ไฟล์นำเข้าควรมีเลขครุภัณฑ์อย่างน้อยหนึ่งประเภท ได้แก่ เลขทะเบียนควบคุมกิจกรรมนักศึกษา หรือเลขครุภัณฑ์มหาวิทยาลัย ระบบจะใช้เลขจากไฟล์โดยตรงและจะไม่รันเลขใหม่ระหว่างนำเข้า</li>
-          <li>หากไม่จับคู่คอลัมน์ปีงบประมาณ ระบบจะใช้ปีงบประมาณเริ่มต้นที่กำหนดไว้ด้านล่าง (ถ้ามี) หากเว้นว่างไว้ รายการนั้นจะถูกบันทึกว่า &quot;ยังไม่ระบุ&quot;</li>
-          <li>ข้อมูลที่ซ้ำกับระบบ หรือข้อมูลไม่ครบ จะไม่ถูกนำเข้า</li>
+          <li>เลขครุภัณฑ์ (ทั้งเลขกิจกรรมนักศึกษาและเลขมหาวิทยาลัย) ไม่บังคับต้องมีครบทุกแถว ระบบจะใช้เลขจากไฟล์โดยตรงและจะไม่รันเลขใหม่ระหว่างนำเข้า แถวที่ไม่มีเลขเลยยังนำเข้าได้ แต่จะถูกตั้งสถานะว่าต้องตรวจสอบ</li>
+          <li>หากไม่จับคู่คอลัมน์ปีงบประมาณ ระบบจะใช้ปีงบประมาณเริ่มต้นที่กำหนดไว้ด้านล่าง (ถ้ามี) หากเว้นว่างไว้ รายการนั้นจะถูกบันทึกว่า &quot;ยังไม่ระบุ&quot; ระบบจะไม่เดาปีงบประมาณให้โดยพลการ</li>
+          <li>เลขครุภัณฑ์ที่ซ้ำกันภายในไฟล์เดียวกันจะยังถูกนำเข้าทั้งหมด (ไม่ลบหรือรวมรายการ) แต่จะตั้งสถานะว่าต้องตรวจสอบให้ผู้ดูแลระบบตรวจทานภายหลัง</li>
+          <li>ข้อมูลที่มีอยู่ในระบบแล้ว (ตรงกับเลขครุภัณฑ์หรือเลขมหาวิทยาลัยของรายการเดิม) หรือข้อมูลไม่ครบ (ไม่มีชื่อรายการครุภัณฑ์) จะไม่ถูกนำเข้าซ้ำ</li>
           <li className="font-semibold text-ink">กรุณาตรวจสอบตัวอย่างข้อมูลก่อนกดยืนยันนำเข้า เพราะข้อมูลจะถูกเพิ่มเข้าสู่ฐานข้อมูลจริง</li>
         </ul>
         <a
@@ -463,7 +471,7 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
       {previewSummary && (
         <div className="rounded-lg border border-line bg-surface p-6">
           <h3 className="text-base font-bold text-ink">สรุปผลการตรวจสอบไฟล์</h3>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <div className="rounded-lg border border-line bg-surfaceSoft p-3 text-center">
               <p className="text-xs text-muted">จำนวนแถวทั้งหมด</p>
               <p className="mt-1 text-xl font-extrabold text-ink">{previewSummary.totalRows}</p>
@@ -473,16 +481,28 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
               <p className="mt-1 text-xl font-extrabold text-emerald-100">{previewSummary.ready}</p>
             </div>
             <div className="rounded-lg border border-amber-300/30 bg-amber-400/10 p-3 text-center">
-              <p className="text-xs text-amber-200">ข้อมูลซ้ำในระบบ</p>
-              <p className="mt-1 text-xl font-extrabold text-amber-100">{previewSummary.duplicate}</p>
+              <p className="text-xs text-amber-200">นำเข้าได้ แต่ต้องตรวจสอบ</p>
+              <p className="mt-1 text-xl font-extrabold text-amber-100">{previewSummary.review}</p>
+            </div>
+            <div className="rounded-lg border border-sky-300/30 bg-sky-400/10 p-3 text-center">
+              <p className="text-xs text-sky-200">มีอยู่ในระบบแล้ว</p>
+              <p className="mt-1 text-xl font-extrabold text-sky-100">{previewSummary.existing}</p>
             </div>
             <div className="rounded-lg border border-red-300/30 bg-red-400/10 p-3 text-center">
               <p className="text-xs text-red-200">ข้อมูลไม่ครบ</p>
               <p className="mt-1 text-xl font-extrabold text-red-100">{previewSummary.incomplete}</p>
             </div>
           </div>
-          {previewSummary.duplicate > 0 && (
-            <p className="mt-3 text-sm font-semibold text-amber-200">ข้อมูลซ้ำในระบบ จะไม่ถูกนำเข้า</p>
+          {previewSummary.review > 0 && (
+            <p className="mt-3 text-sm font-semibold text-amber-200">
+              รายการ &quot;นำเข้าได้ แต่ต้องตรวจสอบ&quot; จะถูกนำเข้าพร้อมรายการอื่น แต่มีเลขครุภัณฑ์ซ้ำกับแถวอื่นในไฟล์นี้ หรือไม่มีเลขครุภัณฑ์เลย กรุณาตรวจสอบภายหลัง
+            </p>
+          )}
+          {previewSummary.existing > 0 && (
+            <p className="mt-2 text-sm font-semibold text-sky-200">รายการ &quot;มีอยู่ในระบบแล้ว&quot; จะไม่ถูกนำเข้าซ้ำ</p>
+          )}
+          {previewSummary.incomplete > 0 && (
+            <p className="mt-2 text-sm font-semibold text-red-200">รายการ &quot;ข้อมูลไม่ครบ&quot; (ไม่มีชื่อรายการครุภัณฑ์) จะไม่ถูกนำเข้า</p>
           )}
         </div>
       )}
@@ -528,10 +548,10 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
             <button
               type="button"
               onClick={handleConfirmImport}
-              disabled={readyRows.length === 0 || importing}
+              disabled={importableRows.length === 0 || importing}
               className="min-h-11 rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {importing ? "กำลังนำเข้าข้อมูล..." : `ยืนยันนำเข้าข้อมูล (${readyRows.length} รายการ)`}
+              {importing ? "กำลังนำเข้าข้อมูล..." : `ยืนยันนำเข้าข้อมูล (${importableRows.length} รายการ)`}
             </button>
           </div>
         </div>
@@ -542,11 +562,21 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
           <h3 className="text-base font-bold text-emerald-100">ผลการนำเข้าข้อมูล</h3>
           <ul className="mt-3 space-y-1 text-sm text-emerald-100">
             <li>นำเข้าสำเร็จ {insertSummary.insertedCount} รายการ</li>
-            <li>ข้อมูลซ้ำ {insertSummary.duplicateCount} รายการ</li>
+            <li>มีอยู่ในระบบแล้ว (ไม่นำเข้าซ้ำ) {insertSummary.existingCount} รายการ</li>
             <li>ข้อมูลไม่ถูกต้อง {insertSummary.invalidCount} รายการ</li>
-            <li>ข้ามรายการ {insertSummary.duplicateCount + insertSummary.invalidCount} รายการ</li>
+            <li>ข้ามรายการทั้งหมด {insertSummary.existingCount + insertSummary.invalidCount} รายการ</li>
             <li>ข้อผิดพลาด {insertSummary.errorCount} รายการ</li>
           </ul>
+          {insertSummary.failedRows && insertSummary.failedRows.length > 0 && (
+            <div className="mt-3 rounded-md border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs text-red-100">
+              <p className="font-semibold">รายการที่เกิดข้อผิดพลาด:</p>
+              {insertSummary.failedRows.map((row, index) => (
+                <p key={index} className="mt-1">
+                  {row.assetName} (เลข: {row.assetNumber} / เลข มช.: {row.universityAssetNumber}) — {row.error}
+                </p>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </section>

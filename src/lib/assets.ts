@@ -516,22 +516,35 @@ export function buildAdminAssetImportPreview(
   defaultFiscalYear: string,
   unitResponsibleLookup?: UnitResponsibleLookup,
 ): AdminAssetImportRow[] {
-  const existingAssetNumbers = new Set(
-    existingAssets.map((asset) => asset.assetNumber.trim()).filter((value) => value && value !== "-"),
-  );
-  const existingUniversityNumbers = new Set(
+  // Maps (not just Sets) so a matched "existing" row can report which live
+  // database id it matched — requirement 9's "matched to an existing record".
+  const existingAssetNumberToId = new Map(
     existingAssets
-      .map((asset) => asset.universityAssetNumber?.trim() ?? "")
-      .filter((value) => value && value !== "-"),
+      .filter((asset) => asset.assetNumber && asset.assetNumber !== "-")
+      .map((asset) => [asset.assetNumber.trim(), asset.id]),
   );
-  const seenAssetNumbers = new Set<string>();
-  const seenUniversityNumbers = new Set<string>();
-
+  const existingUniversityNumberToId = new Map(
+    existingAssets
+      .filter((asset) => asset.universityAssetNumber && asset.universityAssetNumber !== "-")
+      .map((asset) => [(asset.universityAssetNumber ?? "").trim(), asset.id]),
+  );
   const mapped = (row: AssetImportRow, field: AdminImportFieldKey): string => {
     const columnId = mapping[field];
     if (!columnId) return "";
     return row[columnId]?.trim() ?? "";
   };
+
+  // Counted up front across the WHOLE file, not accumulated row by row —
+  // a number shared by rows 3 and 97 must flag *both* of them, including
+  // row 3, which a simple "seen so far" set would miss on its first pass.
+  const assetNumberCounts = new Map<string, number>();
+  const universityNumberCounts = new Map<string, number>();
+  for (const row of rows) {
+    const an = mapped(row, "assetNumber");
+    const un = mapped(row, "universityAssetNumber");
+    if (an && an !== "-") assetNumberCounts.set(an, (assetNumberCounts.get(an) ?? 0) + 1);
+    if (un && un !== "-") universityNumberCounts.set(un, (universityNumberCounts.get(un) ?? 0) + 1);
+  }
 
   return rows.map((row, index) => {
     const rowNumber = index + 2;
@@ -584,39 +597,68 @@ export function buildAdminAssetImportPreview(
     const reasons: string[] = [];
     // Non-blocking mismatch hint: an explicitly mapped fiscal year that
     // disagrees with the year encoded in the university asset number doesn't
-    // change the row's ready/duplicate/incomplete outcome, it's just surfaced
-    // so the admin can double-check which one is right.
+    // change the row's outcome, it's just surfaced so the admin can double-
+    // check which one is right.
     if (fiscalYearRawValid && universityFiscalYear !== null && fiscalYearRaw !== String(universityFiscalYear)) {
       reasons.push("ปีงบประมาณไม่ตรงกับเลขครุภัณฑ์มหาวิทยาลัย");
     }
     let statusKind: AdminAssetImportStatus = "ready";
     let statusLabel = "พร้อมนำเข้า";
+    let matchedExistingId: number | undefined;
 
     if (!assetName) {
+      // The only case that's neither inserted nor reviewable — nothing
+      // downstream (name, description fallback, report rows) works without it.
       statusKind = "incomplete";
       statusLabel = "ข้อมูลไม่ครบ: ไม่มีชื่อรายการครุภัณฑ์";
       reasons.push("ไม่มีชื่อรายการครุภัณฑ์");
-    } else if (!hasActivityNumber && !hasUniversityNumber) {
-      statusKind = "incomplete";
-      statusLabel = "ข้อมูลไม่ครบ: ไม่มีเลขครุภัณฑ์";
-      reasons.push("ไม่มีเลขครุภัณฑ์");
     } else {
-      const duplicateAssetNumber = hasActivityNumber && (existingAssetNumbers.has(assetNumber) || seenAssetNumbers.has(assetNumber));
-      const duplicateUniversityNumber = hasUniversityNumber
-        && (existingUniversityNumbers.has(universityAssetNumber) || seenUniversityNumbers.has(universityAssetNumber));
-      if (duplicateAssetNumber) reasons.push("เลขทะเบียนควบคุมกิจกรรมนักศึกษาซ้ำ");
-      if (duplicateUniversityNumber) reasons.push("เลขครุภัณฑ์มหาวิทยาลัยซ้ำ");
-      if (duplicateAssetNumber || duplicateUniversityNumber) {
-        statusKind = "duplicate";
-        statusLabel = "ข้อมูลซ้ำในระบบ";
+      const existingMatchId = hasActivityNumber
+        ? existingAssetNumberToId.get(assetNumber)
+        : hasUniversityNumber
+          ? existingUniversityNumberToId.get(universityAssetNumber)
+          : undefined;
+
+      if (existingMatchId !== undefined) {
+        // Requirement 6: never re-insert something the database already has
+        // (including the 66 records already corrected in a prior pass).
+        statusKind = "existing";
+        statusLabel = "มีอยู่ในระบบแล้ว";
+        matchedExistingId = existingMatchId;
+        reasons.push(`พบข้อมูลนี้ในระบบแล้ว (รหัสครุภัณฑ์ #${existingMatchId})`);
+      } else if (!hasActivityNumber && !hasUniversityNumber) {
+        // Requirement 1 & 4: a valid name with no number at all is still
+        // imported — just flagged, since its registration type can't be
+        // inferred without at least one number to look at.
+        statusKind = "review";
+        statusLabel = "ไม่มีเลขครุภัณฑ์ - ต้องตรวจสอบ";
+        reasons.push("ไม่มีเลขครุภัณฑ์ ไม่สามารถระบุประเภทการขึ้นทะเบียนได้ชัดเจน");
+      } else {
+        // Requirement 5: a number shared by more than one row *within this
+        // file* is still a real, separate asset (the database has no unique
+        // constraint on either number column) — it gets imported like any
+        // other ready row, just flagged so an admin reviews the pair.
+        const duplicateAssetNumber = hasActivityNumber && (assetNumberCounts.get(assetNumber) ?? 0) > 1;
+        const duplicateUniversityNumber = hasUniversityNumber && (universityNumberCounts.get(universityAssetNumber) ?? 0) > 1;
+        if (duplicateAssetNumber || duplicateUniversityNumber) {
+          statusKind = "review";
+          statusLabel = "เลขครุภัณฑ์ซ้ำในไฟล์ - ต้องตรวจสอบ";
+          if (duplicateAssetNumber) reasons.push("เลขทะเบียนควบคุมกิจกรรมนักศึกษาซ้ำกับแถวอื่นในไฟล์นี้");
+          if (duplicateUniversityNumber) reasons.push("เลขครุภัณฑ์มหาวิทยาลัยซ้ำกับแถวอื่นในไฟล์นี้");
+        }
       }
     }
 
-    if (hasActivityNumber) seenAssetNumbers.add(assetNumber);
-    if (hasUniversityNumber) seenUniversityNumbers.add(universityAssetNumber);
+    // A row with no number at all can't have its registrationType inferred
+    // (inferRegistrationType returns null) — it's still imported as "review",
+    // so it needs *some* valid, non-null value for the NOT NULL column; the
+    // activity-type default here is just a storage placeholder the admin is
+    // expected to correct, not an inference (requirement 4 only forbids
+    // treating it as a confident inference, not leaving the column empty).
+    const storedRegistrationType = registrationType ?? "ครุภัณฑ์ควบคุมกิจกรรมนักศึกษา";
 
     let asset: AssetListRow | undefined;
-    if (statusKind === "ready" && registrationType) {
+    if (statusKind === "ready" || statusKind === "review") {
       const generatedId = Date.now() + index + 1;
       asset = {
         id: generatedId,
@@ -648,7 +690,7 @@ export function buildAdminAssetImportPreview(
         imageCount: 0,
         assetImages: [],
         note,
-        registrationType,
+        registrationType: storedRegistrationType,
         universityAssetNumber: universityAssetNumber || "-",
         assetStructureType: assetStructureType.includes("ชุด") ? "set" : "single",
         assetSetItems: [],
@@ -674,6 +716,7 @@ export function buildAdminAssetImportPreview(
       statusKind,
       statusLabel,
       reasons,
+      matchedExistingId,
       asset,
     };
   });
@@ -683,9 +726,9 @@ export function summarizeAdminAssetImport(rows: AdminAssetImportRow[]): AdminAss
   return {
     totalRows: rows.length,
     ready: rows.filter((row) => row.statusKind === "ready").length,
-    duplicate: rows.filter((row) => row.statusKind === "duplicate").length,
+    review: rows.filter((row) => row.statusKind === "review").length,
+    existing: rows.filter((row) => row.statusKind === "existing").length,
     incomplete: rows.filter((row) => row.statusKind === "incomplete").length,
-    invalid: rows.filter((row) => row.statusKind === "invalid").length,
   };
 }
 

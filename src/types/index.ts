@@ -136,7 +136,16 @@ export type AssetImportPreviewRow = {
 // /setting > นำเข้าข้อมูล Excel (admin-only bulk import) — a separate, richer preview
 // shape from AssetImportPreviewRow above (which backs the existing /record importer)
 // since this flow needs per-row status buckets and registration-type inference.
-export type AdminAssetImportStatus = "ready" | "duplicate" | "incomplete" | "invalid";
+//
+// "existing" = matches a live DB record by assetNumber/universityAssetNumber,
+// not re-inserted. "review" = still gets inserted (the DB has no unique
+// constraint stopping it, and a real asset is a real asset even if its number
+// collides with another row or is missing entirely) but is flagged for an
+// admin to double-check afterward — a duplicate number within this same file,
+// or a row with no number at all so its registration type can't be inferred.
+// "incomplete" is the only status that's neither inserted nor reviewable:
+// no asset name at all, which nothing downstream can work with.
+export type AdminAssetImportStatus = "ready" | "review" | "existing" | "incomplete";
 export type AdminAssetImportRow = {
   rowNumber: number;
   fiscalYear: string;
@@ -155,14 +164,15 @@ export type AdminAssetImportRow = {
   statusKind: AdminAssetImportStatus;
   statusLabel: string;
   reasons: string[];
+  matchedExistingId?: number;
   asset?: AssetListRow;
 };
 export type AdminAssetImportSummary = {
   totalRows: number;
   ready: number;
-  duplicate: number;
+  review: number;
+  existing: number;
   incomplete: number;
-  invalid: number;
 };
 // Returned by POST /api/assets/import after the server re-validated/re-checked
 // duplicates against live data and actually inserted rows (see AdminAssetImportSummary
@@ -170,9 +180,10 @@ export type AdminAssetImportSummary = {
 export type AssetImportInsertSummary = {
   totalRows: number;
   insertedCount: number;
-  duplicateCount: number;
+  existingCount: number;
   invalidCount: number;
   errorCount: number;
+  failedRows?: { assetName: string; assetNumber: string; universityAssetNumber: string; error: string }[];
 };
 
 // Excel files uploaded to the admin importer make no assumption about header
