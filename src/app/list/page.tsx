@@ -510,17 +510,22 @@ function ListPage({
               viewport width, so giving them a % share made them balloon on wide screens
               and left dead space after the action buttons. Name and Org are left with
               no width so they split whatever's left (table-layout: fixed auto-columns
-              rule) and absorb all remaining space, however much or little there is. */}
-          <table className="w-full min-w-[960px] table-fixed border-collapse text-left text-sm">
+              rule) and absorb all remaining space, however much or little there is.
+              Number is sized for a full university asset number on one line (e.g.
+              "70.77100360037.บ68002", or the longer "เลข มช. ..." second line of the
+              both-numbers case) — it never truncates, so the other compact columns
+              (No/Year/NumberType/Status/Inspection/Image) are trimmed to just what
+              their actual content needs to make room. */}
+          <table className="w-full min-w-[1050px] table-fixed border-collapse text-left text-sm">
             <colgroup>
               <col className="w-[44px]" />
               <col className="w-[52px]" />
-              <col className="w-[152px]" />
-              <col className="w-[122px]" />
+              <col className="w-[260px]" />
+              <col className="w-[114px]" />
               <col />
               <col />
+              <col className="w-[92px]" />
               <col className="w-[100px]" />
-              <col className="w-[108px]" />
               <col className="w-[54px]" />
               <col className="w-[182px]" />
             </colgroup>
@@ -538,7 +543,7 @@ function ListPage({
                 <tr key={row.assetCode} className="align-middle hover:bg-surfaceSoft">
                   <td className="px-3 py-3 text-center text-muted">{(safePage - 1) * pageSize + index + 1}</td>
                   <td className="px-3 py-3 text-center">{row.fiscalYear}</td>
-                  <td className="overflow-hidden px-3 py-3 font-semibold text-primary"><AssetNumberCell asset={row} /></td>
+                  <td className="px-3 py-3 font-semibold text-primary"><AssetNumberCell asset={row} truncate={false} /></td>
                   <td className="px-2 py-3 text-center"><div className="mx-auto w-fit"><RegistrationTypeBadge registrationType={row.registrationType} truncate={false} /></div></td>
                   <td className="overflow-hidden px-3 py-3 font-semibold text-ink" title={row.assetName}><div className="max-w-full truncate">{row.assetName}</div></td>
                   <td className="overflow-hidden px-3 py-3"><div className="max-w-full truncate" title={row.organization}>{row.organization}</div></td>

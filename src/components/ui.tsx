@@ -157,13 +157,18 @@ export function RegistrationTypeBadge({ registrationType, truncate = true }: { r
 // Renders assetNumber / universityAssetNumber (or both, stacked) depending on
 // registrationType — used only where the number itself must reflect that split
 // (currently /list); other pages keep showing assetNumber as before.
-export function AssetNumberCell({ asset }: { asset: AssetListRow }) {
+// `truncate` defaults to true (the existing /list mobile-card behavior); the
+// /list desktop table passes false so the full number is always shown on one
+// line, never clipped with an ellipsis — the column there is sized wide
+// enough for this on purpose (see colgroup in /list's desktop table).
+export function AssetNumberCell({ asset, truncate = true }: { asset: AssetListRow; truncate?: boolean }) {
   const registrationType = getRegistrationType(asset);
   const universityNumber = asset.universityAssetNumber?.trim() || "-";
+  const lineClass = truncate ? "max-w-full truncate whitespace-nowrap" : "whitespace-nowrap";
 
   if (registrationType === UNIVERSITY_REGISTRATION_TYPE) {
     return (
-      <div className="max-w-full truncate whitespace-nowrap" title={universityNumber}>
+      <div className={lineClass} title={universityNumber}>
         {universityNumber}
       </div>
     );
@@ -171,15 +176,15 @@ export function AssetNumberCell({ asset }: { asset: AssetListRow }) {
 
   if (registrationType === BOTH_NUMBERS_REGISTRATION_TYPE) {
     return (
-      <div className="max-w-full" title={`${asset.assetNumber} · เลข มช. ${universityNumber}`}>
-        <div className="truncate whitespace-nowrap">{asset.assetNumber}</div>
-        <div className="mt-0.5 truncate whitespace-nowrap text-xs font-normal text-muted">เลข มช. {universityNumber}</div>
+      <div className={truncate ? "max-w-full" : undefined} title={`${asset.assetNumber} · เลข มช. ${universityNumber}`}>
+        <div className={lineClass}>{asset.assetNumber}</div>
+        <div className={`mt-0.5 text-xs font-normal text-muted ${lineClass}`}>เลข มช. {universityNumber}</div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-full truncate whitespace-nowrap" title={asset.assetNumber}>
+    <div className={lineClass} title={asset.assetNumber}>
       {asset.assetNumber}
     </div>
   );
