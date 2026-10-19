@@ -3,7 +3,7 @@ import { assetTypeOptions } from "@/constants/options";
 import { allowedAssetStatuses } from "@/constants/statuses";
 import { formatThaiDate, formatThaiDateTimeWithSeconds } from "@/lib/dates";
 import { getOrganizationType, normalizeOrganizationName } from "@/lib/organizations";
-import { AdminAssetImportRow, AdminAssetImportStatus, AdminAssetImportSummary, AdminImportColumnMapping, AdminImportFieldKey, AnnualInspection, AssetImportPreviewRow, AssetImportRow, AssetListRow, DetectedExcelColumn, ReportColumn, UnitResponsiblePerson } from "@/types";
+import { AdminAssetImportRow, AdminAssetImportStatus, AdminAssetImportSummary, AdminImportColumnMapping, AdminImportFieldKey, AdminImportRowOverrides, AnnualInspection, AssetImportPreviewRow, AssetImportRow, AssetListRow, DetectedExcelColumn, ReportColumn, UnitResponsiblePerson } from "@/types";
 
 // Looked up by (normalized) organization name when an Excel import row leaves
 // responsiblePerson/responsiblePhone empty — see requirement 10: an explicit
@@ -533,33 +533,46 @@ export function buildAdminAssetImportPreview(
   existingAssets: AssetListRow[],
   defaultFiscalYear: string,
   unitResponsibleLookup?: UnitResponsibleLookup,
+  // Inline edits from the preview table (requirement 3), keyed by rowNumber —
+  // always re-applied on top of the raw Excel column mapping, so edits
+  // survive a revalidation pass without re-reading the file.
+  overridesByRowNumber?: AdminImportRowOverrides,
+  // Rows the admin explicitly clicked "ยืนยันนำเข้าโดยไม่มีเลขครุภัณฑ์" for
+  // (requirement 5) — until a numberless row's rowNumber is in this set, it
+  // always stays "review", never "ready", no matter how clean it otherwise is.
+  confirmedNoNumberRowNumbers?: Set<number>,
 ): AdminAssetImportRow[] {
   // Keyed by normalizeNumberForMatch (not the raw text) so a number already
   // flagged "(ซ้ำ)" in the database still matches the same plain number in a
   // freshly uploaded file — see requirement 1. Stores the existing record's
-  // name/organization too, not just its id, so a number match whose name
+  // identifying details too, not just its id, so a number match whose name
   // looks unrelated can be downgraded to "review" instead of silently
   // skipped as the same physical asset (requirement 2).
-  type ExistingRef = { id: number; assetName: string; organization: string };
+  type ExistingRef = { id: number; assetName: string; organization: string; assetType: string };
   const existingAssetNumberToRecord = new Map<string, ExistingRef>(
     existingAssets
       .filter((asset) => asset.assetNumber && asset.assetNumber !== "-")
-      .map((asset) => [normalizeNumberForMatch(asset.assetNumber), { id: asset.id, assetName: asset.assetName, organization: asset.organization }]),
+      .map((asset) => [normalizeNumberForMatch(asset.assetNumber), { id: asset.id, assetName: asset.assetName, organization: asset.organization, assetType: asset.assetType }]),
   );
   const existingUniversityNumberToRecord = new Map<string, ExistingRef>(
     existingAssets
       .filter((asset) => asset.universityAssetNumber && asset.universityAssetNumber !== "-")
-      .map((asset) => [normalizeNumberForMatch(asset.universityAssetNumber ?? ""), { id: asset.id, assetName: asset.assetName, organization: asset.organization }]),
+      .map((asset) => [normalizeNumberForMatch(asset.universityAssetNumber ?? ""), { id: asset.id, assetName: asset.assetName, organization: asset.organization, assetType: asset.assetType }]),
   );
   // Existing records with NO number at all — the only legitimate comparison
   // target for an incoming numberless row (requirement 2: name alone is
   // never a safe key against *numbered* existing assets, since distinct
-  // physical items routinely share a name).
+  // physical items routinely share a name). Name + unit + category together
+  // (not name alone) form the comparison key — see CASE D.
   const existingNoNumberRecords: ExistingRef[] = existingAssets
     .filter((asset) => (!asset.assetNumber || asset.assetNumber === "-") && (!asset.universityAssetNumber || asset.universityAssetNumber === "-"))
-    .map((asset) => ({ id: asset.id, assetName: asset.assetName, organization: asset.organization }));
+    .map((asset) => ({ id: asset.id, assetName: asset.assetName, organization: asset.organization, assetType: asset.assetType }));
+  const noNumberKey = (name: string, organization: string, assetType: string) =>
+    `${normalizeNameForMatch(name)}|${organization}|${assetType}`;
 
-  const mapped = (row: AssetImportRow, field: AdminImportFieldKey): string => {
+  const mapped = (row: AssetImportRow, field: AdminImportFieldKey, rowNumber: number): string => {
+    const override = overridesByRowNumber?.[rowNumber]?.[field];
+    if (override !== undefined) return override.trim();
     const columnId = mapping[field];
     if (!columnId) return "";
     return row[columnId]?.trim() ?? "";
@@ -573,9 +586,9 @@ export function buildAdminAssetImportPreview(
   // existing" preview: the 66 already-corrected rows store their number in
   // universityAssetNumber, not assetNumber, so a mapping-only lookup always
   // missed them).
-  const resolveNumbers = (row: AssetImportRow): { assetNumber: string; universityAssetNumber: string } => {
-    const rawAssetNumber = mapped(row, "assetNumber");
-    const rawUniversityNumber = mapped(row, "universityAssetNumber");
+  const resolveNumbers = (row: AssetImportRow, rowNumber: number): { assetNumber: string; universityAssetNumber: string } => {
+    const rawAssetNumber = mapped(row, "assetNumber", rowNumber);
+    const rawUniversityNumber = mapped(row, "universityAssetNumber", rowNumber);
     if (rawAssetNumber && rawAssetNumber !== "-" && !rawUniversityNumber && looksLikeUniversityAssetNumber(rawAssetNumber)) {
       return { assetNumber: "-", universityAssetNumber: rawAssetNumber };
     }
@@ -583,24 +596,35 @@ export function buildAdminAssetImportPreview(
   };
 
   // Counted up front across the WHOLE file, not accumulated row by row —
-  // a number shared by rows 3 and 97 must flag *both* of them, including
-  // row 3, which a simple "seen so far" set would miss on its first pass.
-  // Keyed by the normalized match form, same as the existing-record maps.
+  // a number (or, for numberless rows, a name+unit+category combination)
+  // shared by rows 3 and 97 must flag *both* of them, including row 3, which
+  // a simple "seen so far" set would miss on its first pass.
   const assetNumberCounts = new Map<string, number>();
   const universityNumberCounts = new Map<string, number>();
-  for (const row of rows) {
-    const { assetNumber: an, universityAssetNumber: un } = resolveNumbers(row);
+  const noNumberCounts = new Map<string, number>();
+  rows.forEach((row, i) => {
+    const rowNumber = i + 2;
+    const { assetNumber: an, universityAssetNumber: un } = resolveNumbers(row, rowNumber);
     if (an && an !== "-") assetNumberCounts.set(normalizeNumberForMatch(an), (assetNumberCounts.get(normalizeNumberForMatch(an)) ?? 0) + 1);
     if (un && un !== "-") universityNumberCounts.set(normalizeNumberForMatch(un), (universityNumberCounts.get(normalizeNumberForMatch(un)) ?? 0) + 1);
-  }
+    if ((!an || an === "-") && (!un || un === "-")) {
+      const name = mapped(row, "assetName", rowNumber);
+      const organization = normalizeOrganizationName(mapped(row, "organization", rowNumber) || "") || "-";
+      const assetType = mapped(row, "assetType", rowNumber) || "-";
+      if (name) {
+        const key = noNumberKey(name, organization, assetType);
+        noNumberCounts.set(key, (noNumberCounts.get(key) ?? 0) + 1);
+      }
+    }
+  });
 
   return rows.map((row, index) => {
     const rowNumber = index + 2;
-    const assetName = mapped(row, "assetName");
-    const { assetNumber, universityAssetNumber } = resolveNumbers(row);
+    const assetName = mapped(row, "assetName", rowNumber);
+    const { assetNumber, universityAssetNumber } = resolveNumbers(row, rowNumber);
     const hasActivityNumber = Boolean(assetNumber && assetNumber !== "-");
     const hasUniversityNumber = Boolean(universityAssetNumber && universityAssetNumber !== "-");
-    const fiscalYearRaw = mapped(row, "fiscalYear");
+    const fiscalYearRaw = mapped(row, "fiscalYear", rowNumber);
     const fiscalYearRawValid = /^[0-9]{4}$/.test(fiscalYearRaw);
     // Priority: (1) the mapped Excel fiscal-year column, (2) the year encoded
     // in the university asset number (e.g. "...ร59001" → 2559) when there's a
@@ -618,26 +642,26 @@ export function buildAdminAssetImportPreview(
         : defaultFiscalYearValid
           ? defaultFiscalYear
           : "";
-    const numberPlacement = mapped(row, "numberPlacement") || "-";
-    const assetStructureType = mapped(row, "assetStructureType") || "ครุภัณฑ์เดี่ยว";
-    const assetType = mapped(row, "assetType") || "-";
-    const organizationRaw = mapped(row, "organization") || "-";
+    const numberPlacement = mapped(row, "numberPlacement", rowNumber) || "-";
+    const assetStructureType = mapped(row, "assetStructureType", rowNumber) || "ครุภัณฑ์เดี่ยว";
+    const assetType = mapped(row, "assetType", rowNumber) || "-";
+    const organizationRaw = mapped(row, "organization", rowNumber) || "-";
     const organization = organizationRaw === "-" ? "-" : normalizeOrganizationName(organizationRaw) || organizationRaw;
-    const location = mapped(row, "location") || "-";
-    const statusRaw = mapped(row, "status");
+    const location = mapped(row, "location", rowNumber) || "-";
+    const statusRaw = mapped(row, "status", rowNumber);
     const status = statusRaw && allowedAssetStatuses.includes(statusRaw) ? statusRaw : "รอตรวจสอบ";
-    const note = mapped(row, "note") || "-";
-    const assetDescription = mapped(row, "assetDescription") || assetName || "-";
-    const budgetSource = mapped(row, "budgetSource");
-    const purchaseProject = mapped(row, "purchaseProject") || "-";
-    const recordDate = mapped(row, "recordDate") || "-";
+    const note = mapped(row, "note", rowNumber) || "-";
+    const assetDescription = mapped(row, "assetDescription", rowNumber) || assetName || "-";
+    const budgetSource = mapped(row, "budgetSource", rowNumber);
+    const purchaseProject = mapped(row, "purchaseProject", rowNumber) || "-";
+    const recordDate = mapped(row, "recordDate", rowNumber) || "-";
     const currentResponsible = organization !== "-" ? unitResponsibleLookup?.get(organization) : undefined;
-    const responsiblePerson = mapped(row, "responsiblePerson") || currentResponsible?.responsiblePerson || "-";
-    const responsiblePhone = mapped(row, "responsiblePhone") || currentResponsible?.responsiblePhone || "-";
+    const responsiblePerson = mapped(row, "responsiblePerson", rowNumber) || currentResponsible?.responsiblePerson || "-";
+    const responsiblePhone = mapped(row, "responsiblePhone", rowNumber) || currentResponsible?.responsiblePhone || "-";
 
     // Requirement 7: an explicitly mapped, valid registration type wins; otherwise
     // infer it from whichever asset number(s) the row actually has.
-    const registrationTypeRaw = mapped(row, "registrationType");
+    const registrationTypeRaw = mapped(row, "registrationType", rowNumber);
     const inferredRegistrationType = inferRegistrationType(assetNumber, universityAssetNumber);
     const registrationType = VALID_REGISTRATION_TYPES.includes(registrationTypeRaw) ? registrationTypeRaw : inferredRegistrationType;
 
@@ -649,43 +673,52 @@ export function buildAdminAssetImportPreview(
     if (fiscalYearRawValid && universityFiscalYear !== null && fiscalYearRaw !== String(universityFiscalYear)) {
       reasons.push("ปีงบประมาณไม่ตรงกับเลขครุภัณฑ์มหาวิทยาลัย");
     }
-    // "ready" (NEW) and "existing" are mutually exclusive outcomes, as are
-    // "review" (ambiguous — never auto-inserted) and "invalid" (can't be
-    // imported at all, period). isPartiallyIncomplete only matters for
-    // "ready" rows — it's a display split (requirement 6's two NEW cards),
-    // not a different outcome: both are inserted the same way.
+    // Exactly three outcomes — see the AdminAssetImportStatus doc comment.
     let statusKind: AdminAssetImportStatus = "ready";
     let statusLabel = "พร้อมนำเข้า";
     let matchedExistingId: number | undefined;
-    let isPartiallyIncomplete = false;
+    let needsNoNumberConfirmation = false;
 
     if (!assetName) {
-      // The only truly blocking case — nothing downstream (name, description
-      // fallback, report rows) works without it.
-      statusKind = "invalid";
-      statusLabel = "นำเข้าไม่ได้: ไม่มีชื่อรายการครุภัณฑ์";
-      reasons.push("ไม่มีชื่อรายการครุภัณฑ์");
+      // No longer a hard block — editable via the preview table and
+      // revalidated, same as any other issue; it just can't be inserted
+      // until the admin fills in a name.
+      statusKind = "review";
+      statusLabel = "ต้องตรวจสอบข้อมูลซ้ำ";
+      reasons.push("ไม่มีชื่อรายการครุภัณฑ์ กรุณาแก้ไขข้อมูลก่อนนำเข้า");
     } else if (!hasActivityNumber && !hasUniversityNumber) {
-      // Requirement 2: a numberless row is only ever compared against other
-      // numberless EXISTING records (by name+unit) — never against numbered
-      // ones, where a shared name routinely means distinct physical items
-      // (multiple drums, chairs, microphones, ...). A match here is still
-      // uncertain without a number to confirm it, so it's "review", not an
-      // automatic "existing".
+      // Requirement 5: a numberless row always needs the admin's explicit,
+      // one-time confirmation before it can ever become "ready" — regardless
+      // of how clean it otherwise looks.
+      // Requirement 2 / CASE D: compared by name + unit + category together,
+      // and only against OTHER numberless rows/records — never against a
+      // numbered one, where a shared name routinely means distinct physical
+      // items (multiple drums, chairs, microphones, ...).
+      const key = noNumberKey(assetName, organization, assetType);
       const possibleMatch = existingNoNumberRecords.find(
-        (ref) => normalizeNameForMatch(ref.assetName) === normalizeNameForMatch(assetName) && ref.organization === organization,
+        (ref) => noNumberKey(ref.assetName, ref.organization, ref.assetType) === key,
       );
-      if (possibleMatch) {
+      const duplicateInFile = (noNumberCounts.get(key) ?? 0) > 1;
+
+      if (!confirmedNoNumberRowNumbers?.has(rowNumber)) {
+        statusKind = "review";
+        statusLabel = "ต้องตรวจสอบข้อมูลซ้ำ";
+        needsNoNumberConfirmation = true;
+        reasons.push("ไม่มีเลขครุภัณฑ์ ต้องยืนยันก่อนนำเข้า");
+        if (possibleMatch) reasons.push(`ชื่อ หน่วยงาน และประเภทตรงกับข้อมูลเดิม (รหัสครุภัณฑ์ #${possibleMatch.id})`);
+        if (duplicateInFile) reasons.push("ชื่อ หน่วยงาน และประเภทซ้ำกับแถวอื่นที่ไม่มีเลขครุภัณฑ์ในไฟล์นี้");
+        if (possibleMatch) matchedExistingId = possibleMatch.id;
+      } else if (possibleMatch) {
         statusKind = "review";
         statusLabel = "ต้องตรวจสอบข้อมูลซ้ำ";
         matchedExistingId = possibleMatch.id;
-        reasons.push(`ไม่มีเลขครุภัณฑ์ แต่ชื่อและหน่วยงานตรงกับข้อมูลเดิม (รหัสครุภัณฑ์ #${possibleMatch.id}) กรุณาตรวจสอบว่าเป็นรายการเดียวกันหรือไม่`);
+        reasons.push(`ไม่มีเลขครุภัณฑ์ แต่ชื่อ หน่วยงาน และประเภทตรงกับข้อมูลเดิม (รหัสครุภัณฑ์ #${possibleMatch.id}) กรุณาตรวจสอบว่าเป็นรายการเดียวกันหรือไม่`);
+      } else if (duplicateInFile) {
+        statusKind = "review";
+        statusLabel = "ต้องตรวจสอบข้อมูลซ้ำ";
+        reasons.push("ไม่มีเลขครุภัณฑ์ และชื่อ/หน่วยงาน/ประเภทซ้ำกับแถวอื่นในไฟล์นี้ (CASE D) กรุณาตรวจสอบ");
       } else {
-        // Requirement 1 & 4: still imported — just flagged as incomplete, since
-        // its registration type can't be confidently inferred without a number.
-        isPartiallyIncomplete = true;
-        statusLabel = "พร้อมนำเข้า - ข้อมูลบางส่วนยังไม่ระบุ";
-        reasons.push("ไม่มีเลขครุภัณฑ์ ไม่สามารถระบุประเภทการขึ้นทะเบียนได้ชัดเจน");
+        reasons.push("ยืนยันนำเข้าโดยไม่มีเลขครุภัณฑ์แล้ว — สามารถเพิ่มเลขได้ภายหลังที่หน้าแก้ไขครุภัณฑ์");
       }
     } else {
       const existingRef = hasActivityNumber
@@ -695,15 +728,15 @@ export function buildAdminAssetImportPreview(
       if (existingRef) {
         const sameName = normalizeNameForMatch(existingRef.assetName) === normalizeNameForMatch(assetName);
         if (sameName) {
-          // Requirement 6: never re-insert something the database already has
-          // (including the 66 records already corrected in a prior pass).
+          // CASE A — requirement 6: never re-insert something the database
+          // already has (including the records already corrected earlier).
           statusKind = "existing";
           statusLabel = "มีอยู่ในระบบแล้ว - ไม่ต้องนำเข้า";
           matchedExistingId = existingRef.id;
           reasons.push(`พบข้อมูลนี้ในระบบแล้ว (รหัสครุภัณฑ์ #${existingRef.id})`);
         } else {
-          // Requirement 2: same number, different name — don't assume it's
-          // the same physical asset (could be a data-entry mistake on either
+          // CASE B — same number, different name: don't assume it's the
+          // same physical asset (could be a data-entry mistake on either
           // side), and don't silently skip it either.
           statusKind = "review";
           statusLabel = "ต้องตรวจสอบข้อมูลซ้ำ";
@@ -711,9 +744,11 @@ export function buildAdminAssetImportPreview(
           reasons.push(`เลขครุภัณฑ์ตรงกับรายการเดิม (รหัสครุภัณฑ์ #${existingRef.id}) แต่ชื่อรายการต่างกัน ("${existingRef.assetName}" ในระบบ ≠ "${assetName}" ในไฟล์) กรุณาตรวจสอบ`);
         }
       } else {
-        // Requirement 5: a number shared by more than one row *within this
-        // file itself* is an identity ambiguity the admin must resolve by
-        // hand — never auto-inserted, never auto-merged or dropped.
+        // A number shared by more than one row *within this file itself* is
+        // an identity ambiguity the admin must resolve by hand — never
+        // auto-inserted, never auto-merged or dropped. (CASE C — same name,
+        // different numbers — is deliberately NOT checked here: different
+        // valid numbers always means distinct assets.)
         const duplicateAssetNumber = hasActivityNumber && (assetNumberCounts.get(normalizeNumberForMatch(assetNumber)) ?? 0) > 1;
         const duplicateUniversityNumber = hasUniversityNumber && (universityNumberCounts.get(normalizeNumberForMatch(universityAssetNumber)) ?? 0) > 1;
         if (duplicateAssetNumber || duplicateUniversityNumber) {
@@ -721,12 +756,10 @@ export function buildAdminAssetImportPreview(
           statusLabel = "ต้องตรวจสอบข้อมูลซ้ำ";
           if (duplicateAssetNumber) reasons.push("เลขทะเบียนควบคุมกิจกรรมนักศึกษาซ้ำกับแถวอื่นในไฟล์นี้");
           if (duplicateUniversityNumber) reasons.push("เลขครุภัณฑ์มหาวิทยาลัยซ้ำกับแถวอื่นในไฟล์นี้");
-        } else if (!fiscalYear || organization === "-") {
-          isPartiallyIncomplete = true;
-          statusLabel = "พร้อมนำเข้า - ข้อมูลบางส่วนยังไม่ระบุ";
-          if (!fiscalYear) reasons.push("ไม่มีปีงบประมาณ");
-          if (organization === "-") reasons.push("ไม่มีหน่วยงานที่รับผิดชอบ");
         }
+        // Missing fiscal year, organization, or other optional fields never
+        // blocks "ready" on their own (requirement 6) — only a missing
+        // number or an actual identity conflict does.
       }
     }
 
@@ -800,7 +833,7 @@ export function buildAdminAssetImportPreview(
       statusLabel,
       reasons,
       matchedExistingId,
-      isPartiallyIncomplete,
+      needsNoNumberConfirmation,
       asset,
     };
   });
@@ -810,10 +843,8 @@ export function summarizeAdminAssetImport(rows: AdminAssetImportRow[]): AdminAss
   return {
     totalRows: rows.length,
     existing: rows.filter((row) => row.statusKind === "existing").length,
-    newComplete: rows.filter((row) => row.statusKind === "ready" && !row.isPartiallyIncomplete).length,
-    newIncomplete: rows.filter((row) => row.statusKind === "ready" && row.isPartiallyIncomplete).length,
+    ready: rows.filter((row) => row.statusKind === "ready").length,
     review: rows.filter((row) => row.statusKind === "review").length,
-    invalid: rows.filter((row) => row.statusKind === "invalid").length,
   };
 }
 

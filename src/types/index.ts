@@ -137,18 +137,20 @@ export type AssetImportPreviewRow = {
 // shape from AssetImportPreviewRow above (which backs the existing /record importer)
 // since this flow needs per-row status buckets and registration-type inference.
 //
-// "existing" = matches a live DB record (by number, or by name+unit when
-// neither the row nor the match has any number), not re-inserted. "ready"
-// (NEW) is the only status that gets a payload built and actually inserted;
-// isPartiallyIncomplete just splits it for display into "clean" vs "missing
-// some optional field" — both insert the same way. "review" is never
-// auto-inserted and never auto-skipped: a number shared by two rows in this
-// same file, a number that matches an existing record under a different
-// name, or a numberless row whose name+unit resembles an existing numberless
-// record — all genuine identity ambiguities an admin has to resolve by hand.
-// "invalid" is the only status that can never be imported at all: no asset
-// name, which nothing downstream can work with.
-export type AdminAssetImportStatus = "ready" | "review" | "existing" | "invalid";
+// Exactly three outcomes, every row in exactly one of them (requirement:
+// Total = Existing + Ready + Review):
+// - "existing": matches a live DB record (by number, or by name+unit+type
+//   when neither side has a number) with matching details — not re-inserted.
+// - "ready": the only status that gets a payload built and actually
+//   inserted — a clean new row, or a row the admin has resolved (edited, or
+//   explicitly confirmed as number-less) with no remaining ambiguity.
+// - "review": never auto-inserted and never auto-skipped — covers every kind
+//   of ambiguity (a number shared by two rows, a number matching an existing
+//   record under a different name, a numberless row awaiting the admin's
+//   explicit per-row confirmation, a numberless row that resembles another
+//   numberless row/record by name+unit+type, a missing asset name the admin
+//   still needs to fill in, etc). All fixable by editing + revalidating.
+export type AdminAssetImportStatus = "ready" | "review" | "existing";
 export type AdminAssetImportRow = {
   rowNumber: number;
   fiscalYear: string;
@@ -168,16 +170,17 @@ export type AdminAssetImportRow = {
   statusLabel: string;
   reasons: string[];
   matchedExistingId?: number;
-  isPartiallyIncomplete?: boolean;
+  // True only for a "review" row that's blocked purely on the admin's
+  // explicit "ยืนยันนำเข้าโดยไม่มีเลขครุภัณฑ์" confirmation (requirement 5) —
+  // the UI uses this to decide whether to show that specific action.
+  needsNoNumberConfirmation?: boolean;
   asset?: AssetListRow;
 };
 export type AdminAssetImportSummary = {
   totalRows: number;
   existing: number;
-  newComplete: number;
-  newIncomplete: number;
+  ready: number;
   review: number;
-  invalid: number;
 };
 // Returned by POST /api/assets/import after the server re-validated/re-checked
 // duplicates against live data and actually inserted rows (see AdminAssetImportSummary
@@ -226,6 +229,14 @@ export type AdminImportFieldKey =
 // Maps a system field to the id of the Excel column the admin picked for it
 // (or null/absent for "ไม่ใช้คอลัมน์นี้" — not mapped).
 export type AdminImportColumnMapping = Partial<Record<AdminImportFieldKey, string | null>>;
+
+// Inline edits made in the import preview table, keyed by that row's
+// `rowNumber` (stable across revalidation — it's always "Excel row index +
+// 2", never reassigned). A present key always wins over whatever the mapped
+// Excel column would have produced; it's held in memory only (import draft
+// state), never written to the file or the database until the row is
+// actually inserted.
+export type AdminImportRowOverrides = Record<number, Partial<Record<AdminImportFieldKey, string>>>;
 
 export type HistoryFieldRow = {
   label: string;

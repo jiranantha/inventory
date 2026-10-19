@@ -9,7 +9,9 @@ import { ADMIN_IMPORT_FIELD_DEFINITIONS, buildAdminAssetImportPreview, buildUnit
 import { normalizeOrganizationName } from "@/lib/organizations";
 import { readExcelWorkbookForMapping } from "@/lib/import-export";
 import { uniqueSorted } from "@/lib/utils";
-import { AdminAssetImportRow, AdminImportColumnMapping, AssetImportInsertSummary, AssetListRow, DetectedExcelWorkbook, MasterDataItem, UnitResponsiblePerson, UnitResponsibleUpdateHistory } from "@/types";
+import { assetTypeOptions, registrationTypeOptions } from "@/constants/options";
+import { allowedAssetStatuses } from "@/constants/statuses";
+import { AdminAssetImportRow, AdminImportColumnMapping, AdminImportFieldKey, AdminImportRowOverrides, AssetImportInsertSummary, AssetImportRow, AssetListRow, DetectedExcelWorkbook, MasterDataItem, UnitResponsiblePerson, UnitResponsibleUpdateHistory } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 function ActiveToggle({ checked, onChange, disabled, ariaLabel }: {
@@ -141,7 +143,6 @@ const IMPORT_STATUS_BADGE_CLASS: Record<AdminAssetImportRow["statusKind"], strin
   ready: "border-emerald-300/40 bg-emerald-400/10 text-emerald-200",
   review: "border-amber-300/40 bg-amber-400/10 text-amber-200",
   existing: "border-sky-300/40 bg-sky-400/10 text-sky-200",
-  invalid: "border-red-300/40 bg-red-400/10 text-red-200",
 };
 
 // Split once, outside the component, since ADMIN_IMPORT_FIELD_DEFINITIONS is a
@@ -149,6 +150,28 @@ const IMPORT_STATUS_BADGE_CLASS: Record<AdminAssetImportRow["statusKind"], strin
 // a collapsible "เพิ่มเติม" section so the mapping UI isn't overwhelming.
 const requiredImportFields = ADMIN_IMPORT_FIELD_DEFINITIONS.filter((field) => field.required);
 const optionalImportFields = ADMIN_IMPORT_FIELD_DEFINITIONS.filter((field) => !field.required);
+
+// Fields the preview table's per-row edit modal exposes (requirement 3).
+// "select" fields use a fixed option list; "text" fields are free text.
+const EDITABLE_IMPORT_FIELDS: { key: AdminImportFieldKey; label: string; kind: "text" | "select"; options?: string[] }[] = [
+  { key: "assetName", label: "ชื่อรายการครุภัณฑ์", kind: "text" },
+  { key: "registrationType", label: "ประเภทการขึ้นทะเบียน", kind: "select", options: registrationTypeOptions },
+  { key: "universityAssetNumber", label: "เลขครุภัณฑ์มหาวิทยาลัย", kind: "text" },
+  { key: "assetNumber", label: "เลขทะเบียนควบคุมกิจกรรมนักศึกษา", kind: "text" },
+  { key: "assetStructureType", label: "ลักษณะครุภัณฑ์", kind: "select", options: ["ครุภัณฑ์เดี่ยว", "ครุภัณฑ์แบบชุด"] },
+  { key: "assetType", label: "ประเภทครุภัณฑ์", kind: "select", options: assetTypeOptions },
+  { key: "fiscalYear", label: "ปีงบประมาณที่จัดซื้อ", kind: "text" },
+  { key: "status", label: "สถานะการใช้งาน", kind: "select", options: allowedAssetStatuses },
+  { key: "organization", label: "องค์กรนักศึกษา/หน่วยงานที่รับผิดชอบ", kind: "text" },
+  { key: "location", label: "สถานที่จัดเก็บ", kind: "text" },
+];
+
+const IMPORT_STATUS_FILTER_OPTIONS: { value: "all" | AdminAssetImportRow["statusKind"]; label: string }[] = [
+  { value: "all", label: "ทุกสถานะ" },
+  { value: "existing", label: "มีอยู่ในระบบแล้ว" },
+  { value: "ready", label: "พร้อมนำเข้า" },
+  { value: "review", label: "ต้องตรวจสอบ" },
+];
 
 function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { assets: AssetListRow[]; onImportAssets: (rows: AssetListRow[]) => Promise<AssetImportInsertSummary>; unitResponsiblePersons: UnitResponsiblePerson[] }) {
   const { showToast } = useAppData();
@@ -163,34 +186,71 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
   const [workbook, setWorkbook] = useState<DetectedExcelWorkbook | null>(null);
   const [sheetIndex, setSheetIndex] = useState(0);
   const [mapping, setMapping] = useState<AdminImportColumnMapping>({});
+  // The raw Excel rows are frozen here once the preview is first shown, so
+  // edits + "ตรวจสอบอีกครั้ง" never require re-reading the file (requirement 4).
+  const [sourceRows, setSourceRows] = useState<AssetImportRow[] | null>(null);
+  // Import draft state (requirement 3) — inline edits, keyed by the row's
+  // stable rowNumber, kept entirely in memory until the row is actually
+  // inserted. Survives revalidation, filtering, and scrolling because it
+  // lives here, not inside the rendered preview rows.
+  const [rowOverrides, setRowOverrides] = useState<AdminImportRowOverrides>({});
+  const [confirmedNoNumberRows, setConfirmedNoNumberRows] = useState<Set<number>>(new Set());
   const [previewRows, setPreviewRows] = useState<AdminAssetImportRow[] | null>(null);
+  // True from the moment any edit/confirmation happens until "ตรวจสอบอีกครั้ง"
+  // runs again — the final import button stays disabled the whole time
+  // (requirement 4: "any edit... must invalidate the previous validation result").
+  const [isStale, setIsStale] = useState(false);
   const [checkError, setCheckError] = useState("");
   const [mappingError, setMappingError] = useState("");
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [checking, setChecking] = useState(false);
   const [importing, setImporting] = useState(false);
   const [insertSummary, setInsertSummary] = useState<AssetImportInsertSummary | null>(null);
+  const [editingRowNumber, setEditingRowNumber] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<Partial<Record<AdminImportFieldKey, string>>>({});
+  const [noNumberConfirmRowNumber, setNoNumberConfirmRowNumber] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | AdminAssetImportRow["statusKind"]>("all");
 
   const activeSheet = workbook?.sheets[sheetIndex] ?? null;
   const previewSummary = useMemo(() => (previewRows ? summarizeAdminAssetImport(previewRows) : null), [previewRows]);
   // Only genuinely new, unambiguous rows are ever submitted for insertion.
-  // "existing" rows are already in the database, "review" rows are a real
-  // identity ambiguity an admin must resolve by hand (never auto-inserted),
-  // and "invalid" rows have no asset name at all.
-  const importableRows = useMemo(
-    () => previewRows?.filter((row) => row.statusKind === "ready" && row.asset) ?? [],
-    [previewRows],
-  );
+  // "existing" rows are already in the database; "review" rows are a real
+  // identity ambiguity (or an unconfirmed missing number) an admin must
+  // resolve by hand — never auto-inserted.
+  const readyRows = useMemo(() => previewRows?.filter((row) => row.statusKind === "ready" && row.asset) ?? [], [previewRows]);
+  const reviewCount = previewSummary?.review ?? 0;
+
+  const visiblePreviewRows = useMemo(() => {
+    if (!previewRows) return [];
+    const query = searchQuery.trim().toLowerCase();
+    return previewRows.filter((row) => {
+      if (statusFilter !== "all" && row.statusKind !== statusFilter) return false;
+      if (!query) return true;
+      return (
+        row.assetName.toLowerCase().includes(query) ||
+        row.organization.toLowerCase().includes(query) ||
+        row.assetNumber.toLowerCase().includes(query) ||
+        row.universityAssetNumber.toLowerCase().includes(query)
+      );
+    });
+  }, [previewRows, searchQuery, statusFilter]);
 
   const resetAll = () => {
     setWorkbook(null);
     setSheetIndex(0);
     setMapping({});
+    setSourceRows(null);
+    setRowOverrides({});
+    setConfirmedNoNumberRows(new Set());
     setPreviewRows(null);
+    setIsStale(false);
     setCheckError("");
     setMappingError("");
     setShowOptionalFields(false);
     setInsertSummary(null);
+    setSearchQuery("");
+    setStatusFilter("all");
   };
 
   const handleFileChange = (file: File | null) => {
@@ -235,7 +295,11 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
   const handleSheetChange = (index: number) => {
     setSheetIndex(index);
     setMapping(guessColumnMapping(workbook?.sheets[index]?.columns ?? []));
+    setSourceRows(null);
+    setRowOverrides({});
+    setConfirmedNoNumberRows(new Set());
     setPreviewRows(null);
+    setIsStale(false);
     setMappingError("");
     setInsertSummary(null);
   };
@@ -244,9 +308,25 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
     // A blank selection (columnId === "") means the field is simply unused —
     // there is no separate "ไม่ใช้คอลัมน์นี้" sentinel value.
     setMapping((current) => ({ ...current, [field]: columnId || null }));
+    setSourceRows(null);
+    setRowOverrides({});
+    setConfirmedNoNumberRows(new Set());
     setPreviewRows(null);
+    setIsStale(false);
     setMappingError("");
     setInsertSummary(null);
+  };
+
+  // Runs the real classification logic against whatever rows/edits/
+  // confirmations currently exist — the single source of truth shared by the
+  // initial preview and every later "ตรวจสอบอีกครั้ง" (requirement 10: preview,
+  // revalidation, and server-side import all apply the same matching rules).
+  const runValidation = (rows: AssetImportRow[], overrides: AdminImportRowOverrides, confirmed: Set<number>) => {
+    const preview = buildAdminAssetImportPreview(rows, mapping, assets, defaultFiscalYear, unitResponsibleLookup, overrides, confirmed);
+    setPreviewRows(preview);
+    setIsStale(false);
+    setInsertSummary(null);
+    return preview;
   };
 
   const handleShowPreview = () => {
@@ -260,16 +340,66 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
       return;
     }
     setMappingError("");
-    const preview = buildAdminAssetImportPreview(activeSheet.rows, mapping, assets, defaultFiscalYear, unitResponsibleLookup);
-    setPreviewRows(preview);
-    setInsertSummary(null);
+    setSourceRows(activeSheet.rows);
+    setRowOverrides({});
+    setConfirmedNoNumberRows(new Set());
+    runValidation(activeSheet.rows, {}, new Set());
+  };
+
+  const handleRevalidate = () => {
+    if (!sourceRows) return;
+    runValidation(sourceRows, rowOverrides, confirmedNoNumberRows);
+  };
+
+  const openEditModal = (row: AdminAssetImportRow) => {
+    setEditingRowNumber(row.rowNumber);
+    setEditDraft({
+      assetName: row.assetName === "-" ? "" : row.assetName,
+      registrationType: row.registrationType === "-" ? "" : row.registrationType,
+      universityAssetNumber: row.universityAssetNumber === "-" ? "" : row.universityAssetNumber,
+      assetNumber: row.assetNumber === "-" ? "" : row.assetNumber,
+      assetStructureType: row.assetStructureType,
+      assetType: row.assetType === "-" ? "" : row.assetType,
+      fiscalYear: row.fiscalYear,
+      status: row.status,
+      organization: row.organization === "-" ? "" : row.organization,
+      location: row.location === "-" ? "" : row.location,
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (editingRowNumber === null) return;
+    setRowOverrides((current) => ({ ...current, [editingRowNumber]: { ...editDraft } }));
+    setIsStale(true);
+    setEditingRowNumber(null);
+  };
+
+  const handleResetRow = (rowNumber: number) => {
+    setRowOverrides((current) => {
+      const next = { ...current };
+      delete next[rowNumber];
+      return next;
+    });
+    setIsStale(true);
+  };
+
+  const handleConfirmNoNumber = () => {
+    if (noNumberConfirmRowNumber === null || !sourceRows) return;
+    const next = new Set(confirmedNoNumberRows);
+    next.add(noNumberConfirmRowNumber);
+    setConfirmedNoNumberRows(next);
+    setNoNumberConfirmRowNumber(null);
+    // Requirement 5: this specific confirmation is checked right away, not
+    // left pending behind a separate "ตรวจสอบอีกครั้ง" click — plain field
+    // edits still require that explicit step (requirement 4).
+    runValidation(sourceRows, rowOverrides, next);
   };
 
   const handleConfirmImport = async () => {
-    if (importableRows.length === 0) return;
+    if (readyRows.length === 0 || isStale) return;
     setImporting(true);
     try {
-      const summary = await onImportAssets(importableRows.map((row) => row.asset as AssetListRow));
+      const summary = await onImportAssets(readyRows.map((row) => row.asset as AssetListRow));
       setInsertSummary(summary);
       setPreviewRows(null);
       setSelectedFile(null);
@@ -471,9 +601,9 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
       {previewSummary && (
         <div className="rounded-lg border border-line bg-surface p-6">
           <h3 className="text-base font-bold text-ink">สรุปผลการตรวจสอบไฟล์</h3>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <div className="rounded-lg border border-line bg-surfaceSoft p-3 text-center">
-              <p className="text-xs text-muted">จำนวนแถวทั้งหมด</p>
+              <p className="text-xs text-muted">จำนวนทั้งหมด</p>
               <p className="mt-1 text-xl font-extrabold text-ink">{previewSummary.totalRows}</p>
             </div>
             <div className="rounded-lg border border-sky-300/30 bg-sky-400/10 p-3 text-center">
@@ -481,80 +611,126 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
               <p className="mt-1 text-xl font-extrabold text-sky-100">{previewSummary.existing}</p>
             </div>
             <div className="rounded-lg border border-emerald-300/30 bg-emerald-400/10 p-3 text-center">
-              <p className="text-xs text-emerald-200">พร้อมนำเข้าใหม่</p>
-              <p className="mt-1 text-xl font-extrabold text-emerald-100">{previewSummary.newComplete}</p>
-            </div>
-            <div className="rounded-lg border border-amber-300/30 bg-amber-400/10 p-3 text-center">
-              <p className="text-xs text-amber-200">ข้อมูลไม่สมบูรณ์ที่นำเข้าได้</p>
-              <p className="mt-1 text-xl font-extrabold text-amber-100">{previewSummary.newIncomplete}</p>
+              <p className="text-xs text-emerald-200">พร้อมนำเข้า</p>
+              <p className="mt-1 text-xl font-extrabold text-emerald-100">{previewSummary.ready}</p>
             </div>
             <div className="rounded-lg border border-amber-300/30 bg-amber-400/10 p-3 text-center">
               <p className="text-xs text-amber-200">ต้องตรวจสอบ</p>
               <p className="mt-1 text-xl font-extrabold text-amber-100">{previewSummary.review}</p>
             </div>
-            <div className="rounded-lg border border-red-300/30 bg-red-400/10 p-3 text-center">
-              <p className="text-xs text-red-200">นำเข้าไม่ได้</p>
-              <p className="mt-1 text-xl font-extrabold text-red-100">{previewSummary.invalid}</p>
-            </div>
           </div>
-          {previewSummary.existing > 0 && (
-            <p className="mt-3 text-sm font-semibold text-sky-200">รายการ &quot;มีอยู่ในระบบแล้ว&quot; จะไม่ถูกนำเข้าซ้ำ</p>
+          {isStale && (
+            <p className="mt-3 rounded-md border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm font-semibold text-amber-100">
+              มีการแก้ไขข้อมูลหลังการตรวจสอบล่าสุด กรุณากด &quot;ตรวจสอบอีกครั้ง&quot; ก่อนยืนยันนำเข้า
+            </p>
           )}
-          {previewSummary.newIncomplete > 0 && (
-            <p className="mt-2 text-sm font-semibold text-emerald-200">รายการ &quot;ข้อมูลไม่สมบูรณ์ที่นำเข้าได้&quot; จะถูกนำเข้าพร้อมรายการอื่น เพียงแต่ยังไม่มีเลขครุภัณฑ์ ปีงบประมาณ หรือหน่วยงานที่รับผิดชอบ ครบถ้วน สามารถแก้ไขเพิ่มเติมได้ภายหลัง</p>
+          {previewSummary.existing > 0 && (
+            <p className="mt-2 text-sm font-semibold text-sky-200">รายการ &quot;มีอยู่ในระบบแล้ว&quot; จะไม่ถูกนำเข้าซ้ำ</p>
           )}
           {previewSummary.review > 0 && (
             <p className="mt-2 text-sm font-semibold text-amber-200">
-              รายการ &quot;ต้องตรวจสอบ&quot; จะไม่ถูกนำเข้าโดยอัตโนมัติ เนื่องจากมีความไม่ชัดเจนเรื่องข้อมูลซ้ำ กรุณาตรวจสอบและนำเข้าด้วยตนเองหลังแก้ไข
+              รายการ &quot;ต้องตรวจสอบ&quot; จะไม่ถูกนำเข้าโดยอัตโนมัติ แก้ไขข้อมูลหรือยืนยันตามที่ระบุในแต่ละแถว แล้วกด &quot;ตรวจสอบอีกครั้ง&quot;
             </p>
-          )}
-          {previewSummary.invalid > 0 && (
-            <p className="mt-2 text-sm font-semibold text-red-200">รายการ &quot;นำเข้าไม่ได้&quot; (ไม่มีชื่อรายการครุภัณฑ์) จะไม่ถูกนำเข้า</p>
           )}
         </div>
       )}
 
       {previewRows && previewRows.length > 0 && (
         <div className="rounded-lg border border-line bg-surface p-6">
-          <h3 className="text-base font-bold text-ink">ตัวอย่างข้อมูลก่อนนำเข้า</h3>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-base font-bold text-ink">ตัวอย่างข้อมูลก่อนนำเข้า</h3>
+            <button
+              type="button"
+              onClick={handleRevalidate}
+              className={`min-h-9 rounded-md border px-4 py-1.5 text-sm font-bold ${isStale ? "border-primary bg-primary-soft text-primary" : "border-line text-ink hover:border-primary hover:text-primary"}`}
+            >
+              ตรวจสอบอีกครั้ง
+            </button>
+          </div>
+
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="ค้นหาชื่อ เลขครุภัณฑ์ หรือหน่วยงาน"
+              className="min-h-10 w-full rounded-lg border border-lineStrong bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-primary sm:max-w-xs"
+            />
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+              className="min-h-10 rounded-lg border border-lineStrong bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-primary"
+            >
+              {IMPORT_STATUS_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <span className="text-xs text-muted">แสดง {visiblePreviewRows.length.toLocaleString("th-TH")} จาก {previewRows.length.toLocaleString("th-TH")} แถว</span>
+          </div>
+
           <div className="mt-3 max-h-[480px] overflow-auto rounded-lg border border-line">
             <table className="w-full min-w-[1200px] border-collapse text-left text-xs">
               <thead className="sticky top-0 bg-surfaceSoft text-ink">
                 <tr>
-                  {["ลำดับ (แถว Excel)", "ชื่อรายการครุภัณฑ์", "เลขครุภัณฑ์มหาวิทยาลัย", "เลขทะเบียนควบคุมกิจกรรมนักศึกษา", "องค์กรนักศึกษา/หน่วยงานที่รับผิดชอบ", "ประเภทการขึ้นทะเบียน", "รหัสที่ตรงกันในระบบ", "ผลการตรวจสอบข้อมูล", "เหตุผล/คำเตือน"].map((label) => (
+                  {["ลำดับ (แถว Excel)", "หมายเลขครุภัณฑ์", "ชื่อรายการครุภัณฑ์", "หน่วยงาน", "ประเภทการขึ้นทะเบียน", "สถานะการตรวจสอบข้อมูล", "เหตุผล/คำเตือน", "จัดการ"].map((label) => (
                     <th key={label} className="border-b border-line px-3 py-2 font-semibold">{label}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line bg-surfaceSoft text-ink">
-                {previewRows.map((row) => (
-                  <tr key={row.rowNumber}>
-                    <td className="px-3 py-2 text-muted">{row.rowNumber - 1}</td>
-                    <td className="px-3 py-2" title={row.assetName}>{row.assetName}</td>
-                    <td className="px-3 py-2" title={row.universityAssetNumber}>{row.universityAssetNumber}</td>
-                    <td className="px-3 py-2" title={row.assetNumber}>{row.assetNumber}</td>
-                    <td className="px-3 py-2" title={row.organization}>{row.organization}</td>
-                    <td className="px-3 py-2">{row.registrationType}</td>
-                    <td className="px-3 py-2">{row.matchedExistingId ?? "-"}</td>
-                    <td className="px-3 py-2">
-                      <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-bold ${IMPORT_STATUS_BADGE_CLASS[row.statusKind]}`}>
-                        {row.statusLabel}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-muted" title={row.reasons.join(", ")}>{row.reasons.join(", ") || "-"}</td>
-                  </tr>
-                ))}
+                {visiblePreviewRows.map((row) => {
+                  const isEdited = Boolean(rowOverrides[row.rowNumber]);
+                  const combinedNumber = row.universityAssetNumber !== "-" && row.assetNumber !== "-"
+                    ? `${row.universityAssetNumber} / ${row.assetNumber}`
+                    : row.universityAssetNumber !== "-" ? row.universityAssetNumber : row.assetNumber;
+                  return (
+                    <tr key={row.rowNumber} className={isEdited ? "bg-primary-soft/40" : undefined}>
+                      <td className="px-3 py-2 text-muted">{row.rowNumber - 1}</td>
+                      <td className="px-3 py-2" title={combinedNumber}>{combinedNumber}</td>
+                      <td className="px-3 py-2" title={row.assetName}>{row.assetName}</td>
+                      <td className="px-3 py-2" title={row.organization}>{row.organization}</td>
+                      <td className="px-3 py-2">{row.registrationType}</td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-bold ${IMPORT_STATUS_BADGE_CLASS[row.statusKind]}`}>
+                          {row.statusLabel}
+                        </span>
+                        {row.matchedExistingId !== undefined && (
+                          <span className="ml-1 text-[11px] text-muted">#{row.matchedExistingId}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-muted" title={row.reasons.join(", ")}>{row.reasons.join(", ") || "-"}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button type="button" onClick={() => openEditModal(row)} className="rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-ink hover:border-primary hover:text-primary">แก้ไข</button>
+                          {isEdited && (
+                            <button type="button" onClick={() => handleResetRow(row.rowNumber)} className="rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-muted hover:border-danger hover:text-danger">รีเซ็ต</button>
+                          )}
+                          {row.needsNoNumberConfirmation && (
+                            <button
+                              type="button"
+                              onClick={() => setNoNumberConfirmRowNumber(row.rowNumber)}
+                              className="rounded-md border border-amber-400/40 bg-amber-400/10 px-2 py-1 text-[11px] font-semibold text-amber-100 hover:bg-amber-400/20"
+                            >
+                              ยืนยันนำเข้าโดยไม่มีเลขครุภัณฑ์
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-line pt-4">
+          <div className="mt-5 flex flex-wrap items-center justify-end gap-3 border-t border-line pt-4">
+            {reviewCount > 0 && <span className="text-sm font-semibold text-amber-200">ยังมี {reviewCount.toLocaleString("th-TH")} รายการที่ต้องตรวจสอบ (จะไม่ถูกนำเข้า)</span>}
             <button
               type="button"
               onClick={handleConfirmImport}
-              disabled={importableRows.length === 0 || importing}
+              disabled={readyRows.length === 0 || importing || isStale}
+              title={isStale ? "กรุณากดตรวจสอบอีกครั้งก่อนยืนยันนำเข้า" : undefined}
               className="min-h-11 rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {importing ? "กำลังนำเข้าข้อมูล..." : `ยืนยันนำเข้าข้อมูลใหม่ (${importableRows.length} รายการ)`}
+              {importing ? "กำลังนำเข้าข้อมูล..." : `ยืนยันนำเข้าข้อมูล (${readyRows.length} รายการ)`}
             </button>
           </div>
         </div>
@@ -580,6 +756,58 @@ function ExcelImportPanel({ assets, onImportAssets, unitResponsiblePersons }: { 
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {editingRowNumber !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 py-6 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-surface shadow-glow">
+            <div className="flex items-center justify-between border-b border-line px-5 py-4">
+              <h3 className="text-lg font-bold text-ink">แก้ไขข้อมูลแถวที่ {editingRowNumber - 1}</h3>
+              <CloseIconButton onClick={() => setEditingRowNumber(null)} />
+            </div>
+            <div className="max-h-[calc(90vh-140px)] space-y-4 overflow-y-auto p-5">
+              {EDITABLE_IMPORT_FIELDS.map((field) => (
+                <div key={field.key}>
+                  {field.kind === "select" ? (
+                    <SelectField
+                      label={field.label}
+                      value={editDraft[field.key] ?? ""}
+                      onChange={(value) => setEditDraft((current) => ({ ...current, [field.key]: value }))}
+                      options={field.options ?? []}
+                      placeholder="เลือก"
+                    />
+                  ) : (
+                    <Field
+                      label={field.label}
+                      value={editDraft[field.key] ?? ""}
+                      onChange={(event) => setEditDraft((current) => ({ ...current, [field.key]: event.target.value }))}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap justify-end gap-3 border-t border-line px-5 py-4">
+              <button type="button" onClick={() => setEditingRowNumber(null)} className="min-h-11 rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink">ยกเลิก</button>
+              <button type="button" onClick={handleSaveEdit} className="min-h-11 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white hover:bg-primary-hover">บันทึกการแก้ไข</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {noNumberConfirmRowNumber !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-glow">
+            <h3 className="text-lg font-bold text-ink">ยืนยันนำเข้าโดยไม่มีเลขครุภัณฑ์</h3>
+            <p className="mt-3 text-sm leading-6 text-ink">
+              ครุภัณฑ์แถวที่ {noNumberConfirmRowNumber - 1} จะถูกนำเข้าโดยไม่มีเลขครุภัณฑ์มหาวิทยาลัยหรือเลขทะเบียนควบคุมกิจกรรมนักศึกษา
+              ระบบจะไม่สร้างเลขใดๆ ให้โดยอัตโนมัติ ท่านสามารถเพิ่มเลขครุภัณฑ์ให้รายการนี้ได้ภายหลังที่หน้าแก้ไขข้อมูลครุภัณฑ์
+            </p>
+            <div className="mt-5 flex flex-wrap justify-end gap-3">
+              <button type="button" onClick={() => setNoNumberConfirmRowNumber(null)} className="min-h-11 rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink">ยกเลิก</button>
+              <button type="button" onClick={handleConfirmNoNumber} className="min-h-11 rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-white hover:bg-primary-hover">ยืนยัน</button>
+            </div>
+          </div>
         </div>
       )}
     </section>
