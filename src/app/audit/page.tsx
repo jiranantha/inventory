@@ -619,8 +619,12 @@ function AuditPage({
       {/* Inspection modal */}
       {selectedAsset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-2 sm:p-4">
-          <div className="max-h-[96vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-line bg-surface p-4 shadow-2xl sm:max-h-[90vh] sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+          {/* flex-column shell: header and footer are flex-shrink-0 (always
+              visible), only the body in between scrolls — so the action
+              buttons never get pushed off-screen by a tall form, without
+              resorting to position:fixed against the browser window. */}
+          <div className="flex max-h-[90dvh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-2xl">
+            <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 p-4 sm:p-5">
               <div>
                 <h3 className="text-xl font-bold text-ink">{t("audit.modal.title")}</h3>
                 <p className="mt-3 text-base font-extrabold text-ink">{selectedAsset.assetName}</p>
@@ -629,7 +633,8 @@ function AuditPage({
               <CloseIconButton onClick={() => setSelectedAsset(null)} />
             </div>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-5">
+            <div className="grid gap-4 pb-4 md:grid-cols-2 sm:pb-5">
               {/* Row 1: ปีที่ตรวจสอบ | วันที่ตรวจสอบ */}
               <label className="block min-w-0">
                 <span className="text-sm font-semibold text-ink">{t("audit.modal.year")}</span>
@@ -657,7 +662,7 @@ function AuditPage({
               {/* Row 3: สถานที่ที่พบครุภัณฑ์ | สถานะครุภัณฑ์ */}
               <Field label={t("audit.modal.location")} value={foundLocation} onChange={(event) => setFoundLocation(event.target.value)} placeholder="ระบุสถานที่ที่พบครุภัณฑ์" />
               <SelectField label={t("audit.modal.status")} value={modalResult} onChange={setModalResult} options={modalStatusOptions} getOptionLabel={(v) => translateOption(v, lang)} />
-              <div className="space-y-3 md:col-span-2">
+              <div className="space-y-2 md:col-span-2">
                 <div>
                   <p className="text-sm font-semibold text-ink">
                     {t("audit.modal.evidence")}{" "}
@@ -670,29 +675,29 @@ function AuditPage({
                   </p>
                   {evidenceImages.length < 3 ? (
                     isMobile ? (
-                      <div className="mt-2 flex gap-2">
-                        <label className="flex flex-1 cursor-pointer items-center justify-center rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-3 py-3 hover:border-primary">
+                      <div className="mt-1.5 flex gap-2">
+                        <label className="flex flex-1 cursor-pointer items-center justify-center rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-3 py-2 hover:border-primary">
                           <span className="text-sm font-semibold text-gold">{t("audit.modal.takePhoto")}</span>
                           <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { void handleEvidenceImageChange(event.target.files); event.target.value = ""; }} />
                         </label>
-                        <label className="flex flex-1 cursor-pointer items-center justify-center rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-3 py-3 hover:border-primary">
+                        <label className="flex flex-1 cursor-pointer items-center justify-center rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-3 py-2 hover:border-primary">
                           <span className="text-sm font-semibold text-gold">{t("audit.modal.choosePhoto")}</span>
                           <input type="file" accept="image/*" multiple className="sr-only" onChange={(event) => { void handleEvidenceImageChange(event.target.files); event.target.value = ""; }} />
                         </label>
                       </div>
                     ) : (
-                      <label className="mt-2 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-4 py-3 hover:border-primary">
+                      <label className="mt-1.5 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-primary/40 bg-slate-950/40 px-4 py-2 hover:border-primary">
                         <span className="text-sm font-semibold text-gold">{t("audit.modal.choosePhoto")}</span>
                         <input type="file" accept="image/*" multiple className="sr-only" onChange={(event) => { void handleEvidenceImageChange(event.target.files); event.target.value = ""; }} />
                       </label>
                     )
                   ) : (
-                    <p className="mt-2 rounded-md border border-line bg-surfaceSoft px-3 py-2 text-sm text-muted">
+                    <p className="mt-1.5 rounded-md border border-line bg-surfaceSoft px-3 py-2 text-sm text-muted">
                       เพิ่มรูปภาพครบ 3 รูปแล้ว หากต้องการเปลี่ยน ให้ลบรูปที่ไม่ต้องการก่อน
                     </p>
                   )}
                   {(evidenceError || evidenceImages.length === 0) && (
-                    <p className="mt-2 text-xs font-semibold text-rose-200">
+                    <p className="mt-1.5 text-xs font-semibold text-rose-200">
                       {evidenceError || "กรุณาอัปโหลดรูปหลักฐานอย่างน้อย 1 รูปก่อนบันทึกผลตรวจสอบ"}
                     </p>
                   )}
@@ -702,9 +707,9 @@ function AuditPage({
                     {evidenceImages.map((image, index) => (
                       <figure key={image.url} className="relative overflow-hidden rounded-md border border-line bg-slate-950/40">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={image.url} alt={image.name} className="h-24 w-full cursor-pointer object-cover" onClick={() => setPreviewImage(image)} />
+                        <img src={image.url} alt={image.name} className="h-20 w-full cursor-pointer object-cover" onClick={() => setPreviewImage(image)} />
                         <button type="button" onClick={(event) => { event.stopPropagation(); removeEvidenceImage(image.url); }} className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-sm font-bold leading-none text-danger shadow hover:bg-red-100" aria-label="ลบรูปภาพ">×</button>
-                        <div className="p-2">
+                        <div className="p-1.5">
                           <p className="text-xs font-semibold text-muted">รูปที่ {index + 1}</p>
                           <p className="truncate text-[11px] text-ink" title={image.name}>{image.name}</p>
                         </div>
@@ -714,11 +719,22 @@ function AuditPage({
                 )}
               </div>
               <div className="md:col-span-2">
-                <TextAreaField label={t("audit.modal.note")} value={inspectionNote} onChange={(event) => setInspectionNote(event.target.value)} placeholder="หมายเหตุการตรวจสอบ" />
+                <TextAreaField
+                  label={t("audit.modal.note")}
+                  value={inspectionNote}
+                  onChange={(event) => setInspectionNote(event.target.value)}
+                  placeholder="หมายเหตุการตรวจสอบ"
+                  rows={2}
+                  style={{ minHeight: "4rem" }}
+                />
               </div>
             </div>
+            </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:justify-end">
+            {/* Sticky-within-modal footer: shrink-0 (never scrolls with the
+                body above), solid background + top border so it reads as a
+                distinct, always-visible action bar. */}
+            <div className="grid shrink-0 grid-cols-2 gap-3 border-t border-line bg-surface px-4 py-4 sm:flex sm:justify-end sm:px-5">
               {editingExistingInspection && permissions.canEditInspection ? (
                 // Editing an already-saved inspection (admin-only entry point) —
                 // the plain close button is replaced by the real "cancel this
