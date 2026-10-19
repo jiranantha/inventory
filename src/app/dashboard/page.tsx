@@ -124,7 +124,18 @@ function DashboardPage({
     const dateDiff = getDateSortTime(b.recordDate) - getDateSortTime(a.recordDate);
     return dateDiff || b.id - a.id;
   });
-  const assetsByFiscalYear = Object.entries(countBy(assets, (asset) => asset.fiscalYear))
+  // Fiscal-year chart only: exclude assets with no real fiscal year (null,
+  // "", "-", "ไม่ระบุ", or anything non-numeric) so countBy's generic
+  // "falsy key -> ไม่ระบุ" fallback never applies here — these assets still
+  // count everywhere else on the dashboard (total, status, inspection,
+  // organization), this filter is scoped to this one chart's own data.
+  const isValidFiscalYear = (value: string | null | undefined): value is string => {
+    if (value == null) return false;
+    const trimmed = value.trim();
+    return /^[0-9]{4}$/.test(trimmed) && Number(trimmed) > 0;
+  };
+  const assetsWithValidFiscalYear = assets.filter((asset) => isValidFiscalYear(asset.fiscalYear));
+  const assetsByFiscalYear = Object.entries(countBy(assetsWithValidFiscalYear, (asset) => asset.fiscalYear.trim()))
     .sort(([a], [b]) => Number(a) - Number(b))
     .slice(-6)
     .map(([name, value]) => ({ name, value }));
