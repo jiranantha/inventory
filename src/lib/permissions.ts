@@ -26,6 +26,13 @@ export type Permissions = {
   // canInspect so any inspector role can still record a NEW inspection, but
   // only this flag can correct one that's already on file.
   canEditInspection: boolean;
+  // Changing an asset's registrationType, or adding/editing/clearing its
+  // universityAssetNumber or assetNumber on /list/[id]/edit. Kept separate
+  // from canEdit/canEditLimitedFields so a role that can otherwise edit an
+  // asset still can't reclassify it or touch either number field — only
+  // "ผู้ดูแลระบบ" can. Enforced both in the edit page (disables the three
+  // fields) and in the PUT /api/assets/:id route (locks them server-side).
+  canEditRegistrationType: boolean;
 };
 
 export type RoleDefinition = {
@@ -74,6 +81,7 @@ export const noPermissions: Permissions = {
   canViewDashboard: false, canViewList: false, canCreate: false, canEdit: false, canDelete: false, canExport: false,
   canInspect: false, canManageUsers: false, canViewAllOrganizations: true,
   canEditLimitedFields: false, canImportAssets: false, canBulkUpdateResponsible: false, canEditInspection: false,
+  canEditRegistrationType: false,
 };
 
 export const initialRoleDefinitions: RoleDefinition[] = [
@@ -91,6 +99,7 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canImportAssets: true,
       canBulkUpdateResponsible: true,
       canEditInspection: true,
+      canEditRegistrationType: true,
   } },
   { key: "Staff", name: "เจ้าหน้าที่พัสดุ", description: "จัดการข้อมูลครุภัณฑ์และตรวจสอบประจำปี", allowExport: true, active: true, permissions: {
       canViewDashboard: true,
@@ -106,6 +115,7 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canImportAssets: false,
       canBulkUpdateResponsible: false,
       canEditInspection: false,
+      canEditRegistrationType: false,
   } },
   { key: "Committee", name: "คณะกรรมการนักศึกษา", description: "ดูรายการและรายละเอียดครุภัณฑ์ทั้งหมดในระบบ", allowExport: false, active: true, permissions: {
       canViewDashboard: false,
@@ -121,6 +131,7 @@ export const initialRoleDefinitions: RoleDefinition[] = [
       canImportAssets: false,
       canBulkUpdateResponsible: false,
       canEditInspection: false,
+      canEditRegistrationType: false,
   } },
   { key: "Viewer", name: "ผู้ดูรายงาน", description: "ดูหน้าภาพรวมและรายการครุภัณฑ์", allowExport: false, active: true, permissions: {
       ...noPermissions, canViewDashboard: true, canViewList: true, canViewAllOrganizations: true,
@@ -174,6 +185,7 @@ export function getPermissionLabel(permissions: Permissions) {
     permissions.canImportAssets && "นำเข้าข้อมูล Excel",
     permissions.canBulkUpdateResponsible && "เปลี่ยนผู้รับผิดชอบของหน่วยงาน",
     permissions.canEditInspection && "แก้ไขข้อมูลการตรวจสอบที่บันทึกแล้ว",
+    permissions.canEditRegistrationType && "เปลี่ยนประเภทการขึ้นทะเบียน/เลขครุภัณฑ์มหาวิทยาลัย",
   ].filter(Boolean);
   return labels.join(", ");
 }

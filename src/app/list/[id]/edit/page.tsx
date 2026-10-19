@@ -102,8 +102,11 @@ function AssetEditPage({
   existingAssets: AssetListRow[];
 }) {
   const { lang, t } = useLanguage();
-  // Admin = canManageUsers. Only admins can edit the asset number.
-  const isAdmin = permissions.canManageUsers;
+  // Only "ผู้ดูแลระบบ" (canEditRegistrationType) may change registrationType
+  // or touch either number field — kept separate from canEdit/canManageUsers
+  // so this stays admin-only regardless of who else can manage users or edit
+  // other asset fields.
+  const isAdmin = permissions.canEditRegistrationType;
 
   const initialNumberPlacement =
     getNumberPlacementValue(asset) === "-" ? "" : getNumberPlacementValue(asset);
@@ -210,9 +213,13 @@ function AssetEditPage({
     }
 
     if (permissions.canEdit) {
+      // A pure university-only asset has no activity number at all (requirement
+      // 1) — assetNumber stays "-" for it, same as /record's add-asset form, so
+      // it must never be required or duplicate-checked here either.
+      const isUniversityOnly = registrationType === "ครุภัณฑ์มหาวิทยาลัย";
       const requiredFields: Array<[string, string]> = [
         [assetName.trim(), "ชื่อรายการครุภัณฑ์"],
-        [assetNumber.trim(), "หมายเลขครุภัณฑ์"],
+        ...(isUniversityOnly ? [] : [[assetNumber.trim(), "หมายเลขครุภัณฑ์"] as [string, string]]),
         [responsiblePerson.trim(), "ชื่อผู้รับผิดชอบ"],
         [status.trim(), "สถานะครุภัณฑ์"],
       ];
@@ -225,7 +232,11 @@ function AssetEditPage({
         });
         return false;
       }
-      const duplicate = existingAssets.some(
+      // "-" is the shared "no value" sentinel for this field (every
+      // university-only asset has it), so it must never trip a duplicate
+      // check on its own — this was the actual cause of saves being blocked
+      // when editing/switching an asset to "ครุภัณฑ์มหาวิทยาลัย".
+      const duplicate = !isUniversityOnly && assetNumber.trim() !== "-" && existingAssets.some(
         (item: AssetListRow) =>
           item.id !== asset.id &&
           !item.deletedAt &&
@@ -245,13 +256,17 @@ function AssetEditPage({
 
   // ── Perform the actual save ──────────────────────────────────────────────────
   const performSave = () => {
+    // A pure university-only asset never carries an activity number — the
+    // field is hidden for this type, so its stale state must not leak
+    // through unchanged (requirement 7/8's clean assetNumber="-" invariant).
+    const isUniversityOnly = registrationType === "ครุภัณฑ์มหาวิทยาลัย";
     onSave(
       {
         ...asset,
         assetCode,
         registrationType,
         universityAssetNumber: universityAssetNumber.trim() || "-",
-        assetNumber,
+        assetNumber: isUniversityOnly ? "-" : assetNumber,
         assetStructureType,
         assetSetItems:
           assetStructureType === "set"
@@ -293,8 +308,15 @@ function AssetEditPage({
   const handleSaveClick = () => {
     if (!validate()) return;
 
+    const isUniversityOnly = registrationType === "ครุภัณฑ์มหาวิทยาลัย";
+    // Requirement 5: switching to "ครุภัณฑ์มหาวิทยาลัย" always clears the
+    // (now hidden) assetNumber field to "-" in performSave — if that would
+    // actually discard a real, existing activity number, the admin must
+    // explicitly confirm first, rather than losing it silently.
+    const activityNumberWouldBeCleared =
+      isAdmin && isUniversityOnly && asset.assetNumber.trim() !== "" && asset.assetNumber.trim() !== "-";
     const numberChanged =
-      isAdmin && assetNumber.trim() !== asset.assetNumber.trim();
+      isAdmin && !isUniversityOnly && assetNumber.trim() !== asset.assetNumber.trim();
     const placementChanged =
       numberPlacement.trim() !== initialNumberPlacement.trim();
 
@@ -315,17 +337,32 @@ function AssetEditPage({
       }
     };
 
-    if (numberChanged) {
+    const confirmNumberChange = () => {
+      if (numberChanged) {
+        setDialog({
+          title: "ยืนยันการแก้ไขหมายเลขครุภัณฑ์",
+          message: `หมายเลขใหม่: "${assetNumber.trim()}"`,
+          onConfirm: () => {
+            closeDialog();
+            confirmPlacement();
+          },
+        });
+      } else {
+        confirmPlacement();
+      }
+    };
+
+    if (activityNumberWouldBeCleared) {
       setDialog({
-        title: "ยืนยันการแก้ไขหมายเลขครุภัณฑ์",
-        message: `หมายเลขใหม่: "${assetNumber.trim()}"`,
+        title: "ยืนยันการล้างเลขทะเบียนควบคุมกิจกรรมนักศึกษา",
+        message: `ครุภัณฑ์นี้มีเลขทะเบียนควบคุมกิจกรรมนักศึกษาเดิมคือ "${asset.assetNumber.trim()}" การเปลี่ยนประเภทการขึ้นทะเบียนเป็น "ครุภัณฑ์มหาวิทยาลัย" จะล้างเลขนี้ออก (ตั้งเป็น "-") ต้องการดำเนินการต่อหรือไม่`,
         onConfirm: () => {
           closeDialog();
-          confirmPlacement();
+          confirmNumberChange();
         },
       });
     } else {
-      confirmPlacement();
+      confirmNumberChange();
     }
   };
 

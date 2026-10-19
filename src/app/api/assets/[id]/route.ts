@@ -36,6 +36,25 @@ function applyLockedFields(columns: ReturnType<typeof assetToColumns>, existing:
   };
 }
 
+// registrationType / universityAssetNumber / assetNumber are locked to their
+// existing values for anyone without canEditRegistrationType ("ผู้ดูแลระบบ"
+// only, by default) — independent of applyLockedFields above, which doesn't
+// cover registrationType/universityAssetNumber at all and only locks
+// assetNumber for canEditLimitedFields roles specifically. The client never
+// shows editable controls for these three fields to a non-admin, but this is
+// the actual enforcement: role information from the request body is never
+// trusted — `permissions` here is derived server-side from the authenticated
+// session's role.
+function applyRegistrationTypeLock(columns: ReturnType<typeof assetToColumns>, existing: AssetRow, permissions: Permissions) {
+  if (permissions.canEditRegistrationType) return columns;
+  return {
+    ...columns,
+    registrationType: existing.registrationType,
+    universityAssetNumber: existing.universityAssetNumber,
+    assetNumber: existing.assetNumber,
+  };
+}
+
 // Enforces the same organization scope the UI applies via canAccessAsset.
 function assertOrgAccess(user: SessionUser, roles: RoleDefinition[], asset: AssetRow) {
   const permissions = getPermissions(
@@ -86,7 +105,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       { role: user.role as string, viewerCanExport: Boolean(user.viewerCanExport) },
       roles,
     );
-    const columns = applyLockedFields(assetToColumns(body.asset), existing, permissions);
+    const columns = applyRegistrationTypeLock(applyLockedFields(assetToColumns(body.asset), existing, permissions), existing, permissions);
 
     const result = await db.transaction(async (tx) => {
       const [updated] = await tx
