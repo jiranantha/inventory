@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   AssetSetItemsEditor,
   BackIconButton,
@@ -94,7 +94,7 @@ function AssetEditPage({
 }: {
   asset: AssetListRow;
   permissions: Permissions;
-  onSave: (asset: AssetListRow, oldAsset: AssetListRow) => void;
+  onSave: (asset: AssetListRow, oldAsset: AssetListRow) => Promise<void>;
   onCancel: () => void;
   organizationOptions: Organization[];
   equipmentTypeOptions: string[];
@@ -164,10 +164,22 @@ function AssetEditPage({
     asset.assetImages ?? [],
   );
   const [imageUploadError, setImageUploadError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   // Alert dialog
   const [dialog, setDialog] = useState<DialogConfig | null>(null);
   const closeDialog = () => setDialog(null);
+
+  // Scrolled into view when validate() rejects on one of these two fields —
+  // unlike the dialog-based errors below, these are small inline messages
+  // that are easy to miss if the field isn't in the current viewport, which
+  // is what made an earlier validation failure here look like Save silently
+  // doing nothing.
+  const fiscalYearFieldRef = useRef<HTMLDivElement>(null);
+  const responsiblePhoneFieldRef = useRef<HTMLDivElement>(null);
+  const scrollFieldIntoView = (ref: { current: HTMLDivElement | null }) => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   // Non-blocking hint only — never overrides fiscalYear once the admin has
   // typed a value themselves, and never affects validation/saving.
@@ -181,18 +193,25 @@ function AssetEditPage({
 
   // ── Validation ──────────────────────────────────────────────────────────────
   const validate = (): boolean => {
-    if (!/^[0-9]{4}$/.test(fiscalYear)) {
-      setFiscalYearError("กรุณากรอกปีงบประมาณเป็นตัวเลข 4 หลัก");
+    // Fiscal year is optional (an asset can legitimately have none, e.g. one
+    // imported without it) — only a non-empty, malformed value is rejected.
+    // Requiring it unconditionally here was the actual cause of Save silently
+    // doing nothing on assets that already had it unspecified.
+    if (fiscalYear.trim() && !/^[0-9]{4}$/.test(fiscalYear.trim())) {
+      setFiscalYearError("กรุณากรอกปีงบประมาณเป็นตัวเลข 4 หลัก หรือเว้นว่างไว้");
+      scrollFieldIntoView(fiscalYearFieldRef);
       return false;
     }
     setFiscalYearError("");
 
     if (responsiblePhone && !/^[0-9]+$/.test(responsiblePhone)) {
       setResponsiblePhoneError("กรุณากรอกหมายเลขโทรศัพท์เป็นตัวเลขเท่านั้น");
+      scrollFieldIntoView(responsiblePhoneFieldRef);
       return false;
     }
     if (responsiblePhone && !/^[0-9]{9,10}$/.test(responsiblePhone)) {
       setResponsiblePhoneError("กรุณากรอกหมายเลขโทรศัพท์ให้ถูกต้อง 9-10 หลัก");
+      scrollFieldIntoView(responsiblePhoneFieldRef);
       return false;
     }
     setResponsiblePhoneError("");
@@ -255,12 +274,18 @@ function AssetEditPage({
   };
 
   // ── Perform the actual save ──────────────────────────────────────────────────
-  const performSave = () => {
+  // Awaits onSave so the button can show "กำลังบันทึก..." and stay disabled
+  // for the whole round trip (requirement 6) — onSave itself (handleSaveAsset
+  // in AppDataProvider) already shows the success/error toast and only
+  // navigates away on success, so this only needs to track "in flight or not".
+  const performSave = async () => {
     // A pure university-only asset never carries an activity number — the
     // field is hidden for this type, so its stale state must not leak
     // through unchanged (requirement 7/8's clean assetNumber="-" invariant).
     const isUniversityOnly = registrationType === "ครุภัณฑ์มหาวิทยาลัย";
-    onSave(
+    setSaving(true);
+    try {
+      await onSave(
       {
         ...asset,
         assetCode,
@@ -301,11 +326,15 @@ function AssetEditPage({
         updatedAt: new Date().toLocaleString("th-TH"),
       },
       asset,
-    );
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   // ── Save button handler — chains confirmations for sensitive fields ──────────
   const handleSaveClick = () => {
+    if (saving) return;
     if (!validate()) return;
 
     const isUniversityOnly = registrationType === "ครุภัณฑ์มหาวิทยาลัย";
@@ -668,21 +697,21 @@ function AssetEditPage({
               autoResize
               disabled={permissions.canEditLimitedFields}
             />
-            <div>
+            <div ref={fiscalYearFieldRef}>
               <FiscalYearField
                 value={fiscalYear}
                 onChange={(value) => {
                   setFiscalYear(value);
                   setFiscalYearTouched(true);
-                  if (/^[0-9]{4}$/.test(value)) setFiscalYearError("");
+                  if (!value.trim() || /^[0-9]{4}$/.test(value)) setFiscalYearError("");
                 }}
                 error={fiscalYearError}
                 onInvalidInput={() =>
-                  setFiscalYearError("กรุณากรอกปีงบประมาณเป็นตัวเลข 4 หลัก")
+                  setFiscalYearError("กรุณากรอกปีงบประมาณเป็นตัวเลข 4 หลัก หรือเว้นว่างไว้")
                 }
                 onBlur={() => {
-                  if (!/^[0-9]{4}$/.test(fiscalYear))
-                    setFiscalYearError("กรุณากรอกปีงบประมาณเป็นตัวเลข 4 หลัก");
+                  if (fiscalYear.trim() && !/^[0-9]{4}$/.test(fiscalYear))
+                    setFiscalYearError("กรุณากรอกปีงบประมาณเป็นตัวเลข 4 หลัก หรือเว้นว่างไว้");
                 }}
                 disabled={permissions.canEditLimitedFields}
               />
@@ -798,30 +827,32 @@ function AssetEditPage({
               value={responsiblePerson}
               onChange={(event) => setResponsiblePerson(event.target.value)}
             />
-            <PhoneField
-              value={responsiblePhone}
-              onChange={(value) => {
-                setResponsiblePhone(value);
-                if (/^[0-9]{9,10}$/.test(value) || !value)
-                  setResponsiblePhoneError("");
-              }}
-              error={responsiblePhoneError}
-              onInvalidInput={() =>
-                setResponsiblePhoneError(
-                  "กรุณากรอกหมายเลขโทรศัพท์เป็นตัวเลขเท่านั้น",
-                )
-              }
-              onBlur={() => {
-                if (
-                  responsiblePhone &&
-                  !/^[0-9]{9,10}$/.test(responsiblePhone)
-                ) {
+            <div ref={responsiblePhoneFieldRef}>
+              <PhoneField
+                value={responsiblePhone}
+                onChange={(value) => {
+                  setResponsiblePhone(value);
+                  if (/^[0-9]{9,10}$/.test(value) || !value)
+                    setResponsiblePhoneError("");
+                }}
+                error={responsiblePhoneError}
+                onInvalidInput={() =>
                   setResponsiblePhoneError(
-                    "กรุณากรอกหมายเลขโทรศัพท์ให้ถูกต้อง 9-10 หลัก",
-                  );
+                    "กรุณากรอกหมายเลขโทรศัพท์เป็นตัวเลขเท่านั้น",
+                  )
                 }
-              }}
-            />
+                onBlur={() => {
+                  if (
+                    responsiblePhone &&
+                    !/^[0-9]{9,10}$/.test(responsiblePhone)
+                  ) {
+                    setResponsiblePhoneError(
+                      "กรุณากรอกหมายเลขโทรศัพท์ให้ถูกต้อง 9-10 หลัก",
+                    );
+                  }
+                }}
+              />
+            </div>
           </div>
         </RecordFormSection>
       </div>
@@ -838,9 +869,10 @@ function AssetEditPage({
         <button
           type="button"
           onClick={handleSaveClick}
-          className="rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-slate-950 transition hover:bg-primary-hover"
+          disabled={saving}
+          className="rounded-md bg-gold px-5 py-2.5 text-sm font-extrabold text-slate-950 transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {t("c.save")}
+          {saving ? "กำลังบันทึก..." : t("c.save")}
         </button>
       </div>
     </section>

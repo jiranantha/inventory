@@ -1,11 +1,11 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session } from "next-auth";
 import { signOut, useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { LoginPage, PendingApprovalPage } from "@/components/StatusPages";
-import { api, type ActivityLogInput } from "@/lib/api-client";
+import { api, ApiError, type ActivityLogInput } from "@/lib/api-client";
 import { formatThaiDateTimeWithSeconds } from "@/lib/dates";
 import { exportDashboardToPDF } from "@/lib/import-export";
 import { getOrganizationType, mergeOrganizationItems } from "@/lib/organizations";
@@ -51,7 +51,7 @@ type AppData = {
   onRollbackUnitResponsibleUpdate: (historyId: number) => Promise<void>;
   onSaveAnnualInspection: (inspection: AnnualInspection) => void;
   onCancelAnnualInspection: (asset: AssetListRow, inspectionYear: string, inspection?: AnnualInspection) => Promise<void>;
-  onSaveAsset: (asset: AssetListRow, oldAsset: AssetListRow) => void;
+  onSaveAsset: (asset: AssetListRow, oldAsset: AssetListRow) => Promise<void>;
   onSaveInspectionStatus: (asset: AssetListRow, status: string, inspectionDate: string, note: string) => void;
   onDeleteAsset: (asset: AssetListRow) => void;
   confirmDeleteAsset: () => void;
@@ -111,9 +111,81 @@ function ConnectionErrorScreen({ onRetry }: { onRetry: () => void }) {
   );
 }
 
+// Shown only after the initial asset-data load has exhausted its retries (see
+// loadWithRetry below) — distinct from ConnectionErrorScreen, which is about
+// the session/auth handshake never resolving. Clicking "ลองอีกครั้ง" re-runs
+// the same load from inside the app; it never triggers a browser reload.
+function AssetLoadErrorScreen({ onRetry }: { onRetry: () => void }) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#F5F7FA] px-4 font-thai text-[#0F172A]">
+      <div className="max-w-md rounded-2xl border border-[#E2E8F0] bg-[#FFFFFF] px-6 py-5 text-center shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+        <p className="text-sm font-semibold text-[#0F172A]">ไม่สามารถโหลดข้อมูลได้ กรุณาลองอีกครั้ง</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-4 inline-flex items-center justify-center rounded-lg bg-[#0F172A] px-4 py-2 text-xs font-semibold text-[#FFFFFF] transition-colors hover:bg-[#1E293B]"
+        >
+          ลองอีกครั้ง
+        </button>
+      </div>
+    </main>
+  );
+}
+
 // How long the session may sit in "loading" before we surface an error instead
 // of an endless spinner.
 const SESSION_LOADING_TIMEOUT_MS = 15000;
+
+// Initial-load retry policy: up to 2 retries (3 attempts total) with bounded
+// exponential backoff. 401/403 are authorization failures, not transient
+// ones — retrying them can never succeed, so they fail immediately instead.
+const MAX_LOAD_RETRIES = 2;
+const LOAD_RETRY_BASE_DELAY_MS = 800;
+
+function isRetryableLoadError(error: unknown): boolean {
+  if (error instanceof ApiError) return error.status !== 401 && error.status !== 403;
+  return true;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+type InitialLoadData = {
+  assets: AssetListRow[];
+  inspections: AnnualInspection[];
+  roles: RoleDefinition[];
+  masterData: { organizations: MasterDataItem[]; locations: MasterDataItem[]; equipmentTypes: MasterDataItem[] };
+  logs: ActivityLog[];
+  unitResponsible: UnitResponsiblePerson[];
+};
+
+async function fetchInitialData(): Promise<InitialLoadData> {
+  const [assetsData, inspectionsData, rolesData, masterData, logsData, unitResponsibleData] = await Promise.all([
+    api.getAssets(),
+    api.getInspections(),
+    api.getRoles(),
+    api.getMasterData(),
+    api.getActivityLogs().catch(() => [] as ActivityLog[]),
+    api.getUnitResponsiblePersons().catch(() => [] as UnitResponsiblePerson[]),
+  ]);
+  return { assets: assetsData, inspections: inspectionsData, roles: rolesData, masterData, logs: logsData, unitResponsible: unitResponsibleData };
+}
+
+// Retries only transient failures, bounded, with exponential backoff — never
+// retries indefinitely and never retries an authorization failure.
+async function fetchInitialDataWithRetry(isCancelled: () => boolean): Promise<InitialLoadData> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fetchInitialData();
+    } catch (error) {
+      if (isCancelled() || attempt >= MAX_LOAD_RETRIES || !isRetryableLoadError(error)) throw error;
+      await delay(LOAD_RETRY_BASE_DELAY_MS * 2 ** attempt);
+      attempt += 1;
+    }
+  }
+}
 
 // Gates the authenticated app on session state, then hands off to the data layer.
 export function AppDataProvider({ children }: { children: ReactNode }) {
@@ -181,48 +253,79 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
   const [deleteTarget, setDeleteTarget] = useState<AssetListRow | null>(null);
   const [toast, setToast] = useState("");
   const [isDashboardExporting, setIsDashboardExporting] = useState(false);
-  const [dataReady, setDataReady] = useState(false);
+  // Three distinct states (never collapsed into one boolean): "loading" blocks
+  // rendering with a spinner, "error" blocks rendering with a retry screen,
+  // "ready" means the data below is real — assets=[] in that state is a
+  // genuinely empty database, never a swallowed failure or a still-pending
+  // request (see fetchInitialDataWithRetry/runInitialLoad below).
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
+  const lastLoadedAtRef = useRef(0);
 
   const permissions = getPermissions(currentUser, roles);
+
+  const applyLoadedData = (data: InitialLoadData) => {
+    setAssets(data.assets);
+    setAnnualInspections(data.inspections);
+    const filteredRoles = (data.roles.length ? data.roles : initialRoleDefinitions)
+      .filter((r) => r.key !== "Inspector")
+      .map((r) => ({ ...r, permissions: { ...r.permissions, canViewAllOrganizations: true } }));
+    setRoles(filteredRoles);
+    setOrganizationItems(mergeOrganizationItems(data.masterData.organizations));
+    setLocationItems(data.masterData.locations);
+    setEquipmentTypeItems(data.masterData.equipmentTypes);
+    setActivityLogs(data.logs);
+    setUnitResponsiblePersons(data.unitResponsible);
+    lastLoadedAtRef.current = Date.now();
+  };
+
+  // `silent`: a background revalidation (tab refocus) that already has good
+  // data on screen — on failure it only toasts, it never yanks the UI back to
+  // a loading/error screen. The initial mount and the "ลองอีกครั้ง" button
+  // both call this non-silently.
+  const runInitialLoad = async (isCancelled: () => boolean, silent: boolean) => {
+    if (!silent) setLoadState("loading");
+    try {
+      const data = await fetchInitialDataWithRetry(isCancelled);
+      if (isCancelled()) return;
+      applyLoadedData(data);
+      setLoadState("ready");
+    } catch (error) {
+      if (isCancelled()) return;
+      if (silent) {
+        setToast(`รีเฟรชข้อมูลไม่สำเร็จ: ${(error as Error).message}`);
+        window.setTimeout(() => setToast(""), 4000);
+        return;
+      }
+      setLoadState("error");
+    }
+  };
 
   // Initial data load from the backend.
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const [assetsData, inspectionsData, rolesData, masterData, logsData, unitResponsibleData] = await Promise.all([
-          api.getAssets(),
-          api.getInspections(),
-          api.getRoles(),
-          api.getMasterData(),
-          api.getActivityLogs().catch(() => [] as ActivityLog[]),
-          api.getUnitResponsiblePersons().catch(() => [] as UnitResponsiblePerson[]),
-        ]);
-        if (cancelled) return;
-        setAssets(assetsData);
-        setAnnualInspections(inspectionsData);
-        const filteredRoles = (rolesData.length ? rolesData : initialRoleDefinitions)
-          .filter((r) => r.key !== "Inspector")
-          .map((r) => ({ ...r, permissions: { ...r.permissions, canViewAllOrganizations: true } }));
-        setRoles(filteredRoles);
-        setOrganizationItems(mergeOrganizationItems(masterData.organizations));
-        setLocationItems(masterData.locations);
-        setEquipmentTypeItems(masterData.equipmentTypes);
-        setActivityLogs(logsData);
-        setUnitResponsiblePersons(unitResponsibleData);
-      } catch (error) {
-        if (!cancelled) {
-          setToast(`โหลดข้อมูลไม่สำเร็จ: ${(error as Error).message}`);
-          window.setTimeout(() => setToast(""), 4000);
-        }
-      } finally {
-        if (!cancelled) setDataReady(true);
-      }
-    })();
+    runInitialLoad(() => cancelled, false);
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Requirement: revalidate when the tab becomes active again, but only if
+  // the data is actually stale and only while we're in a "ready" state — this
+  // must never interrupt an in-progress initial load or an error screen's own
+  // retry, and must never fire as aggressive/continuous polling.
+  useEffect(() => {
+    const STALE_AFTER_MS = 60_000;
+    const handleVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      if (loadState !== "ready") return;
+      if (Date.now() - lastLoadedAtRef.current < STALE_AFTER_MS) return;
+      runInitialLoad(() => false, true);
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadState]);
 
   // Admins additionally load the user list for the settings page.
   useEffect(() => {
@@ -603,7 +706,12 @@ function AuthenticatedDataProvider({ sessionUser, children }: { sessionUser: Ses
     showToast(`คืนค่าผู้รับผิดชอบของหน่วยงาน "${updated.unitName}" กลับไปเป็นข้อมูลเดิมแล้ว`);
   };
 
-  if (!dataReady) return <LoadingScreen message="กำลังโหลดข้อมูลจากระบบ..." />;
+  if (loadState === "loading") return <LoadingScreen message="กำลังโหลดข้อมูลจากระบบ..." />;
+  if (loadState === "error") {
+    return (
+      <AssetLoadErrorScreen onRetry={() => runInitialLoad(() => false, false)} />
+    );
+  }
 
   const visibleAssets = assets.filter((asset) => !asset.deletedAt && canAccessAsset(currentUser, permissions, asset));
   const activeOrganizations = organizationItems

@@ -9,14 +9,31 @@ export type MasterDataResponse = {
   equipmentTypes: MasterDataItem[];
 };
 
+// Carries the HTTP status alongside the message so callers (e.g. the initial
+// data load's retry logic in AppDataProvider) can tell a transient failure
+// (network blip, 500) apart from an authorization failure (401/403) that
+// retrying will never fix.
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     headers: { "Content-Type": "application/json" },
+    // This app's data is per-authenticated-user and changes from other
+    // actions in the same session — never let the browser or a shared proxy
+    // serve a cached response for it.
+    cache: "no-store",
     ...init,
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `คำขอล้มเหลว (${res.status})`);
+    throw new ApiError(body.error ?? `คำขอล้มเหลว (${res.status})`, res.status);
   }
   return (await res.json()) as T;
 }
