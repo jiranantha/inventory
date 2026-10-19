@@ -5,7 +5,7 @@ import { PlaceholderPage } from "@/components/StatusPages";
 
 import { useState, useMemo } from "react";
 import { inspectionStatusColors } from "@/constants/colors";
-import { CloseIconButton, DetailInfoItem, Field, FilterChip, MultiSelectFilter, RegistrationTypeBadge, SearchableMultiSelectFilter, SelectField, StatusBadge, TextAreaField, ThaiDateField, getRegistrationType } from "@/components/ui";
+import { AssetNumberCell, CloseIconButton, DetailInfoItem, Field, FilterChip, MultiSelectFilter, RegistrationTypeBadge, SearchableMultiSelectFilter, SelectField, StatusBadge, TextAreaField, ThaiDateField, getRegistrationType } from "@/components/ui";
 import { formatThaiDate, getCurrentInspectionYear } from "@/lib/dates";
 import { uploadImage } from "@/lib/image-upload";
 import { uniqueSorted } from "@/lib/utils";
@@ -464,7 +464,7 @@ function AuditPage({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-muted">{t("col.no")} {(safePage - 1) * pageSize + index + 1}</p>
-                <p className="mt-1 break-words text-sm font-bold text-primary">{asset.assetNumber}</p>
+                <div className="mt-1 break-words text-sm font-bold text-primary"><AssetNumberCell asset={asset} /></div>
                 <h3 className="mt-1 break-words text-base font-extrabold text-ink">{asset.assetName}</h3>
               </div>
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${inspection ? inspectionStatusColors.inspected.badge : inspectionStatusColors.pending.badge}`}>
@@ -506,16 +506,19 @@ function AuditPage({
               what its content actually needs and the table fills the card
               width exactly. จัดการ is a fixed 110px (only ever holds one
               button now) instead of the old wider fixed width sized for two
-              buttons — that's what was pooling as blank space on the right. */}
-          <table className="w-full min-w-[950px] table-fixed border-collapse text-left text-sm">
+              buttons — that's what was pooling as blank space on the right.
+              Number's share was widened (13%→20%) to fit a full university
+              asset number on one line without truncating, same as /list;
+              assetName/org/location gave up a little space to compensate. */}
+          <table className="w-full min-w-[1080px] table-fixed border-collapse text-left text-sm">
             <colgroup>
               <col className="w-[3%]" />
               <col className="w-[4%]" />
-              <col className="w-[13%]" />
-              <col className="w-[9%]" />
               <col className="w-[20%]" />
-              <col className="w-[18%]" />
-              <col className="w-[12%]" />
+              <col className="w-[9%]" />
+              <col className="w-[17%]" />
+              <col className="w-[15%]" />
+              <col className="w-[11%]" />
               <col className="w-[8%]" />
               <col className="w-[9%]" />
               <col className="w-[110px]" />
@@ -537,8 +540,8 @@ function AuditPage({
                     />
                   </td>
                   <td className="px-2 py-3 text-muted">{(safePage - 1) * pageSize + index + 1}</td>
-                  <td className="px-2 py-3 font-semibold text-primary" title={asset.assetNumber}>
-                    <div className="line-clamp-2 break-words">{asset.assetNumber}</div>
+                  <td className="px-2 py-3 font-semibold text-primary">
+                    <AssetNumberCell asset={asset} truncate={false} />
                   </td>
                   <td className="px-2 py-3 text-center"><div className="mx-auto w-fit"><RegistrationTypeBadge registrationType={asset.registrationType} truncate={false} /></div></td>
                   <td className="px-2 py-3 font-semibold text-ink" title={asset.assetName}>
@@ -621,7 +624,7 @@ function AuditPage({
               <div>
                 <h3 className="text-xl font-bold text-ink">{t("audit.modal.title")}</h3>
                 <p className="mt-3 text-base font-extrabold text-ink">{selectedAsset.assetName}</p>
-                <p className="mt-1 text-sm font-semibold text-primary">{selectedAsset.assetNumber}</p>
+                <div className="mt-1 text-sm font-semibold text-primary"><AssetNumberCell asset={selectedAsset} /></div>
               </div>
               <CloseIconButton onClick={() => setSelectedAsset(null)} />
             </div>
@@ -763,7 +766,7 @@ function AuditPage({
               <p className="text-muted">{t("audit.col.assetName")}</p>
               <p className="mt-1 font-semibold text-ink">{selectedAsset.assetName}</p>
               <p className="mt-3 text-muted">{t("col.number")}</p>
-              <p className="mt-1 font-semibold text-primary">{selectedAsset.assetNumber}</p>
+              <div className="mt-1 font-semibold text-primary"><AssetNumberCell asset={selectedAsset} /></div>
               <p className="mt-3 text-muted">{t("audit.modal.year")}</p>
               <p className="mt-1 font-semibold text-ink">{editingExistingInspection.inspectionYear}</p>
             </div>
@@ -807,7 +810,7 @@ function AuditPage({
               <div>
                 <h3 className="text-xl font-bold text-ink">{t("audit.detail.title")}</h3>
                 <p className="mt-3 text-base font-extrabold text-ink">{detailTarget.asset.assetName}</p>
-                <p className="mt-1 text-sm font-semibold text-primary">{detailTarget.asset.assetNumber}</p>
+                <div className="mt-1 text-sm font-semibold text-primary"><AssetNumberCell asset={detailTarget.asset} /></div>
               </div>
               <CloseIconButton onClick={() => setDetailTarget(null)} />
             </div>
