@@ -21,6 +21,7 @@ import {
 } from "@/components/ui";
 import { budgetSourceOptions, registrationTypeOptions } from "@/constants/options";
 import {
+  extractFiscalYearFromActivityAssetNumber,
   extractFiscalYearFromUniversityAssetNumber,
   getAssetDerivedValues,
   getNumberPlacementValue,
@@ -278,7 +279,13 @@ function AssetEditPage({
   // for the whole round trip (requirement 6) — onSave itself (handleSaveAsset
   // in AppDataProvider) already shows the success/error toast and only
   // navigates away on success, so this only needs to track "in flight or not".
-  const performSave = async () => {
+  // `fiscalYearOverride` lets the fiscal-year-sync confirmation (below) save
+  // the just-confirmed year immediately — reading the `fiscalYear` state
+  // directly here would still see its pre-update value, since this function
+  // closes over the state from the render the admin is currently looking at,
+  // and setFiscalYear's update hasn't been applied yet at the point the
+  // confirm handler calls this synchronously in the same event.
+  const performSave = async (fiscalYearOverride?: string) => {
     // A pure university-only asset never carries an activity number — the
     // field is hidden for this type, so its stale state must not leak
     // through unchanged (requirement 7/8's clean assetNumber="-" invariant).
@@ -310,7 +317,7 @@ function AssetEditPage({
         assetType,
         purchaseProject: purchaseProject.trim() || "-",
         numberPlacement: numberPlacement.trim() || "-",
-        fiscalYear,
+        fiscalYear: fiscalYearOverride ?? fiscalYear,
         budgetSource,
         recordDate: formatThaiDate(recordDate),
         purchaseMonth: formatThaiDate(receivedDate),
@@ -349,20 +356,45 @@ function AssetEditPage({
     const placementChanged =
       numberPlacement.trim() !== initialNumberPlacement.trim();
 
-    const doSave = () => {
+    const doSave = (fiscalYearOverride?: string) => {
       closeDialog();
-      performSave();
+      performSave(fiscalYearOverride);
     };
 
-    const confirmPlacement = () => {
+    const confirmPlacement = (fiscalYearOverride?: string) => {
       if (placementChanged) {
         setDialog({
           title: "ยืนยันการแก้ไขตำแหน่งที่ประทับหมายเลขครุภัณฑ์",
           message: `ตำแหน่งใหม่: "${numberPlacement.trim() || "-"}"`,
-          onConfirm: doSave,
+          onConfirm: () => doSave(fiscalYearOverride),
         });
       } else {
-        performSave();
+        performSave(fiscalYearOverride);
+      }
+    };
+
+    // The "/YYYY" suffix of a ค.อ.มช. number is the fiscal year it was
+    // issued under (getNextAssetNumber generates that suffix FROM fiscalYear
+    // when auto-numbering), so a manually-retyped number with a different
+    // year suffix than the asset's own fiscalYear is a real mismatch — ask
+    // before syncing, never apply it silently. Never fires for university
+    // numbers (extractFiscalYearFromActivityAssetNumber only matches ค.อ.มช.
+    // numbers) and never fires unless the number actually changed.
+    const confirmFiscalYearSync = () => {
+      const newActivityYear = numberChanged ? extractFiscalYearFromActivityAssetNumber(assetNumber) : null;
+      if (newActivityYear !== null && String(newActivityYear) !== fiscalYear.trim()) {
+        const proposedYear = String(newActivityYear);
+        setDialog({
+          title: "ยืนยันการปรับปีงบประมาณให้ตรงกับหมายเลขครุภัณฑ์ใหม่",
+          message: `หมายเลขครุภัณฑ์ใหม่ "${assetNumber.trim()}" ระบุปีงบประมาณเป็น ${proposedYear} แต่ปีงบประมาณปัจจุบันของรายการนี้คือ ${fiscalYear.trim() || "ไม่ระบุ"} ต้องการปรับปีงบประมาณเป็น ${proposedYear} ให้ตรงกับหมายเลขครุภัณฑ์ใหม่หรือไม่`,
+          onConfirm: () => {
+            setFiscalYear(proposedYear);
+            closeDialog();
+            confirmPlacement(proposedYear);
+          },
+        });
+      } else {
+        confirmPlacement();
       }
     };
 
@@ -373,11 +405,11 @@ function AssetEditPage({
           message: `หมายเลขใหม่: "${assetNumber.trim()}"`,
           onConfirm: () => {
             closeDialog();
-            confirmPlacement();
+            confirmFiscalYearSync();
           },
         });
       } else {
-        confirmPlacement();
+        confirmFiscalYearSync();
       }
     };
 

@@ -50,6 +50,22 @@ export function extractFiscalYearFromUniversityAssetNumber(universityAssetNumber
   return 2500 + Number(match[1]);
 }
 
+// A ค.อ.มช. activity asset number's "/YYYY" suffix is the fiscal year it was
+// issued under — getNextAssetNumber below generates that suffix FROM
+// fiscalYear in the first place, so the two are the same value by
+// construction. Used only to detect when an admin has manually retyped the
+// number with a different year than the asset's own fiscalYear, so the edit
+// page can ask before syncing them (never applied to university numbers —
+// isActivityAssetNumber gates that).
+export function extractFiscalYearFromActivityAssetNumber(assetNumber: string): number | null {
+  const trimmed = assetNumber?.trim() ?? "";
+  if (!trimmed || !isActivityAssetNumber(trimmed)) return null;
+  const match = trimmed.match(/(\d{1,6})\s*\/\s*(\d{4})/);
+  if (!match) return null;
+  const year = Number(match[2]);
+  return Number.isFinite(year) && year > 0 ? year : null;
+}
+
 export function normalizeAssetType(value: string | null | undefined, context = "") {
   const rawValue = `${value ?? ""} ${context}`.trim();
   if (!rawValue) return assetTypeOptions[5];
