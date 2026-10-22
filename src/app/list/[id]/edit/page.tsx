@@ -26,6 +26,7 @@ import {
   getAssetDerivedValues,
   getNumberPlacementValue,
   getPurchaseProjectValue,
+  isActivityAssetNumber,
   normalizeAssetType,
 } from "@/lib/assets";
 import { formatThaiDate, toDateInputValue } from "@/lib/dates";
@@ -252,6 +253,19 @@ function AssetEditPage({
         });
         return false;
       }
+      // A ค.อ.มช. number with no readable "/YYYY" suffix can't be synced to
+      // fiscalYear at all — rather than silently saving a number whose year
+      // we can't confirm, block the save with a clear error (only when the
+      // admin is actually changing the number; a pre-existing legacy value
+      // they're not touching isn't retroactively re-validated here).
+      if (isAdmin && assetNumber.trim() !== asset.assetNumber.trim() && isActivityAssetNumber(assetNumber) && extractFiscalYearFromActivityAssetNumber(assetNumber) === null) {
+        setDialog({
+          title: "รูปแบบหมายเลขครุภัณฑ์ไม่ถูกต้อง",
+          message: "หมายเลขทะเบียนควบคุมกิจกรรมนักศึกษาต้องมีปีงบประมาณ 4 หลักต่อท้ายเครื่องหมาย \"/\" เช่น ค.อ.มช.0001/2572 กรุณาตรวจสอบรูปแบบหมายเลขก่อนบันทึก",
+          onConfirm: closeDialog,
+        });
+        return false;
+      }
       // "-" is the shared "no value" sentinel for this field (every
       // university-only asset has it), so it must never trip a duplicate
       // check on its own — this was the actual cause of saves being blocked
@@ -279,13 +293,7 @@ function AssetEditPage({
   // for the whole round trip (requirement 6) — onSave itself (handleSaveAsset
   // in AppDataProvider) already shows the success/error toast and only
   // navigates away on success, so this only needs to track "in flight or not".
-  // `fiscalYearOverride` lets the fiscal-year-sync confirmation (below) save
-  // the just-confirmed year immediately — reading the `fiscalYear` state
-  // directly here would still see its pre-update value, since this function
-  // closes over the state from the render the admin is currently looking at,
-  // and setFiscalYear's update hasn't been applied yet at the point the
-  // confirm handler calls this synchronously in the same event.
-  const performSave = async (fiscalYearOverride?: string) => {
+  const performSave = async () => {
     // A pure university-only asset never carries an activity number — the
     // field is hidden for this type, so its stale state must not leak
     // through unchanged (requirement 7/8's clean assetNumber="-" invariant).
@@ -317,7 +325,7 @@ function AssetEditPage({
         assetType,
         purchaseProject: purchaseProject.trim() || "-",
         numberPlacement: numberPlacement.trim() || "-",
-        fiscalYear: fiscalYearOverride ?? fiscalYear,
+        fiscalYear,
         budgetSource,
         recordDate: formatThaiDate(recordDate),
         purchaseMonth: formatThaiDate(receivedDate),
@@ -356,48 +364,27 @@ function AssetEditPage({
     const placementChanged =
       numberPlacement.trim() !== initialNumberPlacement.trim();
 
-    const doSave = (fiscalYearOverride?: string) => {
+    const doSave = () => {
       closeDialog();
-      performSave(fiscalYearOverride);
+      performSave();
     };
 
-    const confirmPlacement = (fiscalYearOverride?: string) => {
+    const confirmPlacement = () => {
       if (placementChanged) {
         setDialog({
           title: "ยืนยันการแก้ไขตำแหน่งที่ประทับหมายเลขครุภัณฑ์",
           message: `ตำแหน่งใหม่: "${numberPlacement.trim() || "-"}"`,
-          onConfirm: () => doSave(fiscalYearOverride),
+          onConfirm: doSave,
         });
       } else {
-        performSave(fiscalYearOverride);
+        performSave();
       }
     };
 
-    // The "/YYYY" suffix of a ค.อ.มช. number is the fiscal year it was
-    // issued under (getNextAssetNumber generates that suffix FROM fiscalYear
-    // when auto-numbering), so a manually-retyped number with a different
-    // year suffix than the asset's own fiscalYear is a real mismatch — ask
-    // before syncing, never apply it silently. Never fires for university
-    // numbers (extractFiscalYearFromActivityAssetNumber only matches ค.อ.มช.
-    // numbers) and never fires unless the number actually changed.
-    const confirmFiscalYearSync = () => {
-      const newActivityYear = numberChanged ? extractFiscalYearFromActivityAssetNumber(assetNumber) : null;
-      if (newActivityYear !== null && String(newActivityYear) !== fiscalYear.trim()) {
-        const proposedYear = String(newActivityYear);
-        setDialog({
-          title: "ยืนยันการปรับปีงบประมาณให้ตรงกับหมายเลขครุภัณฑ์ใหม่",
-          message: `หมายเลขครุภัณฑ์ใหม่ "${assetNumber.trim()}" ระบุปีงบประมาณเป็น ${proposedYear} แต่ปีงบประมาณปัจจุบันของรายการนี้คือ ${fiscalYear.trim() || "ไม่ระบุ"} ต้องการปรับปีงบประมาณเป็น ${proposedYear} ให้ตรงกับหมายเลขครุภัณฑ์ใหม่หรือไม่`,
-          onConfirm: () => {
-            setFiscalYear(proposedYear);
-            closeDialog();
-            confirmPlacement(proposedYear);
-          },
-        });
-      } else {
-        confirmPlacement();
-      }
-    };
-
+    // fiscalYear is kept in sync with a ค.อ.มช. number's "/YYYY" suffix live,
+    // as the admin types it (see the asset-number field's onChange) — by the
+    // time Save is clicked, fiscalYear already reflects the new number, so
+    // there's nothing left to reconcile or confirm here.
     const confirmNumberChange = () => {
       if (numberChanged) {
         setDialog({
@@ -405,11 +392,11 @@ function AssetEditPage({
           message: `หมายเลขใหม่: "${assetNumber.trim()}"`,
           onConfirm: () => {
             closeDialog();
-            confirmFiscalYearSync();
+            confirmPlacement();
           },
         });
       } else {
-        confirmFiscalYearSync();
+        confirmPlacement();
       }
     };
 
@@ -579,7 +566,22 @@ function AssetEditPage({
               <Field
                 label="เลขทะเบียนควบคุมกิจกรรมนักศึกษา"
                 value={assetNumber}
-                onChange={(event) => setAssetNumber(event.target.value)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setAssetNumber(value);
+                  // Unconditional, immediate sync — unlike the university
+                  // number's soft auto-fill hint below (which backs off once
+                  // the admin has typed their own fiscalYear), a ค.อ.มช.
+                  // number's "/YYYY" suffix IS the fiscal year it was issued
+                  // under, so this always overwrites fiscalYear the moment a
+                  // valid year can be read from the new number — never keeps
+                  // the old year once the number has changed.
+                  const extractedYear = extractFiscalYearFromActivityAssetNumber(value);
+                  if (extractedYear !== null) {
+                    setFiscalYear(String(extractedYear));
+                    setFiscalYearError("");
+                  }
+                }}
                 disabled={!isAdmin}
                 placeholder={asset.assetNumber}
               />
