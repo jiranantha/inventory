@@ -3,7 +3,7 @@
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 
-import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef, Suspense } from "react";
+import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef, Suspense, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -104,6 +104,41 @@ function ListAssetNumberCell({ asset }: { asset: AssetListRow }) {
     );
   }
   return <div title={title}>{registrationType === UNIVERSITY_REGISTRATION_TYPE ? universityLine : activityLine}</div>;
+}
+
+// Desktop /list table action button: 34px square, 17px Lucide-style icon
+// (children are the SVG paths), with a tooltip shown on hover and keyboard focus.
+function ActionIconButton({
+  label,
+  onClick,
+  className,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  className: string;
+  children: ReactNode;
+}) {
+  return (
+    <span className="group relative inline-flex shrink-0">
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${className}`}
+      >
+        <svg className="h-[17px] w-[17px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          {children}
+        </svg>
+      </button>
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-[#011628] px-2 py-1 text-[11px] font-semibold text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-has-[:focus-visible]:opacity-100"
+      >
+        {label}
+      </span>
+    </span>
+  );
 }
 
 function parseMultiParam(param: string | null): string[] {
@@ -694,11 +729,27 @@ function ListPage({
                       </span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-2 py-3">
+                  <td className="whitespace-nowrap px-2 py-1.5">
                     <div className="flex flex-row flex-nowrap items-center justify-center gap-1.5">
-                      <button onClick={() => onViewDetails(row)} className="shrink-0 whitespace-nowrap rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-ink hover:border-primary hover:text-primary">{t("c.detail")}</button>
-                      {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="shrink-0 whitespace-nowrap rounded-md bg-orange px-2 py-1 text-[11px] font-semibold text-white hover:bg-orange/90">{t("c.edit")}</button>}
-                      {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="shrink-0 whitespace-nowrap rounded-md border border-red-300/30 px-2 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/10">{t("c.delete")}</button>}
+                      <ActionIconButton label={t("c.detail")} onClick={() => onViewDetails(row)} className="border border-[#D1D9E0] bg-white text-ink hover:border-primary hover:text-primary">
+                        <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+                        <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+                        <path d="M10 9H8" />
+                        <path d="M16 13H8" />
+                        <path d="M16 17H8" />
+                      </ActionIconButton>
+                      {(permissions.canEdit || permissions.canEditLimitedFields) && (
+                        <ActionIconButton label={t("c.edit")} onClick={() => onEditAsset(row)} className="border border-[#044377] bg-[#044377] text-white hover:bg-[#032D50]">
+                          <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                          <path d="m15 5 4 4" />
+                        </ActionIconButton>
+                      )}
+                      {permissions.canDelete && (
+                        <ActionIconButton label={t("c.delete")} onClick={() => onDeleteAsset(row)} className="border border-[#DC2626] bg-white text-[#DC2626] hover:bg-[#FEF2F2]">
+                          <path d="M18 6 6 18" />
+                          <path d="m6 6 12 12" />
+                        </ActionIconButton>
+                      )}
                     </div>
                   </td>
                 </tr>
