@@ -331,15 +331,34 @@ function AuditPage({
         </div>
       )}
 
-      <div className="grid gap-3 md:grid-cols-3">
-        {summaryItems.map((item) => (
-          <article key={item.label} className={`relative overflow-hidden rounded-lg border bg-surface p-4 ${item.cardClass}`}>
-            <span className={`absolute left-0 top-0 h-full w-1 ${item.accentClass}`} aria-hidden="true" />
-            <p className="text-xs font-semibold text-ink">{item.label}</p>
-            <strong className="mt-2 block text-2xl font-extrabold text-ink">{item.value.toLocaleString("th-TH")}</strong>
-            <p className={`mt-1 text-xs ${item.subtitleClass}`}>{item.subtitle}</p>
-          </article>
-        ))}
+      {/* Mobile (< md): 2-column grid — total card spans both columns with a
+          horizontal layout, the two inspection cards share the second row.
+          All overrides are max-md: so the md+ 3-column layout is unchanged. */}
+      <div className="grid gap-3 md:grid-cols-3 max-md:grid-cols-2 max-md:gap-2.5">
+        {summaryItems.map((item, index) => {
+          const isTotal = index === 0;
+          return (
+            <article
+              key={item.label}
+              className={`relative min-w-0 overflow-hidden rounded-lg border bg-surface p-4 ${item.cardClass} max-md:rounded-xl max-md:shadow-[0_2px_8px_rgba(4,67,119,0.06)] ${
+                isTotal
+                  ? "max-md:col-span-2 max-md:grid max-md:min-h-[96px] max-md:grid-cols-[minmax(0,1fr)_auto] max-md:content-center max-md:items-center max-md:gap-x-3 max-md:p-[15px]"
+                  : "max-md:flex max-md:min-h-[112px] max-md:flex-col max-md:p-[13px]"
+              }`}
+            >
+              <span className={`absolute left-0 top-0 h-full w-1 ${item.accentClass}`} aria-hidden="true" />
+              <p className="text-xs font-semibold text-ink max-md:break-words max-md:text-[13px] max-md:leading-snug">{item.label}</p>
+              <strong
+                className={`mt-2 block text-2xl font-extrabold text-ink max-md:text-[32px] max-md:font-bold max-md:leading-none max-md:tabular-nums ${
+                  isTotal ? "max-md:col-start-2 max-md:row-span-2 max-md:row-start-1 max-md:mt-0 max-md:text-right" : "max-md:mt-1.5"
+                }`}
+              >
+                {item.value.toLocaleString("th-TH")}
+              </strong>
+              <p className={`mt-1 text-xs ${item.subtitleClass} max-md:break-words max-md:text-[11px] max-md:leading-4 ${isTotal ? "" : "max-md:mt-auto max-md:pt-1.5"}`}>{item.subtitle}</p>
+            </article>
+          );
+        })}
       </div>
 
       <div className="rounded-lg border border-line bg-surface p-4">
