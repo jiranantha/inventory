@@ -18,7 +18,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { AssetNumberCell, FilterChip, InspectionResultBadge, MultiSelectFilter, PageHeader, RegistrationTypeBadge, SearchableMultiSelectFilter, StatusBadge, getRegistrationType } from "@/components/ui";
+import { AssetNumberCell, BOTH_NUMBERS_REGISTRATION_TYPE, FilterChip, InspectionResultBadge, MultiSelectFilter, PageHeader, RegistrationTypeBadge, SearchableMultiSelectFilter, StatusBadge, UNIVERSITY_REGISTRATION_TYPE, getRegistrationType } from "@/components/ui";
 import { assetPdfReportColumns, assetReportExportColumns, assetToPdfReportRow, assetToReportRow } from "@/lib/assets";
 import { exportAssetReport } from "@/lib/import-export";
 import { Permissions } from "@/lib/permissions";
@@ -44,6 +44,65 @@ function assetNameMinWidth(name: string): string {
   const visibleChars = name.replace(THAI_COMBINING_MARKS, "").length;
   const em = Math.min(28, Math.max(10, Math.ceil(visibleChars / 2) * 0.6 + 0.5));
   return `${em}em`;
+}
+
+// Desktop /list table only: registration type shown as an icon + number color
+// instead of a separate column (icon shapes from Lucide: graduation-cap, building-2).
+const ACTIVITY_NUMBER_COLOR = "#044377";
+const UNIVERSITY_NUMBER_COLOR = "#92400E";
+
+function GraduationCapIcon({ label }: { label: string }) {
+  return (
+    <svg className="h-[15px] w-[15px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label={label}>
+      <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z" />
+      <path d="M22 10v6" />
+      <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" />
+    </svg>
+  );
+}
+
+function BuildingIcon({ label }: { label: string }) {
+  return (
+    <svg className="h-[15px] w-[15px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label={label}>
+      <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
+      <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
+      <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" />
+      <path d="M10 6h4" />
+      <path d="M10 10h4" />
+      <path d="M10 14h4" />
+      <path d="M10 18h4" />
+    </svg>
+  );
+}
+
+function ListAssetNumberCell({ asset }: { asset: AssetListRow }) {
+  const { lang } = useLanguage();
+  const registrationType = getRegistrationType(asset);
+  const activityLabel = translateOption("กิจกรรมนักศึกษา", lang);
+  const universityLabel = translateOption("มหาวิทยาลัย", lang);
+  const activityLine = (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap" style={{ color: ACTIVITY_NUMBER_COLOR }}>
+      <GraduationCapIcon label={activityLabel} />
+      {asset.assetNumber?.trim() || "-"}
+    </span>
+  );
+  const universityLine = (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap" style={{ color: UNIVERSITY_NUMBER_COLOR }}>
+      <BuildingIcon label={universityLabel} />
+      {asset.universityAssetNumber?.trim() || "-"}
+    </span>
+  );
+  const title = translateOption(registrationType, lang);
+
+  if (registrationType === BOTH_NUMBERS_REGISTRATION_TYPE) {
+    return (
+      <div className="flex flex-col gap-0.5" title={title}>
+        {activityLine}
+        {universityLine}
+      </div>
+    );
+  }
+  return <div title={title}>{registrationType === UNIVERSITY_REGISTRATION_TYPE ? universityLine : activityLine}</div>;
 }
 
 function parseMultiParam(param: string | null): string[] {
@@ -220,15 +279,17 @@ function ListPage({
     router.replace("/list", { scroll: false });
   };
 
+  // Registration type has no column of its own — it's shown by the icon/color
+  // next to each number (ListAssetNumberCell).
   const tableHeadings = [
-    t("col.no"), t("col.yearShort"), t("col.number"), t("col.numberType"), t("col.name"),
+    t("col.no"), t("col.yearShort"), t("col.number"), t("col.name"),
     t("col.org"), t("col.status"), t("col.inspection"),
     t("col.image"), t("col.manage"),
   ];
-  const centeredHeadings = new Set([t("col.no"), t("col.yearShort"), t("col.numberType"), t("col.status"), t("col.inspection"), t("col.image"), t("col.manage")]);
+  const centeredHeadings = new Set([t("col.no"), t("col.yearShort"), t("col.status"), t("col.inspection"), t("col.image"), t("col.manage")]);
   // Desktop-table columns sized exactly to their one-line content; only Name
-  // (index 4) is unsized, so it alone absorbs any spare table width.
-  const compactColumnIndexes = new Set([0, 1, 2, 3, 5, 6, 7, 8, 9]);
+  // (index 3) is unsized, so it alone absorbs any spare table width.
+  const compactColumnIndexes = new Set([0, 1, 2, 4, 5, 6, 7, 8]);
 
   // Search/filter card — extracted so its position can differ by role: normal
   // roles keep it right under the page header (original position); the
@@ -600,8 +661,7 @@ function ListPage({
                 <tr key={row.assetCode} className="align-middle hover:bg-surfaceSoft">
                   <td className="whitespace-nowrap px-2 py-3 text-center text-muted">{(safePage - 1) * pageSize + index + 1}</td>
                   <td className="whitespace-nowrap px-2 py-3 text-center">{row.fiscalYear}</td>
-                  <td className="px-2 py-3 font-semibold text-primary"><AssetNumberCell asset={row} truncate={false} /></td>
-                  <td className="px-2 py-3 text-center"><div className="mx-auto w-fit"><RegistrationTypeBadge registrationType={row.registrationType} truncate={false} /></div></td>
+                  <td className="px-2 py-3 font-semibold"><ListAssetNumberCell asset={row} /></td>
                   <td className="px-3 py-3 font-semibold leading-snug text-ink"><div className="break-words" style={{ minWidth: assetNameMinWidth(row.assetName) }}>{row.assetName}</div></td>
                   <td className="whitespace-nowrap px-2 py-3">{row.organization}</td>
                   <td className="whitespace-nowrap px-2 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
@@ -622,7 +682,7 @@ function ListPage({
               ))}
               {visibleRows.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-12 text-center">
+                  <td colSpan={tableHeadings.length} className="px-3 py-12 text-center">
                     <div className="mx-auto max-w-md">
                       <p className="text-base font-bold text-white">{t("c.noData")}</p>
                       <p className="mt-2 text-sm leading-6 text-muted">{t("c.noDataSub")}</p>
