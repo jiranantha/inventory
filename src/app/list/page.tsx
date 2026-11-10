@@ -19,6 +19,7 @@ import {
   YAxis,
 } from "recharts";
 import { AssetNumberCell, BOTH_NUMBERS_REGISTRATION_TYPE, FilterChip, InspectionResultBadge, MultiSelectFilter, PageHeader, RegistrationTypeBadge, SearchableMultiSelectFilter, StatusBadge, UNIVERSITY_REGISTRATION_TYPE, getRegistrationType } from "@/components/ui";
+import { AssetImageGalleryModal } from "@/components/AssetImageGalleryModal";
 import { assetPdfReportColumns, assetReportExportColumns, assetToPdfReportRow, assetToReportRow } from "@/lib/assets";
 import { exportAssetReport } from "@/lib/import-export";
 import { Permissions } from "@/lib/permissions";
@@ -177,6 +178,16 @@ function ListPage({
   }, [router]);
 
   const [exportOpen, setExportOpen] = useState(false);
+  const [galleryAsset, setGalleryAsset] = useState<AssetListRow | null>(null);
+  const galleryTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const openImageGallery = useCallback((asset: AssetListRow, trigger: HTMLButtonElement) => {
+    galleryTriggerRef.current = trigger;
+    setGalleryAsset(asset);
+  }, []);
+  const closeImageGallery = useCallback(() => {
+    setGalleryAsset(null);
+    galleryTriggerRef.current?.focus();
+  }, []);
   const [exportMenuPos, setExportMenuPos] = useState<{ top: number; left: number } | null>(null);
   const exportButtonRef = useRef<HTMLButtonElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -667,9 +678,21 @@ function ListPage({
                   <td className="whitespace-nowrap px-2 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
                   <td className="whitespace-nowrap px-2 py-3 text-center"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></td>
                   <td className="px-2 py-3 text-center">
-                    <button className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-line bg-slate-900 text-[11px] font-bold text-primary hover:border-primary">
-                      {row.imageCount}
-                    </button>
+                    {row.imageCount > 0 ? (
+                      <button
+                        type="button"
+                        onClick={(event) => openImageGallery(row, event.currentTarget)}
+                        aria-haspopup="dialog"
+                        aria-label={lang === "th" ? `ดูรูปภาพ ${row.imageCount} รูป: ${row.assetName}` : `View ${row.imageCount} image(s): ${row.assetName}`}
+                        className="inline-flex h-7 w-9 cursor-pointer items-center justify-center rounded-md border border-line bg-slate-900 text-[11px] font-bold text-primary transition hover:border-primary hover:bg-surfaceSoft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        {row.imageCount}
+                      </button>
+                    ) : (
+                      <span className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-line bg-slate-900 text-[11px] font-bold text-primary">
+                        {row.imageCount}
+                      </span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-2 py-3">
                     <div className="flex flex-row flex-nowrap items-center justify-center gap-1.5">
@@ -727,6 +750,9 @@ function ListPage({
           </div>
         </div>
       </div>
+      {galleryAsset && (
+        <AssetImageGalleryModal key={galleryAsset.id} asset={galleryAsset} onClose={closeImageGallery} />
+      )}
     </section>
   );
 }
