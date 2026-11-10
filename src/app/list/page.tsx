@@ -35,6 +35,17 @@ import { registrationTypeOptions } from "@/constants/options";
 // kept local here since the dashboard doesn't export it.
 const COMMITTEE_PIE_COLORS = ["#044377", "#508ABA", "#9CD1FC", "#C3E3FD", "#032D50", "#B0DADF", "#E1F1FE", "#011628"];
 
+// Min width for a desktop-table asset-name cell: roughly half the name's visible
+// length (Thai above/below combining marks take no horizontal space), so the
+// name wraps to about 2 lines instead of many. Capped so a very long name wraps
+// to a 3rd line rather than blowing up the table; it is never clipped.
+const THAI_COMBINING_MARKS = /[ัิ-ฺ็-๎]/g;
+function assetNameMinWidth(name: string): string {
+  const visibleChars = name.replace(THAI_COMBINING_MARKS, "").length;
+  const em = Math.min(28, Math.max(10, Math.ceil(visibleChars / 2) * 0.6 + 0.5));
+  return `${em}em`;
+}
+
 function parseMultiParam(param: string | null): string[] {
   if (!param) return [];
   return param.split(",").map((s) => s.trim()).filter(Boolean);
@@ -215,9 +226,9 @@ function ListPage({
     t("col.image"), t("col.manage"),
   ];
   const centeredHeadings = new Set([t("col.no"), t("col.yearShort"), t("col.numberType"), t("col.status"), t("col.inspection"), t("col.image"), t("col.manage")]);
-  // Desktop-table columns sized to their content (No, Year, Number, NumberType,
-  // Status, Inspection, Image); Name, Org and Manage share the remaining width.
-  const compactColumnIndexes = new Set([0, 1, 2, 3, 6, 7, 8]);
+  // Desktop-table columns sized exactly to their one-line content; only Name
+  // (index 4) is unsized, so it alone absorbs any spare table width.
+  const compactColumnIndexes = new Set([0, 1, 2, 3, 5, 6, 7, 8, 9]);
 
   // Search/filter card — extracted so its position can differ by role: normal
   // roles keep it right under the page header (original position); the
@@ -561,17 +572,14 @@ function ListPage({
       {/* Desktop table */}
       <div className="hidden w-full overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="w-full overflow-x-auto">
-          {/* Auto table layout sized by real content. The old table-fixed colgroup
-              reserved ~900px of fixed columns (incl. a 260px number column) plus a
-              1050px min-width, so on a ~955px laptop content area Name/Org were left
-              ~75px each and truncated while Number kept unused blank space.
-              Now: No/Year/Number/NumberType/Status/Inspection/Image are `w-px` +
-              nowrap content, i.e. exactly as wide as their content (Number always
-              shows the full number on one line). Name/Org/Manage are unsized, so the
-              auto layout gives the leftover width mostly to Name/Org (longest
-              content); Name/Org wrap instead of truncating, and the action buttons
-              wrap onto two lines only when space is tight. If the content minimum
-              still exceeds the viewport, only this container scrolls horizontally. */}
+          {/* Auto table layout sized by real content (the old table-fixed colgroup
+              reserved a 260px number column + 1050px min-width, truncating Name).
+              Every column except Name is `w-px` with one-line content, so it is
+              exactly as wide as its content: Number, Org and the three action
+              buttons always stay on one line. Name absorbs the spare width and
+              wraps; its min-width (assetNameMinWidth) is about half the name's
+              length so it fits in ~2 lines. When the content minimum exceeds the
+              viewport, only this container scrolls horizontally — nothing clips. */}
           <table className="w-full border-collapse text-left text-sm">
             <thead className="bg-surfaceSoft text-ink">
               <tr>
@@ -594,8 +602,8 @@ function ListPage({
                   <td className="whitespace-nowrap px-2 py-3 text-center">{row.fiscalYear}</td>
                   <td className="px-2 py-3 font-semibold text-primary"><AssetNumberCell asset={row} truncate={false} /></td>
                   <td className="px-2 py-3 text-center"><div className="mx-auto w-fit"><RegistrationTypeBadge registrationType={row.registrationType} truncate={false} /></div></td>
-                  <td className="px-3 py-3 font-semibold leading-relaxed text-ink"><div className="min-w-[160px] break-words">{row.assetName}</div></td>
-                  <td className="px-3 py-3 leading-relaxed"><div className="min-w-[110px] break-words">{row.organization}</div></td>
+                  <td className="px-3 py-3 font-semibold leading-snug text-ink"><div className="break-words" style={{ minWidth: assetNameMinWidth(row.assetName) }}>{row.assetName}</div></td>
+                  <td className="whitespace-nowrap px-2 py-3">{row.organization}</td>
                   <td className="whitespace-nowrap px-2 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
                   <td className="whitespace-nowrap px-2 py-3 text-center"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></td>
                   <td className="px-2 py-3 text-center">
@@ -603,8 +611,8 @@ function ListPage({
                       {row.imageCount}
                     </button>
                   </td>
-                  <td className="px-2 py-3">
-                    <div className="flex flex-wrap items-center justify-center gap-1.5">
+                  <td className="whitespace-nowrap px-2 py-3">
+                    <div className="flex flex-row flex-nowrap items-center justify-center gap-1.5">
                       <button onClick={() => onViewDetails(row)} className="shrink-0 whitespace-nowrap rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-ink hover:border-primary hover:text-primary">{t("c.detail")}</button>
                       {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="shrink-0 whitespace-nowrap rounded-md bg-orange px-2 py-1 text-[11px] font-semibold text-white hover:bg-orange/90">{t("c.edit")}</button>}
                       {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="shrink-0 whitespace-nowrap rounded-md border border-red-300/30 px-2 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/10">{t("c.delete")}</button>}
