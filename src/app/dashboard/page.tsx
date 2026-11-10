@@ -273,13 +273,18 @@ function DashboardPage({
 
   return (
     <section id="dashboard-export-area" className="mx-auto w-full max-w-screen-2xl space-y-5">
-      <div className="grid auto-rows-fr grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {assetStatusSummary.map((item) => {
+      {/* Mobile (< md) uses a compact 2-column grid (1 column below 340px); all
+          max-md: overrides leave the md+ desktop card styling untouched. */}
+      <div className="grid auto-rows-fr grid-cols-1 gap-3 min-[340px]:grid-cols-2 lg:grid-cols-4 max-md:gap-2.5">
+        {assetStatusSummary.map((item, index) => {
+          const mobileSurface = index === 0
+            ? "max-md:bg-none max-md:bg-[#EEF7FF] max-md:border-[#9CD1FC]"
+            : "max-md:bg-none max-md:bg-surface max-md:border-[#C3E3FD]";
           return (
-            <article key={item.label} className={`flex min-h-[152px] flex-col justify-center gap-2 rounded-lg border ${item.border} bg-surface bg-gradient-to-br ${item.glow} to-transparent px-4 py-5 shadow-glow`}>
-              <p className="text-sm font-semibold text-ink">{item.label}</p>
-              <strong className={`block text-5xl font-extrabold leading-none ${item.accent}`}>{item.value.toLocaleString("th-TH")}</strong>
-              <p className="text-xs text-ink">{item.note}</p>
+            <article key={item.label} className={`flex min-h-[152px] flex-col justify-center gap-2 rounded-lg border ${item.border} bg-surface bg-gradient-to-br ${item.glow} to-transparent px-4 py-5 shadow-glow max-md:min-h-[124px] max-md:min-w-0 max-md:justify-start max-md:gap-1.5 max-md:rounded-[13px] max-md:p-[15px] max-md:shadow-[0_2px_8px_rgba(4,67,119,0.06)] ${mobileSurface}`}>
+              <p className="text-sm font-semibold text-ink max-md:break-words max-md:text-[13px] max-md:leading-snug">{item.label}</p>
+              <strong className={`block text-5xl font-extrabold leading-none ${item.accent} max-md:text-[32px] max-md:font-bold`}>{item.value.toLocaleString("th-TH")}</strong>
+              <p className="text-xs text-ink max-md:break-words max-md:text-[11px] max-md:leading-4 max-md:text-muted">{item.note}</p>
             </article>
           );
         })}
