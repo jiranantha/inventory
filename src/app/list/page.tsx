@@ -215,6 +215,9 @@ function ListPage({
     t("col.image"), t("col.manage"),
   ];
   const centeredHeadings = new Set([t("col.no"), t("col.yearShort"), t("col.numberType"), t("col.status"), t("col.inspection"), t("col.image"), t("col.manage")]);
+  // Desktop-table columns sized to their content (No, Year, Number, NumberType,
+  // Status, Inspection, Image); Name, Org and Manage share the remaining width.
+  const compactColumnIndexes = new Set([0, 1, 2, 3, 6, 7, 8]);
 
   // Search/filter card — extracted so its position can differ by role: normal
   // roles keep it right under the page header (original position); the
@@ -558,34 +561,27 @@ function ListPage({
       {/* Desktop table */}
       <div className="hidden w-full overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="w-full overflow-x-auto">
-          {/* No/Year/Number/NumberType/Status/Inspection/Image/Manage are fixed-px —
-              their content (badges, buttons, short numbers) doesn't need to grow with
-              viewport width, so giving them a % share made them balloon on wide screens
-              and left dead space after the action buttons. Name and Org are left with
-              no width so they split whatever's left (table-layout: fixed auto-columns
-              rule) and absorb all remaining space, however much or little there is.
-              Number is sized for a full university asset number on one line (e.g.
-              "70.77100360037.บ68002", or the longer "เลข มช. ..." second line of the
-              both-numbers case) — it never truncates, so the other compact columns
-              (No/Year/NumberType/Status/Inspection/Image) are trimmed to just what
-              their actual content needs to make room. */}
-          <table className="w-full min-w-[1050px] table-fixed border-collapse text-left text-sm">
-            <colgroup>
-              <col className="w-[44px]" />
-              <col className="w-[52px]" />
-              <col className="w-[260px]" />
-              <col className="w-[114px]" />
-              <col />
-              <col />
-              <col className="w-[92px]" />
-              <col className="w-[100px]" />
-              <col className="w-[54px]" />
-              <col className="w-[182px]" />
-            </colgroup>
+          {/* Auto table layout sized by real content. The old table-fixed colgroup
+              reserved ~900px of fixed columns (incl. a 260px number column) plus a
+              1050px min-width, so on a ~955px laptop content area Name/Org were left
+              ~75px each and truncated while Number kept unused blank space.
+              Now: No/Year/Number/NumberType/Status/Inspection/Image are `w-px` +
+              nowrap content, i.e. exactly as wide as their content (Number always
+              shows the full number on one line). Name/Org/Manage are unsized, so the
+              auto layout gives the leftover width mostly to Name/Org (longest
+              content); Name/Org wrap instead of truncating, and the action buttons
+              wrap onto two lines only when space is tight. If the content minimum
+              still exceeds the viewport, only this container scrolls horizontally. */}
+          <table className="w-full border-collapse text-left text-sm">
             <thead className="bg-surfaceSoft text-ink">
               <tr>
-                {tableHeadings.map((heading) => (
-                  <th key={heading} className={`border-b border-line px-3 py-2.5 font-semibold ${centeredHeadings.has(heading) ? "text-center" : ""}`}>
+                {tableHeadings.map((heading, index) => (
+                  <th
+                    key={heading}
+                    className={`border-b border-line py-2.5 font-semibold ${centeredHeadings.has(heading) ? "text-center" : ""} ${
+                      compactColumnIndexes.has(index) ? "w-px px-2" : "px-3"
+                    }`}
+                  >
                     {heading}
                   </th>
                 ))}
@@ -594,21 +590,21 @@ function ListPage({
             <tbody className="divide-y divide-line bg-surface text-ink">
               {visibleRows.map((row, index) => (
                 <tr key={row.assetCode} className="align-middle hover:bg-surfaceSoft">
-                  <td className="px-3 py-3 text-center text-muted">{(safePage - 1) * pageSize + index + 1}</td>
-                  <td className="px-3 py-3 text-center">{row.fiscalYear}</td>
-                  <td className="px-3 py-3 font-semibold text-primary"><AssetNumberCell asset={row} truncate={false} /></td>
+                  <td className="whitespace-nowrap px-2 py-3 text-center text-muted">{(safePage - 1) * pageSize + index + 1}</td>
+                  <td className="whitespace-nowrap px-2 py-3 text-center">{row.fiscalYear}</td>
+                  <td className="px-2 py-3 font-semibold text-primary"><AssetNumberCell asset={row} truncate={false} /></td>
                   <td className="px-2 py-3 text-center"><div className="mx-auto w-fit"><RegistrationTypeBadge registrationType={row.registrationType} truncate={false} /></div></td>
-                  <td className="overflow-hidden px-3 py-3 font-semibold text-ink" title={row.assetName}><div className="max-w-full truncate">{row.assetName}</div></td>
-                  <td className="overflow-hidden px-3 py-3"><div className="max-w-full truncate" title={row.organization}>{row.organization}</div></td>
-                  <td className="px-3 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
-                  <td className="px-3 py-3 text-center"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></td>
-                  <td className="px-3 py-3 text-center">
+                  <td className="px-3 py-3 font-semibold leading-relaxed text-ink"><div className="min-w-[160px] break-words">{row.assetName}</div></td>
+                  <td className="px-3 py-3 leading-relaxed"><div className="min-w-[110px] break-words">{row.organization}</div></td>
+                  <td className="whitespace-nowrap px-2 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
+                  <td className="whitespace-nowrap px-2 py-3 text-center"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></td>
+                  <td className="px-2 py-3 text-center">
                     <button className="inline-flex h-7 w-9 items-center justify-center rounded-md border border-line bg-slate-900 text-[11px] font-bold text-primary hover:border-primary">
                       {row.imageCount}
                     </button>
                   </td>
-                  <td className="overflow-hidden px-2 py-3">
-                    <div className="flex flex-nowrap items-center justify-center gap-1.5">
+                  <td className="px-2 py-3">
+                    <div className="flex flex-wrap items-center justify-center gap-1.5">
                       <button onClick={() => onViewDetails(row)} className="shrink-0 whitespace-nowrap rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-ink hover:border-primary hover:text-primary">{t("c.detail")}</button>
                       {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="shrink-0 whitespace-nowrap rounded-md bg-orange px-2 py-1 text-[11px] font-semibold text-white hover:bg-orange/90">{t("c.edit")}</button>}
                       {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="shrink-0 whitespace-nowrap rounded-md border border-red-300/30 px-2 py-1 text-[11px] font-semibold text-red-200 hover:bg-red-500/10">{t("c.delete")}</button>}
