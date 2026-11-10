@@ -108,6 +108,8 @@ function ListAssetNumberCell({ asset }: { asset: AssetListRow }) {
 
 // Desktop /list table action button: 34px square, 17px Lucide-style icon
 // (children are the SVG paths), with a tooltip shown on hover and keyboard focus.
+// Colors use explicit hex classes: globals.css remaps `.asset-shell .text-white`
+// to dark navy (!important), so `text-white` would render navy here.
 function ActionIconButton({
   label,
   onClick,
@@ -133,7 +135,7 @@ function ActionIconButton({
       </button>
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-[#011628] px-2 py-1 text-[11px] font-semibold text-white opacity-0 shadow transition-opacity group-hover:opacity-100 group-has-[:focus-visible]:opacity-100"
+        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-[7px] -translate-x-1/2 whitespace-nowrap rounded-md border border-[#E2E8F0] bg-[#FFFFFF] px-2 py-1 text-xs font-medium leading-4 text-[#032D50] opacity-0 shadow-[0_2px_8px_rgba(3,45,80,0.12)] transition-opacity group-hover:opacity-100 group-has-[:focus-visible]:opacity-100"
       >
         {label}
       </span>
@@ -739,7 +741,7 @@ function ListPage({
                         <path d="M16 17H8" />
                       </ActionIconButton>
                       {(permissions.canEdit || permissions.canEditLimitedFields) && (
-                        <ActionIconButton label={t("c.edit")} onClick={() => onEditAsset(row)} className="border border-[#044377] bg-[#044377] text-white hover:bg-[#032D50]">
+                        <ActionIconButton label={t("c.edit")} onClick={() => onEditAsset(row)} className="border border-[#044377] bg-[#044377] text-[#FFFFFF] hover:text-[#FFFFFF] focus-visible:text-[#FFFFFF] active:text-[#FFFFFF]">
                           <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
                           <path d="m15 5 4 4" />
                         </ActionIconButton>
