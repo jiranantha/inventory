@@ -3,7 +3,8 @@
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 
-import { useState, useMemo, useCallback, useEffect, Suspense } from "react";
+import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef, Suspense } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Bar,
@@ -106,7 +107,46 @@ function ListPage({
   }, [router]);
 
   const [exportOpen, setExportOpen] = useState(false);
+  const [exportMenuPos, setExportMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const exportButtonRef = useRef<HTMLButtonElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const pageSize = 25;
+
+  // The export menu is portaled to <body> with fixed positioning so no parent
+  // can clip it. Default placement: below the button, right edges aligned (same
+  // as the old absolute right-0 / mt-1). It is then clamped inside the viewport
+  // and flipped above the button if there is no room below.
+  useLayoutEffect(() => {
+    if (!exportOpen) {
+      setExportMenuPos(null);
+      return;
+    }
+    const VIEWPORT_MARGIN = 8;
+    const GAP = 4;
+    const updatePosition = () => {
+      const button = exportButtonRef.current;
+      const menu = exportMenuRef.current;
+      if (!button || !menu) return;
+      const rect = button.getBoundingClientRect();
+      const menuWidth = menu.offsetWidth;
+      const menuHeight = menu.offsetHeight;
+      const viewportWidth = document.documentElement.clientWidth;
+      const viewportHeight = window.innerHeight;
+      const maxLeft = viewportWidth - menuWidth - VIEWPORT_MARGIN;
+      const left = Math.max(VIEWPORT_MARGIN, Math.min(rect.right - menuWidth, maxLeft));
+      let top = rect.bottom + GAP;
+      const aboveTop = rect.top - GAP - menuHeight;
+      if (top + menuHeight > viewportHeight - VIEWPORT_MARGIN && aboveTop >= VIEWPORT_MARGIN) top = aboveTop;
+      setExportMenuPos({ top, left });
+    };
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [exportOpen]);
 
   const filteredRows = useMemo(() => {
     const cleanSearch = search.trim().toLowerCase();
@@ -302,15 +342,26 @@ function ListPage({
             {permissions.canExport && (
               <div className="relative">
                 <button
+                  ref={exportButtonRef}
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={exportOpen}
                   onClick={() => setExportOpen((v) => !v)}
                   className="min-h-11 rounded-md border border-line bg-surfaceSoft px-4 py-2 text-sm font-semibold text-ink transition hover:border-primary hover:text-primary"
                 >
                   {t("c.export")} ▾
                 </button>
-                {exportOpen && (
+                {exportOpen && createPortal(
                   <>
-                    <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} />
-                    <div className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-md border border-line bg-surface shadow-glow">
+                    <div className="fixed inset-0 z-40" onClick={() => setExportOpen(false)} />
+                    <div
+                      ref={exportMenuRef}
+                      role="menu"
+                      className="fixed z-50 w-36 overflow-hidden rounded-md border border-line bg-surface shadow-glow"
+                      style={exportMenuPos
+                        ? { top: exportMenuPos.top, left: exportMenuPos.left }
+                        : { top: 0, left: 0, visibility: "hidden" }}
+                    >
                       {(["pdf", "word", "excel"] as const).map((fmt) => (
                         <button
                           key={fmt}
@@ -336,13 +387,15 @@ function ListPage({
                             });
                             setExportOpen(false);
                           }}
-                          className="w-full px-4 py-2.5 text-left text-xs font-semibold text-ink hover:bg-surfaceSoft"
+                          role="menuitem"
+                          className="w-full px-4 py-2.5 text-left text-xs font-semibold text-ink hover:bg-surfaceSoft max-sm:min-h-11 max-sm:text-sm"
                         >
                           {fmt === "pdf" ? "PDF" : fmt === "word" ? "Word" : "Excel"}
                         </button>
                       ))}
                     </div>
-                  </>
+                  </>,
+                  document.body,
                 )}
               </div>
             )}
