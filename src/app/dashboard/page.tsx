@@ -3,12 +3,13 @@
 import { useAppData } from "@/components/AppDataProvider";
 import { PlaceholderPage } from "@/components/StatusPages";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  LabelList,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -24,6 +25,27 @@ import { countBy } from "@/lib/utils";
 import { AnnualInspection, AssetListRow } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateOption } from "@/lib/i18n";
+
+const MOBILE_QUERY = "(max-width: 767px)";
+const ORG_CHART_MOBILE_ROW_HEIGHT = 34;
+const ORG_CHART_MOBILE_MAX_HEIGHT = 420;
+const ORG_LABEL_MOBILE_MAX_CHARS = 16;
+
+function subscribeMobileViewport(onChange: () => void) {
+  const query = window.matchMedia(MOBILE_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+// Server snapshot is always "desktop"; charts only render after mount
+// (chartsReady), so the mobile/desktop switch never causes a hydration mismatch.
+function useIsMobileViewport() {
+  return useSyncExternalStore(
+    subscribeMobileViewport,
+    () => window.matchMedia(MOBILE_QUERY).matches,
+    () => false,
+  );
+}
 
 function DashboardTable({
   title,
@@ -117,6 +139,7 @@ function DashboardPage({
 }) {
   const { lang, t } = useLanguage();
   const [chartsReady, setChartsReady] = useState(false);
+  const isMobile = useIsMobileViewport();
   const currentInspectionYear = String(getCurrentInspectionYear());
   const currentYearInspections = annualInspections.filter((inspection) => inspection.inspectionYear === currentInspectionYear);
   const currentYearInspectedAssetIds = new Set(currentYearInspections.map((inspection) => inspection.assetId));
@@ -226,6 +249,11 @@ function DashboardPage({
   useEffect(() => {
     setChartsReady(true);
   }, []);
+
+  // Mobile (< 768px) renders the organization chart as horizontal bars so unit
+  // names sit on the Y-axis instead of overlapping on the X-axis. Height grows
+  // with the number of units; the wrapper scrolls vertically past the max.
+  const organizationChartMobileHeight = Math.max(240, assetsByOrganization.length * ORG_CHART_MOBILE_ROW_HEIGHT + 16);
 
   const chartFallback = (
     <div className="flex h-full items-center justify-center rounded-lg border border-line bg-surfaceSoft text-sm text-muted">
@@ -354,6 +382,51 @@ function DashboardPage({
           {chartsReady ? (
             assetsByOrganization.length > 0 ? (
               <div className="flex h-full flex-col">
+                {isMobile ? (
+                  <div
+                    className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
+                    style={{ maxHeight: ORG_CHART_MOBILE_MAX_HEIGHT }}
+                  >
+                    <div style={{ height: organizationChartMobileHeight }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          layout="vertical"
+                          data={assetsByOrganization}
+                          margin={{ top: 4, right: 40, left: 0, bottom: 4 }}
+                          barCategoryGap={8}
+                        >
+                          <CartesianGrid stroke={chartColors.grid} horizontal={false} />
+                          <XAxis type="number" hide allowDecimals={false} />
+                          <YAxis
+                            type="category"
+                            dataKey="name"
+                            width={128}
+                            stroke={chartColors.axis}
+                            tickLine={false}
+                            axisLine={false}
+                            interval={0}
+                            tick={{ fill: chartColors.axis, fontSize: 12 }}
+                            tickFormatter={(value: string) => value.length > ORG_LABEL_MOBILE_MAX_CHARS ? `${value.slice(0, ORG_LABEL_MOBILE_MAX_CHARS)}…` : value}
+                          />
+                          <Tooltip
+                            contentStyle={{ ...tooltipStyle, maxWidth: 260, whiteSpace: "normal", fontSize: 13 }}
+                            cursor={{ fill: "#E1F1FE" }}
+                            formatter={(value) => [`${Number(value).toLocaleString("th-TH")} ${t("dash.itemCount")}`, t("dash.assetCount")]}
+                          />
+                          <Bar dataKey="value" name={t("dash.assetCount")} fill={chartColors.organizationBar} radius={[0, 6, 6, 0]} maxBarSize={22}>
+                            <LabelList
+                              dataKey="value"
+                              position="right"
+                              fill={chartColors.axis}
+                              fontSize={12}
+                              formatter={(value) => Number(value).toLocaleString("th-TH")}
+                            />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                ) : (
                 <div className="min-h-0 flex-1">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={assetsByOrganization} margin={{ top: 10, right: 10, left: -10, bottom: 80 }}>
@@ -379,6 +452,7 @@ function DashboardPage({
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
+                )}
               </div>
             ) : organizationChartEmptyState
           ) : chartFallback}
