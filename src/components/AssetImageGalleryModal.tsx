@@ -6,17 +6,20 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import type { AssetListRow } from "@/types";
 
 // Read-only gallery of one asset's own photos (asset.assetImages — never
-// inspection evidence). Opened from the /list image-count badge.
+// inspection evidence). Opened from the /list image-count badge (desktop) and
+// the mobile card photo (AssetPhotoCarousel), optionally at a given image.
 export function AssetImageGalleryModal({
   asset,
+  initialIndex = 0,
   onClose,
 }: {
   asset: AssetListRow;
+  initialIndex?: number;
   onClose: () => void;
 }) {
   const { lang } = useLanguage();
   const images = asset.assetImages ?? [];
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(() => Math.min(Math.max(0, initialIndex), Math.max(0, images.length - 1)));
   const [failed, setFailed] = useState<Set<number>>(() => new Set());
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
