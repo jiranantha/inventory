@@ -1078,15 +1078,19 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
                     colgroup percentages let the table shrink to the card's actual
                     width instead, using ellipsis truncation inside cells rather than
                     a scrollbar. overflow-x-auto stays only as a fallback for very
-                    narrow (phone-width) viewports. */}
+                    narrow (phone-width) viewports.
+                    จำนวนรายการ and จัดการ are fixed px sized to their one-line content:
+                    the old 8% action column was ~72px at 1280px (sidebar open), narrower
+                    than the ~90px "ดูรายละเอียด" button, which overflowed its cell and
+                    was clipped. หมายเหตุ/วาระ has no width and takes the remainder. */}
                 <table className="w-full table-fixed border-collapse text-left text-sm">
                   <colgroup>
                     <col className="w-[16%]" />
-                    <col className="w-[28%]" />
-                    <col className="w-[22%]" />
-                    <col className="w-[12%]" />
-                    <col className="w-[14%]" />
-                    <col className="w-[8%]" />
+                    <col className="w-[24%]" />
+                    <col className="w-[20%]" />
+                    <col className="w-[110px]" />
+                    <col />
+                    <col className="w-[120px]" />
                   </colgroup>
                   <thead className="sticky top-0 bg-surfaceSoft text-ink">
                     <tr>
@@ -1109,7 +1113,7 @@ function BulkUpdateResponsiblePanel({ assets, unitResponsiblePersons, onBulkUpda
                         </td>
                         <td className="truncate px-3 py-3 text-center align-top">{record.affectedAssetCount.toLocaleString("th-TH")} รายการ</td>
                         <td className="truncate px-3 py-3 align-top" title={record.note}>{record.note || "-"}</td>
-                        <td className="px-2 py-3 text-center align-top">
+                        <td className="px-2 py-3 text-center align-middle">
                           <button
                             type="button"
                             onClick={() => setDetailTarget(record)}
