@@ -6,6 +6,7 @@ import { PlaceholderPage } from "@/components/StatusPages";
 import { useState, useMemo } from "react";
 import { inspectionStatusColors } from "@/constants/colors";
 import { AssetNumberCell, CloseIconButton, DetailInfoItem, Field, FilterChip, MultiSelectFilter, RegistrationTypeBadge, SearchableMultiSelectFilter, SelectField, StatusBadge, TextAreaField, ThaiDateField, getRegistrationType } from "@/components/ui";
+import { TypedAssetNumber, assetNameMinWidth } from "@/components/TypedAssetNumber";
 import { formatThaiDate, getCurrentInspectionYear } from "@/lib/dates";
 import { uploadImage } from "@/lib/image-upload";
 import { uniqueSorted } from "@/lib/utils";
@@ -317,11 +318,16 @@ function AuditPage({
     evidenceImages.length > 0,
   );
 
+  // Registration type has no column of its own — it's shown by the icon/color
+  // next to each number (TypedAssetNumber, shared with /list).
   const tableHeadings = [
-    t("col.dot"), t("col.no"), t("col.number"), t("col.numberType"), t("audit.col.assetName"),
+    t("col.dot"), t("col.no"), t("col.number"), t("audit.col.assetName"),
     t("col.org"), t("col.location"), t("col.status"), t("col.inspection"), t("col.manage"),
   ];
-  const centeredTableHeadings = new Set([t("col.numberType"), t("col.status"), t("col.inspection"), t("col.manage")]);
+  const centeredTableHeadings = new Set([t("col.status"), t("col.inspection"), t("col.manage")]);
+  // Desktop-table columns sized exactly to their one-line content (dot, No,
+  // Number, Status, Inspection, Manage); Name/Org/Location share the rest.
+  const compactTableColumnIndexes = new Set([0, 1, 2, 6, 7, 8]);
 
   return (
     <section className="mx-auto w-full max-w-screen-2xl space-y-5">
@@ -521,59 +527,53 @@ function AuditPage({
       {/* Desktop table */}
       <div className="hidden overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="overflow-x-auto">
-          {/* table-fixed with an explicit colgroup so every column is sized to
-              what its content actually needs and the table fills the card
-              width exactly. จัดการ is a fixed 110px (only ever holds one
-              button now) instead of the old wider fixed width sized for two
-              buttons — that's what was pooling as blank space on the right.
-              Number's share was widened (13%→20%) to fit a full university
-              asset number on one line without truncating, same as /list;
-              assetName/org/location gave up a little space to compensate. */}
-          <table className="w-full min-w-[1080px] table-fixed border-collapse text-left text-sm">
-            <colgroup>
-              <col className="w-[3%]" />
-              <col className="w-[4%]" />
-              <col className="w-[20%]" />
-              <col className="w-[9%]" />
-              <col className="w-[17%]" />
-              <col className="w-[15%]" />
-              <col className="w-[11%]" />
-              <col className="w-[8%]" />
-              <col className="w-[9%]" />
-              <col className="w-[110px]" />
-            </colgroup>
+          {/* Auto table layout sized by real content, matching /list. The old
+              table-fixed colgroup gave ผลการตรวจสอบ 9% (~97px) — narrower than the
+              nowrap "ยังไม่ได้ตรวจ (2569)" badge, which spilled into จัดการ and was
+              covered by its button. Now Dot/No/Number/Status/Inspection/Manage are
+              `w-px` with one-line content, so each is exactly as wide as its
+              content and nothing can overflow into a neighbour; Name/Org/Location
+              wrap and share the remaining width. If the content minimum exceeds the
+              viewport, only this container scrolls horizontally. */}
+          <table className="w-full border-collapse text-left text-[13px] min-[1600px]:text-sm">
             <thead className="bg-surfaceSoft text-ink">
               <tr>
-                {tableHeadings.map((heading) => (
-                  <th key={heading} className={`border-b border-line px-2 py-2.5 font-semibold ${centeredTableHeadings.has(heading) ? "text-center" : ""}`}>{heading}</th>
+                {tableHeadings.map((heading, index) => (
+                  <th
+                    key={heading}
+                    className={`border-b border-line py-2.5 font-semibold ${centeredTableHeadings.has(heading) ? "text-center" : ""} ${
+                      compactTableColumnIndexes.has(index) ? "w-px px-1.5" : "px-2"
+                    }`}
+                  >
+                    {heading}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-line bg-surface text-ink">
               {visibleRows.map(({ asset, inspection }, index) => (
                 <tr key={asset.assetCode} className="align-middle hover:bg-surfaceSoft">
-                  <td className="px-2 py-3 text-center align-middle">
+                  <td className="px-1.5 py-3 text-center align-middle">
                     <span
                       title={inspection ? translateOption("ตรวจสอบแล้ว", lang) : translateOption("ยังไม่ได้ตรวจสอบ", lang)}
                       className={`mx-auto block h-3 w-3 rounded-full ring-2 ring-surface ${inspection ? inspectionStatusColors.inspected.dot : inspectionStatusColors.pending.dot}`}
                     />
                   </td>
-                  <td className="px-2 py-3 text-muted">{(safePage - 1) * pageSize + index + 1}</td>
-                  <td className="px-2 py-3 font-semibold text-primary">
-                    <AssetNumberCell asset={asset} truncate={false} />
+                  <td className="whitespace-nowrap px-1.5 py-3 text-muted">{(safePage - 1) * pageSize + index + 1}</td>
+                  <td className="px-1.5 py-3 font-semibold">
+                    <TypedAssetNumber asset={asset} />
                   </td>
-                  <td className="px-2 py-3 text-center"><div className="mx-auto w-fit"><RegistrationTypeBadge registrationType={asset.registrationType} truncate={false} /></div></td>
-                  <td className="px-2 py-3 font-semibold text-ink" title={asset.assetName}>
-                    <div className="truncate">{asset.assetName}</div>
+                  <td className="px-2 py-3 font-semibold leading-snug text-ink">
+                    <div className="break-words" style={{ minWidth: assetNameMinWidth(asset.assetName) }}>{asset.assetName}</div>
                   </td>
-                  <td className="overflow-hidden px-2 py-3 text-ink" title={asset.organization}>
-                    <div className="max-w-full truncate">{asset.organization}</div>
+                  <td className="px-2 py-3 leading-snug text-ink">
+                    <div className="min-w-[9em] break-words">{asset.organization}</div>
                   </td>
-                  <td className="overflow-hidden px-2 py-3 text-ink" title={asset.location}>
-                    <div className="max-w-full truncate">{asset.location}</div>
+                  <td className="px-2 py-3 leading-snug text-ink">
+                    <div className="min-w-[7em] break-words">{asset.location}</div>
                   </td>
-                  <td className="px-2 py-3 text-center"><StatusBadge value={asset.status} variant="soft" /></td>
-                  <td className="px-2 py-3 text-center">
+                  <td className="whitespace-nowrap px-1.5 py-3 text-center"><StatusBadge value={asset.status} variant="soft" /></td>
+                  <td className="whitespace-nowrap px-1.5 py-3 text-center">
                     {inspection ? (
                       <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${inspectionStatusColors.inspected.badge}`}>
                         {translateOption("ตรวจสอบแล้ว", lang)} ({inspectionYear})
@@ -584,7 +584,7 @@ function AuditPage({
                       </span>
                     )}
                   </td>
-                  <td className="overflow-hidden px-1.5 py-3 text-center">
+                  <td className="whitespace-nowrap px-1.5 py-3 text-center">
                     <div className="flex flex-nowrap items-center justify-center gap-2">
                       {inspection ? (
                         <button
@@ -605,7 +605,7 @@ function AuditPage({
               ))}
               {visibleRows.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-12 text-center">
+                  <td colSpan={tableHeadings.length} className="px-3 py-12 text-center">
                     <div className="mx-auto max-w-md">
                       <p className="text-base font-bold text-ink">{t("c.noData")}</p>
                       <p className="mt-2 text-sm leading-6 text-muted">{t("c.noDataSub")}</p>
