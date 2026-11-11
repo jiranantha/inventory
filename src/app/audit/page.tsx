@@ -6,7 +6,7 @@ import { PlaceholderPage } from "@/components/StatusPages";
 import { useState, useMemo } from "react";
 import { inspectionStatusColors } from "@/constants/colors";
 import { AssetNumberCell, CloseIconButton, DetailInfoItem, Field, FilterChip, MultiSelectFilter, RegistrationTypeBadge, SearchableMultiSelectFilter, SelectField, StatusBadge, TextAreaField, ThaiDateField, getRegistrationType } from "@/components/ui";
-import { TypedAssetNumber, assetNameMinWidth } from "@/components/TypedAssetNumber";
+import { TypedAssetNumber } from "@/components/TypedAssetNumber";
 import { formatThaiDate, getCurrentInspectionYear } from "@/lib/dates";
 import { uploadImage } from "@/lib/image-upload";
 import { uniqueSorted } from "@/lib/utils";
@@ -325,9 +325,11 @@ function AuditPage({
     t("col.org"), t("col.location"), t("col.status"), t("col.inspection"), t("col.manage"),
   ];
   const centeredTableHeadings = new Set([t("col.status"), t("col.inspection"), t("col.manage")]);
-  // Desktop-table columns sized exactly to their one-line content (dot, No,
-  // Number, Status, Inspection, Manage); Name/Org/Location share the rest.
+  // Desktop-table columns with 6px side padding (dot, No, Number, Status,
+  // Inspection, Manage); widths come from the table's colgroup. Only Name,
+  // Org, Location and Inspection headings may wrap (at natural Thai word breaks).
   const compactTableColumnIndexes = new Set([0, 1, 2, 6, 7, 8]);
+  const wrappingTableHeadingIndexes = new Set([3, 4, 5, 7]);
 
   return (
     <section className="mx-auto w-full max-w-screen-2xl space-y-5">
@@ -527,23 +529,37 @@ function AuditPage({
       {/* Desktop table */}
       <div className="hidden overflow-hidden rounded-lg border border-line bg-surface md:block">
         <div className="overflow-x-auto">
-          {/* Auto table layout sized by real content, matching /list. The old
-              table-fixed colgroup gave ผลการตรวจสอบ 9% (~97px) — narrower than the
-              nowrap "ยังไม่ได้ตรวจ (2569)" badge, which spilled into จัดการ and was
-              covered by its button. Now Dot/No/Number/Status/Inspection/Manage are
-              `w-px` with one-line content, so each is exactly as wide as its
-              content and nothing can overflow into a neighbour; Name/Org/Location
-              wrap and share the remaining width. If the content minimum exceeds the
-              viewport, only this container scrolls horizontally. */}
-          <table className="w-full border-collapse text-left text-[13px] min-[1600px]:text-sm">
+          {/* Stable column widths: table-fixed + an em-based colgroup, so widths
+              come from the colgroup, not from body content, and are identical with
+              hundreds of rows or zero rows. (The previous auto layout sized the
+              compact columns to their content via `w-px`; with no rows only the
+              header text was left, so Thai headings collapsed to their narrowest
+              wrap.) Fixed widths are sized from measured content at 13px — a full
+              university number with its icon, the "ยังไม่ได้ตรวจ (2569)" badge, the
+              "ดูรายละเอียด" button — and are in em so they scale with the 14px
+              text at ≥1600px. Name and Org have no width and split the rest
+              equally; min-w keeps them ≥ ~10.75em each, and below that only this
+              container scrolls horizontally. */}
+          <table className="w-full min-w-[78em] table-fixed border-collapse text-left text-[13px] min-[1600px]:text-sm">
+            <colgroup>
+              <col className="w-[2.25em]" />
+              <col className="w-[3.5em]" />
+              <col className="w-[15.25em]" />
+              <col />
+              <col />
+              <col className="w-[9.5em]" />
+              <col className="w-[7.25em]" />
+              <col className="w-[11em]" />
+              <col className="w-[8em]" />
+            </colgroup>
             <thead className="bg-surfaceSoft text-ink">
               <tr>
                 {tableHeadings.map((heading, index) => (
                   <th
                     key={heading}
-                    className={`border-b border-line py-2.5 font-semibold ${centeredTableHeadings.has(heading) ? "text-center" : ""} ${
-                      compactTableColumnIndexes.has(index) ? "w-px px-1.5" : "px-2"
-                    }`}
+                    className={`border-b border-line py-2.5 align-middle font-semibold leading-snug ${centeredTableHeadings.has(heading) ? "text-center" : ""} ${
+                      compactTableColumnIndexes.has(index) ? "px-1.5" : "px-2"
+                    } ${wrappingTableHeadingIndexes.has(index) ? "" : "whitespace-nowrap"}`}
                   >
                     {heading}
                   </th>
@@ -563,15 +579,9 @@ function AuditPage({
                   <td className="px-1.5 py-3 font-semibold">
                     <TypedAssetNumber asset={asset} />
                   </td>
-                  <td className="px-2 py-3 font-semibold leading-snug text-ink">
-                    <div className="break-words" style={{ minWidth: assetNameMinWidth(asset.assetName) }}>{asset.assetName}</div>
-                  </td>
-                  <td className="px-2 py-3 leading-snug text-ink">
-                    <div className="min-w-[9em] break-words">{asset.organization}</div>
-                  </td>
-                  <td className="px-2 py-3 leading-snug text-ink">
-                    <div className="min-w-[7em] break-words">{asset.location}</div>
-                  </td>
+                  <td className="break-words px-2 py-3 font-semibold leading-snug text-ink">{asset.assetName}</td>
+                  <td className="break-words px-2 py-3 leading-snug text-ink">{asset.organization}</td>
+                  <td className="break-words px-2 py-3 leading-snug text-ink">{asset.location}</td>
                   <td className="whitespace-nowrap px-1.5 py-3 text-center"><StatusBadge value={asset.status} variant="soft" /></td>
                   <td className="whitespace-nowrap px-1.5 py-3 text-center">
                     {inspection ? (
@@ -605,17 +615,25 @@ function AuditPage({
               ))}
               {visibleRows.length === 0 && (
                 <tr>
-                  <td colSpan={tableHeadings.length} className="px-3 py-12 text-center">
-                    <div className="mx-auto max-w-md">
-                      <p className="text-base font-bold text-ink">{t("c.noData")}</p>
-                      <p className="mt-2 text-sm leading-6 text-muted">{t("c.noDataSub")}</p>
+                  <td colSpan={tableHeadings.length} className="px-3 py-6 text-center">
+                    <div className="mx-auto flex max-w-md flex-col items-center" role="status">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-surfaceSoft text-primary" aria-hidden="true">
+                        <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="m13.5 8.5-5 5" />
+                          <path d="m8.5 8.5 5 5" />
+                          <circle cx="11" cy="11" r="8" />
+                          <path d="m21 21-4.3-4.3" />
+                        </svg>
+                      </span>
+                      <p className="mt-3 text-base font-bold text-ink">{lang === "th" ? "ไม่พบข้อมูลครุภัณฑ์" : "No matching assets"}</p>
+                      <p className="mt-1 text-sm text-muted">{lang === "th" ? "ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง" : "Try a different search or clear the filters"}</p>
                       {hasActiveAuditFilters && (
                         <button
                           type="button"
                           onClick={clearAuditFilters}
                           className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-hover"
                         >
-                          {t("c.clearFilters")}
+                          {lang === "th" ? "ล้างตัวกรองทั้งหมด" : "Clear all filters"}
                         </button>
                       )}
                     </div>
