@@ -1368,37 +1368,50 @@ function UserManagementPage({ users, onAddUser, onUpdateUser, onDeleteUser, curr
       {activeTab === "users" && <section className="mx-auto w-full max-w-screen-2xl rounded-lg border border-line bg-surface p-6">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-white">{t("set.tabUsers")}</h2><p className="mt-2 text-sm text-muted">ตรวจสอบบัญชี บทบาท องค์กร และสิทธิ์การใช้งานของผู้ใช้ในระบบ</p></div><button type="button" onClick={openAddUser} className="rounded-md bg-gold px-4 py-2 text-sm font-extrabold text-slate-950 hover:bg-primary-hover">{t("set.addUser")}</button></div>
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+          {/* Auto layout: Name, Role, Export and Manage are `w-px` + nowrap, so each
+              column is exactly as wide as its one-line content (names and role
+              badges never wrap). Email and Organization cells hold a `w-0
+              min-w-full truncate` wrapper — zero intrinsic width, so they don't
+              force the table wider; they share the leftover width and ellipsize,
+              with the full value in `title`. Header min-widths (110px) keep them usable; the Export
+              heading may wrap naturally (อนุญาต/ส่งออก).
+              If the one-line columns alone exceed the width, only this container
+              scrolls horizontally. */}
+          <table className="w-full border-collapse text-left text-sm">
             <thead className="bg-surfaceSoft text-ink">
               <tr>
                 {[
-                    { label: "ชื่อ" },
-                    { label: "อีเมล" },
-                    { label: "บทบาท" },
-                    { label: "องค์กร" },
-                    { label: "อนุญาตส่งออก" },
+                    { label: "ชื่อ", cls: "w-px whitespace-nowrap" },
+                    { label: "อีเมล", inner: "min-w-[110px]" },
+                    { label: "บทบาท", cls: "w-px whitespace-nowrap" },
+                    { label: "องค์กร", inner: "min-w-[110px]" },
+                    { label: "อนุญาตส่งออก", cls: "w-px text-center" },
                     { label: "จัดการ", cls: "w-px whitespace-nowrap" },
-                  ].map(({ label, cls = "" }) => (
-                    <th key={label} className={`border-b border-line px-4 py-3 ${cls}`.trim()}>{label}</th>
+                  ].map(({ label, cls = "", inner = "" }) => (
+                    <th key={label} className={`border-b border-line px-2.5 py-3 ${cls}`.trim()}>{inner ? <div className={inner}>{label}</div> : label}</th>
                   ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-line bg-slate-950/20 text-ink">
               {users.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-4 py-3 font-semibold text-white">{user.name}</td>
-                  <td className="px-4 py-3 text-ink">{user.email}</td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex rounded-full border border-sky-300/25 bg-sky-400/10 px-2.5 py-1 text-xs font-bold text-sky-200">{getRoleDefinition(user.role, roles).name}</span>
+                <tr key={user.id} className="align-middle">
+                  <td className="whitespace-nowrap px-2.5 py-3 font-semibold text-white">{user.name}</td>
+                  <td className="px-2.5 py-3 text-ink">
+                    <div className="w-0 min-w-full truncate" title={user.email}>{user.email}</div>
                   </td>
-                  <td className="max-w-[200px] truncate px-4 py-3 text-ink" title={user.organization}>{user.organization || "-"}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${user.viewerCanExport ? "bg-emerald-400/10 text-emerald-200" : "bg-slate-700/60 text-ink"}`}>
+                  <td className="whitespace-nowrap px-2.5 py-3">
+                    <span className="inline-flex w-max items-center whitespace-nowrap rounded-full border border-sky-300/25 bg-sky-400/10 px-2.5 py-1 text-xs font-bold text-sky-200">{getRoleDefinition(user.role, roles).name}</span>
+                  </td>
+                  <td className="px-2.5 py-3 text-ink">
+                    <div className="w-0 min-w-full truncate" title={user.organization || undefined}>{user.organization || "-"}</div>
+                  </td>
+                  <td className="whitespace-nowrap px-2.5 py-3 text-center">
+                    <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${user.viewerCanExport ? "bg-emerald-400/10 text-emerald-200" : "bg-slate-700/60 text-ink"}`}>
                       {user.viewerCanExport ? "อนุญาต" : "ไม่อนุญาต"}
                     </span>
                   </td>
-                  <td className="w-px whitespace-nowrap px-4 py-3">
-                    <div className="flex items-center gap-2">
+                  <td className="w-px whitespace-nowrap px-2.5 py-3">
+                    <div className="flex flex-nowrap items-center gap-2">
                       <button type="button" onClick={() => { setUserModalMode("edit"); setEditingUser({ ...user }); }} className="rounded-md bg-gold px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-primary-hover">แก้ไข</button>
                       <ActiveToggle checked={user.active} onChange={() => onUpdateUser({ ...user, active: !user.active })} disabled={user.role === "Admin"} ariaLabel="Toggle user active status" />
                       <button type="button" onClick={() => setDeleteCandidate(user)} title={t("set.deleteUser")} aria-label={t("set.deleteUser")} className="rounded-md border border-red-400/40 px-2 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-400/10 hover:text-red-300">
