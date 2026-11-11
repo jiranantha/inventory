@@ -82,13 +82,13 @@ function ListAssetNumberCell({ asset }: { asset: AssetListRow }) {
   const activityLabel = translateOption("กิจกรรมนักศึกษา", lang);
   const universityLabel = translateOption("มหาวิทยาลัย", lang);
   const activityLine = (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap" style={{ color: ACTIVITY_NUMBER_COLOR }}>
+    <span className="inline-flex items-center gap-1 whitespace-nowrap" style={{ color: ACTIVITY_NUMBER_COLOR }}>
       <GraduationCapIcon label={activityLabel} />
       {asset.assetNumber?.trim() || "-"}
     </span>
   );
   const universityLine = (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap" style={{ color: UNIVERSITY_NUMBER_COLOR }}>
+    <span className="inline-flex items-center gap-1 whitespace-nowrap" style={{ color: UNIVERSITY_NUMBER_COLOR }}>
       <BuildingIcon label={universityLabel} />
       {asset.universityAssetNumber?.trim() || "-"}
     </span>
@@ -106,7 +106,7 @@ function ListAssetNumberCell({ asset }: { asset: AssetListRow }) {
   return <div title={title}>{registrationType === UNIVERSITY_REGISTRATION_TYPE ? universityLine : activityLine}</div>;
 }
 
-// Desktop /list table action button: 34px square, 17px Lucide-style icon
+// Desktop /list table action button: 32px square, 16px Lucide-style icon
 // (children are the SVG paths), with a tooltip shown on hover and keyboard focus.
 // Colors use explicit hex classes: globals.css remaps `.asset-shell .text-white`
 // to dark navy (!important), so `text-white` would render navy here.
@@ -127,9 +127,9 @@ function ActionIconButton({
         type="button"
         onClick={onClick}
         aria-label={label}
-        className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${className}`}
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${className}`}
       >
-        <svg className="h-[17px] w-[17px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           {children}
         </svg>
       </button>
@@ -687,16 +687,19 @@ function ListPage({
               exactly as wide as its content: Number, Org and the three action
               buttons always stay on one line. Name absorbs the spare width and
               wraps; its min-width (assetNameMinWidth) is about half the name's
-              length so it fits in ~2 lines. When the content minimum exceeds the
-              viewport, only this container scrolls horizontally — nothing clips. */}
-          <table className="w-full border-collapse text-left text-sm">
+              length so it fits in ~2 lines. Laptop sizing: 13px text below 1600px
+              (14px above), 6px side padding on compact columns, 32px action
+              buttons. Measured with the 260px sidebar: fits from ~1366px; at
+              1280px long one-line Org/number content needs ~50-70px more, so only
+              this container scrolls horizontally — nothing clips or truncates. */}
+          <table className="w-full border-collapse text-left text-[13px] min-[1600px]:text-sm">
             <thead className="bg-surfaceSoft text-ink">
               <tr>
                 {tableHeadings.map((heading, index) => (
                   <th
                     key={heading}
                     className={`border-b border-line py-2.5 font-semibold ${centeredHeadings.has(heading) ? "text-center" : ""} ${
-                      compactColumnIndexes.has(index) ? "w-px px-2" : "px-3"
+                      compactColumnIndexes.has(index) ? "w-px px-1.5" : "px-2"
                     }`}
                   >
                     {heading}
@@ -707,14 +710,14 @@ function ListPage({
             <tbody className="divide-y divide-line bg-surface text-ink">
               {visibleRows.map((row, index) => (
                 <tr key={row.assetCode} className="align-middle hover:bg-surfaceSoft">
-                  <td className="whitespace-nowrap px-2 py-3 text-center text-muted">{(safePage - 1) * pageSize + index + 1}</td>
-                  <td className="whitespace-nowrap px-2 py-3 text-center">{row.fiscalYear}</td>
-                  <td className="px-2 py-3 font-semibold"><ListAssetNumberCell asset={row} /></td>
-                  <td className="px-3 py-3 font-semibold leading-snug text-ink"><div className="break-words" style={{ minWidth: assetNameMinWidth(row.assetName) }}>{row.assetName}</div></td>
-                  <td className="whitespace-nowrap px-2 py-3">{row.organization}</td>
-                  <td className="whitespace-nowrap px-2 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
-                  <td className="whitespace-nowrap px-2 py-3 text-center"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></td>
-                  <td className="px-2 py-3 text-center">
+                  <td className="whitespace-nowrap px-1.5 py-3 text-center text-muted">{(safePage - 1) * pageSize + index + 1}</td>
+                  <td className="whitespace-nowrap px-1.5 py-3 text-center">{row.fiscalYear}</td>
+                  <td className="px-1.5 py-3 font-semibold"><ListAssetNumberCell asset={row} /></td>
+                  <td className="px-2 py-3 font-semibold leading-snug text-ink"><div className="break-words" style={{ minWidth: assetNameMinWidth(row.assetName) }}>{row.assetName}</div></td>
+                  <td className="whitespace-nowrap px-1.5 py-3">{row.organization}</td>
+                  <td className="whitespace-nowrap px-1.5 py-3 text-center"><StatusBadge value={row.status} variant="soft" /></td>
+                  <td className="whitespace-nowrap px-1.5 py-3 text-center"><InspectionResultBadge inspected={inspectedAssetIds.has(row.id)} /></td>
+                  <td className="px-1.5 py-3 text-center">
                     {row.imageCount > 0 ? (
                       <button
                         type="button"
@@ -731,8 +734,8 @@ function ListPage({
                       </span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-2 py-1.5">
-                    <div className="flex flex-row flex-nowrap items-center justify-center gap-1.5">
+                  <td className="whitespace-nowrap px-1.5 py-1.5">
+                    <div className="flex flex-row flex-nowrap items-center justify-center gap-1">
                       <ActionIconButton label={t("c.detail")} onClick={() => onViewDetails(row)} className="border border-[#D1D9E0] bg-white text-ink hover:border-primary hover:text-primary">
                         <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
                         <path d="M14 2v4a2 2 0 0 0 2 2h4" />
