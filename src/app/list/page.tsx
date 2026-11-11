@@ -42,6 +42,33 @@ const COMMITTEE_PIE_COLORS = ["#044377", "#508ABA", "#9CD1FC", "#C3E3FD", "#032D
 // (children are the SVG paths), with a tooltip shown on hover and keyboard focus.
 // Colors use explicit hex classes: globals.css remaps `.asset-shell .text-white`
 // to dark navy (!important), so `text-white` would render navy here.
+// Mobile /list card action button: 16px icon on top, 12px label below, filling
+// its grid cell. Same hex-color rule as ActionIconButton (no `text-white`).
+function MobileActionButton({
+  label,
+  onClick,
+  className,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  className: string;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-[52px] w-full min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1 py-1.5 text-xs font-semibold leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${className}`}
+    >
+      <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {children}
+      </svg>
+      <span className="whitespace-nowrap">{label}</span>
+    </button>
+  );
+}
+
 function ActionIconButton({
   label,
   onClick,
@@ -272,6 +299,10 @@ function ListPage({
   // Desktop-table columns sized exactly to their one-line content; only Name
   // (index 3) is unsized, so it alone absorbs any spare table width.
   const compactColumnIndexes = new Set([0, 1, 2, 4, 5, 6, 7, 8]);
+  // Mobile card actions: one row, one equal column per action the user may use.
+  const canEditAsset = permissions.canEdit || permissions.canEditLimitedFields;
+  const mobileActionCount = 1 + (canEditAsset ? 1 : 0) + (permissions.canDelete ? 1 : 0);
+  const mobileActionGridClass = mobileActionCount === 3 ? "grid-cols-3" : mobileActionCount === 2 ? "grid-cols-2" : "grid-cols-1";
 
   // Search/filter card — extracted so its position can differ by role: normal
   // roles keep it right under the page header (original position); the
@@ -608,10 +639,26 @@ function ListPage({
             <dl className="mt-3 text-sm">
               <div><dt className="text-xs font-semibold text-muted">{t("col.org")}</dt><dd className="mt-1 break-words text-ink">{row.organization}</dd></div>
             </dl>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button onClick={() => onViewDetails(row)} className="min-h-11 rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink">{t("c.detail")}</button>
-              {(permissions.canEdit || permissions.canEditLimitedFields) && <button onClick={() => onEditAsset(row)} className="min-h-11 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white">{t("c.edit")}</button>}
-              {permissions.canDelete && <button onClick={() => onDeleteAsset(row)} className="min-h-11 rounded-md border border-red-300/30 px-3 py-2 text-sm font-semibold text-danger">{t("c.delete")}</button>}
+            <div className={`mt-3 grid gap-2 ${mobileActionGridClass}`}>
+              <MobileActionButton label={t("c.detail")} onClick={() => onViewDetails(row)} className="border border-[#D1D9E0] bg-white text-ink">
+                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+                <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+                <path d="M10 9H8" />
+                <path d="M16 13H8" />
+                <path d="M16 17H8" />
+              </MobileActionButton>
+              {canEditAsset && (
+                <MobileActionButton label={t("c.edit")} onClick={() => onEditAsset(row)} className="border border-[#044377] bg-[#044377] text-[#FFFFFF]">
+                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                  <path d="m15 5 4 4" />
+                </MobileActionButton>
+              )}
+              {permissions.canDelete && (
+                <MobileActionButton label={t("c.delete")} onClick={() => onDeleteAsset(row)} className="border border-[#DC2626] bg-white text-[#DC2626]">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </MobileActionButton>
+              )}
             </div>
           </article>
         ))}
