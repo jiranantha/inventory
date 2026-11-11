@@ -102,6 +102,35 @@ function ActionIconButton({
   );
 }
 
+// Standalone empty result for /list (shown instead of the cards/table when no
+// asset matches). Icon is Lucide's search-x. White text uses a hex class because
+// globals.css remaps `.asset-shell .text-white` to dark navy.
+function ListEmptyState({ lang, canClear, onClear }: { lang: string; canClear: boolean; onClear: () => void }) {
+  return (
+    <div role="status" className="flex flex-col items-center rounded-lg border border-line bg-white px-4 py-10 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surfaceSoft text-primary" aria-hidden="true">
+        <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m13.5 8.5-5 5" />
+          <path d="m8.5 8.5 5 5" />
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.3-4.3" />
+        </svg>
+      </span>
+      <p className="mt-3 text-base font-bold text-ink">{lang === "th" ? "ไม่พบข้อมูลครุภัณฑ์" : "No assets found"}</p>
+      <p className="mt-1 max-w-md text-sm text-muted">{lang === "th" ? "ไม่มีรายการครุภัณฑ์ที่ตรงกับเงื่อนไขการค้นหา" : "No assets match the current search and filters."}</p>
+      {canClear && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="mt-4 min-h-11 rounded-md bg-[#044377] px-4 py-2 text-sm font-bold text-[#FFFFFF] hover:bg-[#032D50] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        >
+          {lang === "th" ? "ล้างตัวกรองทั้งหมด" : "Clear all filters"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function parseMultiParam(param: string | null): string[] {
   if (!param) return [];
   return param.split(",").map((s) => s.trim()).filter(Boolean);
@@ -606,6 +635,15 @@ function ListPage({
           empty state, so the admin can still adjust filters). */}
       {isCommittee && filterCard}
 
+      {/* Zero matching assets: render a standalone empty state instead of the
+          mobile cards and the desktop table — no table, thead or empty rows, so
+          there is no header left to collapse. filteredRows is the same filtered
+          dataset that drives the table; /list only renders after AppDataProvider
+          has finished loading, so this never shows during loading or on error. */}
+      {filteredRows.length === 0 ? (
+        <ListEmptyState lang={lang} canClear={hasActiveFilters} onClear={clearAllFilters} />
+      ) : (
+      <>
       {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
         {visibleRows.map((row, index) => (
@@ -662,12 +700,6 @@ function ListPage({
             </div>
           </article>
         ))}
-        {visibleRows.length === 0 && (
-          <div className="rounded-lg border border-line bg-surface px-4 py-10 text-center">
-            <p className="font-bold text-ink">{t("c.noData")}</p>
-            <p className="mt-2 text-sm text-muted">{t("c.noDataSub")}</p>
-          </div>
-        )}
         <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface p-3 text-sm">
           <button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={safePage === 1} className="min-h-11 rounded-md border border-line px-3 py-2 font-semibold text-ink disabled:opacity-40">{t("c.prev")}</button>
           <span className="text-center font-bold text-ink">{t("c.page")} {safePage}/{pageCount}</span>
@@ -696,7 +728,7 @@ function ListPage({
                   <th
                     key={heading}
                     className={`border-b border-line py-2.5 font-semibold ${centeredHeadings.has(heading) ? "text-center" : ""} ${
-                      compactColumnIndexes.has(index) ? "w-px px-1.5" : "px-2"
+                      compactColumnIndexes.has(index) ? "w-px whitespace-nowrap px-1.5" : "px-2"
                     }`}
                   >
                     {heading}
@@ -756,25 +788,6 @@ function ListPage({
                   </td>
                 </tr>
               ))}
-              {visibleRows.length === 0 && (
-                <tr>
-                  <td colSpan={tableHeadings.length} className="px-3 py-12 text-center">
-                    <div className="mx-auto max-w-md">
-                      <p className="text-base font-bold text-white">{t("c.noData")}</p>
-                      <p className="mt-2 text-sm leading-6 text-muted">{t("c.noDataSub")}</p>
-                      {hasActiveFilters && (
-                        <button
-                          type="button"
-                          onClick={clearAllFilters}
-                          className="mt-4 rounded-md bg-gold px-4 py-2 text-sm font-bold text-slate-950 hover:bg-primary-hover"
-                        >
-                          {t("c.clearFilters")}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
@@ -803,6 +816,8 @@ function ListPage({
           </div>
         </div>
       </div>
+      </>
+      )}
       {galleryAsset && (
         <AssetImageGalleryModal key={galleryAsset.id} asset={galleryAsset} initialIndex={galleryStartIndex} onClose={closeImageGallery} />
       )}
